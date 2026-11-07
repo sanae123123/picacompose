@@ -42,5 +42,11 @@ data class PicaConfig(
         const val DEFAULT_USER_AGENT = "okhttp/3.8.1"
         const val DEFAULT_APP_UUID = "defaultUuid"
         const val ACCEPT = "application/vnd.picacomic.com.v1+json"
+
+        /**
+         * POST/PUT 的 Content-Type。charset 必须是大写 `UTF-8`：
+         * 服务端对大小写敏感，小写 `utf-8` 或缺 charset 会返回 400/1023 "too many requests"。
+         */
+        const val JSON_CONTENT_TYPE = "application/json; charset=UTF-8"
     }
 }
