@@ -19,8 +19,12 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # runner 镜像自带 Android SDK（cmdline-tools 在 /usr/local/lib/android/sdk），
+      # 不再用 android-actions/setup-android：它会去找已经下架的 "tools" 包而失败。
+      - name: Locate Android SDK
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          ls -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"/platforms/* 2>/dev/null || true
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
