@@ -21,7 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
 import com.picacompose.ui.components.PicaBackdrop
-import com.picacompose.ui.home.WelcomeScreen
+import com.picacompose.ui.home.HomeShell
 import com.picacompose.ui.login.LoginController
 import com.picacompose.ui.login.LoginScreen
 import com.picacompose.ui.theme.PicaTheme
@@ -32,7 +32,7 @@ private enum class Screen { Restoring, Login, Home }
 /**
  * 应用根组件，Android / iOS / Desktop 共用这一份 UI。
  *
- * 目前只有两屏：未登录 → 登录页；已登录 → 落脚页（首页下一步补）。
+ * 目前两屏：未登录 → 登录页；已登录 → 带底部导航的壳（主页/分类/游戏/我的/设置）。
  * 登录时勾了「记住账号」，下次启动会先拿存着的 token 试一次，成功就直接进首页。
  */
 @Composable
@@ -63,7 +63,7 @@ fun App() {
                     )
 
                     Screen.Home -> controller.profile?.let { profile ->
-                        WelcomeScreen(profile = profile, onSignOut = controller::signOut)
+                        HomeShell(profile = profile, onSignOut = controller::signOut)
                     }
                 }
             }

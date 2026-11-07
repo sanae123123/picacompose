@@ -1,154 +1,69 @@
 package com.picacompose.ui.components
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.rounded.ArrowForward as RoundedArrowForward
+import androidx.compose.material.icons.rounded.Category as RoundedCategory
+import androidx.compose.material.icons.rounded.Email as RoundedEmail
+import androidx.compose.material.icons.rounded.Home as RoundedHome
+import androidx.compose.material.icons.rounded.Lock as RoundedLock
+import androidx.compose.material.icons.rounded.Logout as RoundedLogout
+import androidx.compose.material.icons.rounded.Person as RoundedPerson
+import androidx.compose.material.icons.rounded.Settings as RoundedSettings
+import androidx.compose.material.icons.rounded.SportsEsports as RoundedSportsEsports
+import androidx.compose.material.icons.rounded.Visibility as RoundedVisibility
+import androidx.compose.material.icons.rounded.VisibilityOff as RoundedVisibilityOff
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 /**
- * 手绘的小图标。
+ * 界面用到的图标，全部来自 Google 官方 Material Icons。
  *
- * 只有登录页需要四五个图标，为它们引入 material-icons-extended（体积大、且在
- * Compose Multiplatform 里的 artifact 名一直在改）不划算，所以直接 Canvas 画。
+ * 默认用 outlined，底部导航选中时换 filled —— Material You 里就是这么区分的。
  */
-enum class PicaIcon { Mail, Lock, Person, Eye, EyeOff, ArrowRight, Logout }
+enum class PicaIcon { Mail, Lock, Person, Eye, EyeOff, ArrowRight, Logout, Home, Grid, Gamepad, Gear }
+
+private fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
+    PicaIcon.Mail -> if (filled) Icons.Rounded.RoundedEmail else Icons.Outlined.Email
+    PicaIcon.Lock -> if (filled) Icons.Rounded.RoundedLock else Icons.Outlined.Lock
+    PicaIcon.Person -> if (filled) Icons.Rounded.RoundedPerson else Icons.Outlined.Person
+    PicaIcon.Eye -> if (filled) Icons.Rounded.RoundedVisibility else Icons.Outlined.Visibility
+    PicaIcon.EyeOff -> if (filled) Icons.Rounded.RoundedVisibilityOff else Icons.Outlined.VisibilityOff
+    PicaIcon.ArrowRight -> if (filled) Icons.Rounded.RoundedArrowForward else Icons.Outlined.ArrowForward
+    PicaIcon.Logout -> if (filled) Icons.Rounded.RoundedLogout else Icons.Outlined.Logout
+    PicaIcon.Home -> if (filled) Icons.Rounded.RoundedHome else Icons.Outlined.Home
+    PicaIcon.Grid -> if (filled) Icons.Rounded.RoundedCategory else Icons.Outlined.Category
+    PicaIcon.Gamepad -> if (filled) Icons.Rounded.RoundedSportsEsports else Icons.Outlined.SportsEsports
+    PicaIcon.Gear -> if (filled) Icons.Rounded.RoundedSettings else Icons.Outlined.Settings
+}
 
 @Composable
 fun PicaGlyph(
     icon: PicaIcon,
     modifier: Modifier = Modifier.size(20.dp),
     tint: Color = LocalContentColor.current,
+    filled: Boolean = false,
 ) {
-    Canvas(modifier) {
-        val s = size.minDimension
-        val stroke = Stroke(
-            width = s * 0.085f,
-            cap = StrokeCap.Round,
-            join = StrokeJoin.Round,
-        )
-
-        when (icon) {
-            PicaIcon.Mail -> {
-                drawRoundRect(
-                    color = tint,
-                    topLeft = Offset(s * 0.10f, s * 0.22f),
-                    size = Size(s * 0.80f, s * 0.56f),
-                    cornerRadius = CornerRadius(s * 0.14f),
-                    style = stroke,
-                )
-                val flap = Path().apply {
-                    moveTo(s * 0.17f, s * 0.30f)
-                    lineTo(s * 0.50f, s * 0.57f)
-                    lineTo(s * 0.83f, s * 0.30f)
-                }
-                drawPath(flap, tint, style = stroke)
-            }
-
-            PicaIcon.Lock -> {
-                drawRoundRect(
-                    color = tint,
-                    topLeft = Offset(s * 0.22f, s * 0.45f),
-                    size = Size(s * 0.56f, s * 0.42f),
-                    cornerRadius = CornerRadius(s * 0.11f),
-                    style = stroke,
-                )
-                drawArc(
-                    color = tint,
-                    startAngle = 180f,
-                    sweepAngle = 180f,
-                    useCenter = false,
-                    topLeft = Offset(s * 0.32f, s * 0.16f),
-                    size = Size(s * 0.36f, s * 0.36f),
-                    style = stroke,
-                )
-            }
-
-            PicaIcon.Person -> {
-                drawCircle(
-                    color = tint,
-                    radius = s * 0.145f,
-                    center = Offset(s * 0.5f, s * 0.31f),
-                    style = stroke,
-                )
-                val shoulders = Path().apply {
-                    moveTo(s * 0.18f, s * 0.86f)
-                    quadraticBezierTo(s * 0.5f, s * 0.53f, s * 0.82f, s * 0.86f)
-                }
-                drawPath(shoulders, tint, style = stroke)
-            }
-
-            PicaIcon.Eye, PicaIcon.EyeOff -> {
-                val eye = Path().apply {
-                    moveTo(s * 0.08f, s * 0.5f)
-                    quadraticBezierTo(s * 0.5f, s * 0.10f, s * 0.92f, s * 0.5f)
-                    quadraticBezierTo(s * 0.5f, s * 0.90f, s * 0.08f, s * 0.5f)
-                    close()
-                }
-                drawPath(eye, tint, style = stroke)
-                drawCircle(
-                    color = tint,
-                    radius = s * 0.10f,
-                    center = Offset(s * 0.5f, s * 0.5f),
-                )
-                if (icon == PicaIcon.EyeOff) {
-                    drawLine(
-                        color = tint,
-                        start = Offset(s * 0.16f, s * 0.16f),
-                        end = Offset(s * 0.84f, s * 0.84f),
-                        strokeWidth = s * 0.085f,
-                        cap = StrokeCap.Round,
-                    )
-                }
-            }
-
-            PicaIcon.ArrowRight -> {
-                drawLine(
-                    color = tint,
-                    start = Offset(s * 0.12f, s * 0.5f),
-                    end = Offset(s * 0.86f, s * 0.5f),
-                    strokeWidth = s * 0.085f,
-                    cap = StrokeCap.Round,
-                )
-                val chevron = Path().apply {
-                    moveTo(s * 0.58f, s * 0.22f)
-                    lineTo(s * 0.88f, s * 0.5f)
-                    lineTo(s * 0.58f, s * 0.78f)
-                }
-                drawPath(chevron, tint, style = stroke)
-            }
-
-            PicaIcon.Logout -> {
-                val door = Path().apply {
-                    moveTo(s * 0.44f, s * 0.12f)
-                    lineTo(s * 0.14f, s * 0.12f)
-                    lineTo(s * 0.14f, s * 0.88f)
-                    lineTo(s * 0.44f, s * 0.88f)
-                }
-                drawPath(door, tint, style = stroke)
-                drawLine(
-                    color = tint,
-                    start = Offset(s * 0.40f, s * 0.5f),
-                    end = Offset(s * 0.88f, s * 0.5f),
-                    strokeWidth = s * 0.085f,
-                    cap = StrokeCap.Round,
-                )
-                val chevron = Path().apply {
-                    moveTo(s * 0.66f, s * 0.28f)
-                    lineTo(s * 0.90f, s * 0.5f)
-                    lineTo(s * 0.66f, s * 0.72f)
-                }
-                drawPath(chevron, tint, style = stroke)
-            }
-        }
-    }
+    Icon(
+        imageVector = icon.vector(filled),
+        contentDescription = null,
+        tint = tint,
+        modifier = modifier,
+    )
 }

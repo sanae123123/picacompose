@@ -38,6 +38,7 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.animation)
             implementation(compose.ui)
+            implementation(compose.materialIconsExtended)
         }
 
         androidMain.dependencies {

@@ -35,12 +35,13 @@ picacompose/
 ## 界面
 
 Material You（M3）风格：固定走 M3 基线配色（Compose Multiplatform 里没有 Android 动态取色），
-大圆角卡片、渐变背景、胶囊按钮；图标是 Canvas 手绘的，不依赖 material-icons-extended。
+大圆角卡片、渐变背景、胶囊按钮；图标直接取 Google 官方 Material Icons（`material-icons-extended`，
+默认 outlined，底部导航选中态换 filled）。
 
 ![登录页](docs/login.png)
 
-登录成功走真实接口拉资料，落到一个临时欢迎页（头像、昵称、等级/经验/签到状态、签名），
-后面首页做好了会替换掉它。
+登录成功后进带底部导航的五个页面：**主页**（资料卡 + 快捷入口）、**分类**（`/categories` 真实题材）、
+**游戏**（`/games` 站内游戏列表）、**我的**（账号详情、退出登录）、**设置**（会话状态、版本、退出登录）。
 
 勾了「记住账号」就把 token 存在本机（Android 用 SharedPreferences，桌面用 java.util.prefs，
 iOS 用 NSUserDefaults），下次打开直接恢复会话进首页；只存 token，不存密码。
