@@ -58,6 +58,21 @@ picacompose/
 
 Xcode 工程（`iosApp.xcodeproj`）还没建：生成它需要在 macOS 上跑，没法在 Linux/CI 里可靠地产出。要用 iOS 时，在 macOS 上用 Android Studio 的 Kotlin Multiplatform 插件新建一个 iOS App target，把 `MainViewController` 作为 `UIViewControllerRepresentable` 的根视图，并在 Build Phases 里加上编译 `Shared` 框架的 `embedAndSignAppleFrameworkForXcode` 脚本即可。
 
+
+## 依赖说明
+
+### picacomic-api
+
+- 坐标 `com.hiczp:picacomic-api:0.0.1`（Maven Central，Apache-2.0，作者 [czp3009](https://github.com/czp3009/picacomic-api)）。
+- 纯 JVM 库（ktor 1.2.6 + caeruleum + gson + kotson），只挂在 `shared` 的 `androidMain` / `jvmMain`；`commonMain` 与 iOS 用不了，iOS 端要另写基于 Ktor 3 的客户端。
+- 原版 jar 在 Android 上 dex 不过：`PredefinedCategory` 枚举的常量名带空格（`英語 ENG`、`Love Live`、`SAO 刀劍神域`），D8 对 minSdk < 30 拒绝这种字段名。`maven/` 里放了一份删掉该枚举的改写版（该枚举在库里没有任何引用），`settings.gradle.kts` 让本地仓库优先解析 `com.hiczp`；要重新生成：
+
+  ```bash
+  python3 tools/patch-picacomic-api.py
+  ```
+- 库内部用 `java.time`，所以 `androidApp` 开启了 core library desugaring。
+- Android 端引擎用 OkHttp，桌面端用 CIO，入口在 `shared/src/{androidMain,jvmMain}/kotlin/com/picacompose/data/PicaApi.kt`。
+
 ## 说明
 
 - 版本号集中在 `gradle/libs.versions.toml`，升级只改这一处。
