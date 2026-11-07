@@ -13,12 +13,16 @@ import io.ktor.http.HttpMethod
 class MetaApi internal constructor(private val client: PicaClient) {
 
     /** `GET init?platform=android`，启动时拉分类、图片服务器、签到状态等。 */
-    suspend fun init(): InitData = client.call(
-        method = HttpMethod.Get,
-        path = "init",
-        query = mapOf("platform" to "android"),
-        serializer = InitData.serializer(),
-    )
+    suspend fun init(): InitData {
+        val data = client.call(
+            method = HttpMethod.Get,
+            path = "init",
+            query = mapOf("platform" to "android"),
+            serializer = InitData.serializer(),
+        )
+        client.updateImageServer(data.imageServer)
+        return data
+    }
 
     /** `GET categories`，全部分类。 */
     suspend fun categories(): List<Category> = client.call(

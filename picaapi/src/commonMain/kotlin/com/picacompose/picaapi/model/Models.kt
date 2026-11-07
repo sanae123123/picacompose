@@ -43,6 +43,8 @@ data class ComicSummary(
     val thumb: Thumbnail? = null,
     val viewsCount: Int = 0,
     val leaderboardCount: Int = 0,
+    val totalViews: Int = 0,
+    val totalLikes: Int = 0,
 )
 
 @Serializable
@@ -68,7 +70,7 @@ data class ComicDetail(
     val categories: List<String> = emptyList(),
     val tags: List<String> = emptyList(),
     val thumb: Thumbnail? = null,
-    val creator: Creator? = null,
+    @SerialName("_creator") val creator: Creator? = null,
     @SerialName("epsCount") val episodesCount: Int = 0,
     val pagesCount: Int = 0,
     val likesCount: Int = 0,
@@ -79,8 +81,10 @@ data class ComicDetail(
     val isLiked: Boolean = false,
     val allowComment: Boolean = true,
     val allowDownload: Boolean = true,
-    val createdAt: String? = null,
-    val updatedAt: String? = null,
+    val totalLikes: Int = 0,
+    val totalViews: Int = 0,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
 )
 
 /** 章节。 */
@@ -89,7 +93,7 @@ data class Episode(
     @SerialName("_id") val id: String = "",
     val title: String = "",
     val order: Int = 0,
-    val updatedAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
     val status: Int = 0,
     val selected: Boolean = false,
 )
@@ -152,22 +156,23 @@ data class UserProfile(
     val role: String? = null,
     val verified: Boolean = false,
     val isPunched: Boolean = false,
-    val activationDate: String? = null,
+    @SerialName("activation_date") val activationDate: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
 )
 
 @Serializable
 data class Comment(
     @SerialName("_id") val id: String = "",
     val content: String = "",
-    val createdAt: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
     val likesCount: Int = 0,
-    val childsCount: Int = 0,
+    @SerialName("commentsCount") val childsCount: Int = 0,
     val isLiked: Boolean = false,
     val isTop: Boolean = false,
     val hide: Boolean = false,
-    val user: UserBasic? = null,
-    val comicId: String? = null,
-    val gameId: String? = null,
+    @SerialName("_user") val user: UserBasic? = null,
+    @SerialName("_comic") val comicId: String? = null,
+    @SerialName("_game") val gameId: String? = null,
 )
 
 /** `init` 接口返回。 */
@@ -219,6 +224,7 @@ data class PunchInData(
 @Serializable
 data class PunchInResult(
     val status: String? = null,
+    val punchInLastDay: String? = null,
 )
 
 @Serializable

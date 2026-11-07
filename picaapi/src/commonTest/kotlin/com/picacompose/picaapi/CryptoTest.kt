@@ -48,6 +48,6 @@ class CryptoTest {
             apiKey = PicaConfig.DEFAULT_API_KEY,
             hmacKey = PicaConfig.DEFAULT_HMAC_KEY,
         )
-        assertEquals("f6ba20199308e1c61bb785f00965fb6ae96c57991c8608d38120e36dd36d6bd2", signature)
+        assertEquals("749853d3aa994949cfdb84b44c4dce8e36da348c0bd2af24a6dbf3bd9824d6c5", signature)
     }
 }

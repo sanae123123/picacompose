@@ -58,6 +58,9 @@ class PicaClient(
 
     private val timeOffset = MutableStateFlow(config.timeOffsetSeconds)
 
+    /** `init` 接口会下发图片服务器，官方 App 也是拿到后覆盖本地配置。 */
+    private val imageServer = MutableStateFlow(config.imageServer)
+
     /** 鉴权令牌；登录成功后自动写入，也会作为 `authorization` 头发送。 */
     val token = MutableStateFlow(config.authorization)
 
@@ -91,9 +94,13 @@ class PicaClient(
     private val metaApi = MetaApi(this)
 
     /** 图片地址拼接，自动带上配置里的 imageServer。 */
-    fun imageUrl(thumbnail: Thumbnail?): String? = PicaImage.url(thumbnail, config.imageServer)
+    fun imageUrl(thumbnail: Thumbnail?): String? = PicaImage.url(thumbnail, imageServer.value)
 
-    fun avatarUrl(profile: UserProfile?): String? = PicaImage.avatarUrl(profile, config.imageServer)
+    fun avatarUrl(profile: UserProfile?): String? = PicaImage.avatarUrl(profile, imageServer.value)
+
+    internal fun updateImageServer(value: String?) {
+        if (!value.isNullOrBlank()) imageServer.value = value
+    }
 
     fun updateToken(value: String?) {
         token.value = value
@@ -202,6 +209,10 @@ class PicaClient(
             if (bodyJson != null) {
                 contentType(ContentType.Application.Json)
                 setBody(bodyJson)
+            } else if (method == HttpMethod.Post || method == HttpMethod.Put) {
+                // 官方客户端（OkHttp）对空 body 的 POST 也会带 JSON content-type
+                contentType(ContentType.Application.Json)
+                setBody("")
             }
         }
         response.headers["Server-Time"]?.trim()?.toLongOrNull()?.let { serverTime ->

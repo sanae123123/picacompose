@@ -38,6 +38,14 @@ jobs:
       - name: Build Android APK
         run: ./gradlew :androidApp:assembleDebug --no-daemon --stacktrace
 
+      - name: Upload picaapi test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: picaapi-test-reports
+          path: picaapi/build/test-results/jvmTest/*.xml
+          if-no-files-found: warn
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
