@@ -32,6 +32,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            api(projects.picaapi)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -40,13 +41,6 @@ kotlin {
 
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
-            implementation(libs.picacomic.api)
-            implementation(libs.ktor.client.okhttp)
-        }
-
-        jvmMain.dependencies {
-            implementation(libs.picacomic.api)
-            implementation(libs.ktor.client.cio)
         }
     }
 }

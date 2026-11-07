@@ -13,11 +13,14 @@ Compose Multiplatform 跨平台项目 —— 一份 Kotlin 代码，同时跑在
 | Android Gradle Plugin | 9.1.1 |
 | Gradle | 9.6.1 |
 | Android SDK | compileSdk 37 / minSdk 24 |
+| Ktor | 3.6.1（client，Android=OkHttp / JVM=CIO / iOS=Darwin） |
+| kotlinx.serialization | 1.12.0 |
 
 ## 目录结构
 
 ```
 picacompose/
+├── picaapi/                     # PicACG API 客户端（纯 KMP，Android/JVM/iOS 通用）
 ├── shared/                      # 共享模块：UI 与业务逻辑都写在这里
 │   ├── src/commonMain/kotlin/com/picacompose/App.kt        # 公共 UI
 │   └── src/iosMain/kotlin/com/picacompose/MainViewController.kt
@@ -59,19 +62,38 @@ picacompose/
 Xcode 工程（`iosApp.xcodeproj`）还没建：生成它需要在 macOS 上跑，没法在 Linux/CI 里可靠地产出。要用 iOS 时，在 macOS 上用 Android Studio 的 Kotlin Multiplatform 插件新建一个 iOS App target，把 `MainViewController` 作为 `UIViewControllerRepresentable` 的根视图，并在 Build Phases 里加上编译 `Shared` 框架的 `embedAndSignAppleFrameworkForXcode` 脚本即可。
 
 
-## 依赖说明
+## picaapi：PicACG API 客户端
 
-### picacomic-api
+`picaapi/` 是一个纯 Kotlin Multiplatform 的 PicACG 客户端，参考这两个项目重写：
 
-- 坐标 `com.hiczp:picacomic-api:0.0.1`（Maven Central，Apache-2.0，作者 [czp3009](https://github.com/czp3009/picacomic-api)）。
-- 纯 JVM 库（ktor 1.2.6 + caeruleum + gson + kotson），只挂在 `shared` 的 `androidMain` / `jvmMain`；`commonMain` 与 iOS 用不了，iOS 端要另写基于 Ktor 3 的客户端。
-- 原版 jar 在 Android 上 dex 不过：`PredefinedCategory` 枚举的常量名带空格（`英語 ENG`、`Love Live`、`SAO 刀劍神域`），D8 对 minSdk < 30 拒绝这种字段名。`maven/` 里放了一份删掉该枚举的改写版（该枚举在库里没有任何引用），`settings.gradle.kts` 让本地仓库优先解析 `com.hiczp`；要重新生成：
+- [czp3009/picacomic-api](https://github.com/czp3009/picacomic-api)（Ktor 1.x，JVM-only）
+- [qiunanrima/PicACG-Api-Java](https://github.com/qiunanrima/PicACG-Api-Java)（OkHttp + Gson，JVM-only）
 
-  ```bash
-  python3 tools/patch-picacomic-api.py
-  ```
-- 库内部用 `java.time`，所以 `androidApp` 开启了 core library desugaring。
-- Android 端引擎用 OkHttp，桌面端用 CIO，入口在 `shared/src/{androidMain,jvmMain}/kotlin/com/picacompose/data/PicaApi.kt`。
+和它们最大的区别：**全部代码在 `commonMain`**，Android / JVM / iOS 共用一份，
+签名算法（HMAC-SHA256）和 SHA-256 也是纯 Kotlin 实现，不依赖任何平台的加密库。
+
+```kotlin
+val pica = PicaClient()
+
+pica.auth.signIn("email", "password")            // token 自动保存
+val page = pica.comics.list(page = 1, category = "全彩", sort = "dd")
+val detail = pica.comics.detail(page.docs.first().id)
+val eps = pica.comics.episodes(detail.id)
+val pages = pica.comics.pages(detail.id, order = eps.docs.first().order)
+val url = pica.imageUrl(pages.pages.docs.first().media)
+```
+
+已实现的接口：登录、初始化 / 分类 / 轮播 / 热搜、漫画列表与检索、随机推荐、排行榜、详情、
+章节、按章节取图、相关推荐、点赞与收藏、我的收藏、评论列表 / 楼中楼 / 发评论 / 点赞、
+用户资料、签到。聊天室（socket.io）没有移植，需要的话是另一套协议。
+
+几个实现细节：
+
+- 签名原文是 `(path + time + nonce + method + apiKey).lowercase()`，`path` 含 query 且不带前导斜杠；
+  `PicaSignature.sign()` 里就是这个公式，`CryptoTest` 里有固定测试向量。
+- `time` 用本地时钟；客户端会从响应头 `Server-Time` 自动算偏移量并持续校正，所以手机时间不准也能用。
+- 响应统一是 `{ code, message, data }` 信封，`PicaClient` 负责解信封，失败抛 `PicaException`。
+- 所有 JSON 模型都用 `ignoreUnknownKeys` + 默认值，服务端加字段不会炸。
 
 ## 说明
 
