@@ -1,71 +1,61 @@
 package com.picacompose
 
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import androidx.compose.animation.Crossfade
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.fillMaxSize
+import com.picacompose.data.pica
+import com.picacompose.ui.home.WelcomeScreen
+import com.picacompose.ui.login.LoginController
+import com.picacompose.ui.login.LoginScreen
+import com.picacompose.ui.theme.PicaTheme
 
 /**
  * 应用根组件，Android / iOS / Desktop 共用这一份 UI。
+ *
+ * 目前只有两屏：未登录 → 登录页；已登录 → 落脚页（首页下一步补）。
  */
 @Composable
 fun App() {
-    MaterialTheme(
-        colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
-    ) {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            CounterScreen()
+    PicaTheme {
+        val controller = remember { LoginController(pica) }
+        var pendingFeature by remember { mutableStateOf<String?>(null) }
+
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background,
+        ) {
+            Crossfade(targetState = controller.profile) { profile ->
+                if (profile == null) {
+                    LoginScreen(
+                        controller = controller,
+                        onForgotPassword = { pendingFeature = "找回密码" },
+                        onRegister = { pendingFeature = "注册" },
+                    )
+                } else {
+                    WelcomeScreen(profile = profile, onSignOut = controller::signOut)
+                }
+            }
         }
-    }
-}
 
-@Composable
-private fun CounterScreen() {
-    var count by remember { mutableIntStateOf(0) }
-
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "PicaCompose",
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "Compose Multiplatform · Android / iOS / Desktop",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(32.dp))
-        Text(text = count.toString(), fontSize = 64.sp)
-        Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { count-- }) { Text("-1") }
-            Button(onClick = { count++ }) { Text("+1") }
+        pendingFeature?.let { feature ->
+            AlertDialog(
+                onDismissRequest = { pendingFeature = null },
+                title = { Text("$feature 还没做") },
+                text = { Text("先把登录流程跑通，$feature 页面排在下一步。") },
+                confirmButton = {
+                    TextButton(onClick = { pendingFeature = null }) { Text("好") }
+                },
+            )
         }
     }
 }
