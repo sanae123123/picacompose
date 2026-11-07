@@ -208,7 +208,7 @@ class PicaClient(
             }
             // 服务端对 charset 大小写敏感：必须是 `UTF-8`，写成小写 `utf-8` 会让 POST 接口
             // 返回 400/1023 "too many requests"（登录会被误判成限流）。
-            val jsonContentType = ContentType.Application.Json.withCharset(Charsets.UTF_8)
+            val jsonContentType = ContentType("application", "json", Charsets.UTF_8)
             if (bodyJson != null) {
                 contentType(jsonContentType)
                 setBody(bodyJson)
