@@ -6,7 +6,7 @@ import com.picacompose.picaapi.model.UserIdRequest
 import io.ktor.http.HttpMethod
 
 /**
- * `utils/*` 下的管理接口：调经验、拉黑用户、删评论。
+ * `utils/` 下的管理接口：调经验、拉黑用户、删评论。
  *
  * 这些端点一般只有管理员 / 骑士账号可用，普通账号调用会返回业务错误。
  */
