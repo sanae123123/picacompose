@@ -42,6 +42,9 @@ Material You（M3）风格：固定走 M3 基线配色（Compose Multiplatform �
 登录成功走真实接口拉资料，落到一个临时欢迎页（头像、昵称、等级/经验/签到状态、签名），
 后面首页做好了会替换掉它。
 
+勾了「记住账号」就把 token 存在本机（Android 用 SharedPreferences，桌面用 java.util.prefs，
+iOS 用 NSUserDefaults），下次打开直接恢复会话进首页；只存 token，不存密码。
+
 ## 环境要求
 
 - JDK 17 及以上（项目按 JDK 21 验证）

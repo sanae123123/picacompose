@@ -283,7 +283,7 @@ private fun RememberRow(controller: LoginController, modifier: Modifier = Modifi
             enabled = !controller.loading,
         )
         Text(
-            text = "记住账号，下次打开直接进",
+            text = "记住账号",
             style = MaterialTheme.typography.bodyMedium,
             color = colors.onSurfaceVariant,
         )
