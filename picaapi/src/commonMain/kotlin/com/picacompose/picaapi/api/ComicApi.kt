@@ -5,9 +5,6 @@ import com.picacompose.picaapi.model.AdvancedSearchRequest
 import com.picacompose.picaapi.model.CollectionGroup
 import com.picacompose.picaapi.model.CollectionsData
 import com.picacompose.picaapi.model.ComicDetail
-import com.picacompose.picaapi.model.AdvancedSearchRequest
-import com.picacompose.picaapi.model.CollectionGroup
-import com.picacompose.picaapi.model.CollectionsData
 import com.picacompose.picaapi.model.ComicDetailData
 import com.picacompose.picaapi.model.ComicListData
 import com.picacompose.picaapi.model.ComicPagesData
