@@ -93,7 +93,8 @@ val url = pica.imageUrl(pages.pages.docs.first().media)
 
 没做的只有聊天室消息（socket.io，另一套协议）和 `GET init` 的 waka 变体（本域名下要求
 `platform` 参数，等同已实现的 `init?platform=android`）。写操作都实现了但没在真机上调，
-避免污染账号数据。
+避免污染账号数据；`auth/forgot-password` 比较特殊——端点确实在，但服务端目前对任何邮箱都
+返回 500 `--`，属于服务端自身不可用，客户端实现照官方文档保留。
 
 几个实现细节：
 
