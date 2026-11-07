@@ -3,6 +3,7 @@ package com.picacompose.ui.login
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.picacompose.data.SessionStore
 import com.picacompose.picaapi.PicaClient
 import com.picacompose.picaapi.PicaException
 import com.picacompose.picaapi.model.UserProfile
@@ -10,12 +11,16 @@ import com.picacompose.picaapi.model.UserProfile
 /**
  * 登录页的状态。
  *
- * 没上 ViewModel：登录页只有一个动作，`remember { LoginController(pica) }` 足够，
+ * 没上 ViewModel：登录流程只有几个动作，`remember { LoginController(pica) }` 足够，
  * 也不用为三端各配一套 lifecycle-viewmodel 依赖。
  */
-class LoginController(private val client: PicaClient) {
+class LoginController(
+    private val client: PicaClient,
+    private val session: SessionStore = SessionStore(),
+) {
 
-    var email by mutableStateOf("")
+    /** 记住过账号就先填上，省得每次敲。 */
+    var email by mutableStateOf(session.savedAccount.orEmpty())
         private set
 
     var password by mutableStateOf("")
@@ -24,7 +29,15 @@ class LoginController(private val client: PicaClient) {
     var passwordVisible by mutableStateOf(false)
         private set
 
+    /** 勾着「记住账号」就把 token 存下来，下次开 App 直接进首页。 */
+    var rememberAccount by mutableStateOf(true)
+        private set
+
     var loading by mutableStateOf(false)
+        private set
+
+    /** 启动时正在用旧 token 恢复会话，界面上给个加载态。 */
+    var restoring by mutableStateOf(false)
         private set
 
     var error by mutableStateOf<String?>(null)
@@ -48,6 +61,35 @@ class LoginController(private val client: PicaClient) {
         passwordVisible = !passwordVisible
     }
 
+    fun onRememberChange(value: Boolean) {
+        rememberAccount = value
+    }
+
+    /**
+     * 开 App 时试一下上次存的 token 还能不能用：能用就直接进首页，不用再登一次。
+     * 只有明确「token 失效」才清掉，网络抖动时留着下次再试。
+     */
+    suspend fun restoreSession() {
+        val token = session.savedToken ?: return
+        restoring = true
+        client.updateToken(token)
+        try {
+            profile = client.users.profile()
+        } catch (e: PicaException) {
+            if (e.errorCode == "1005" || e.httpCode == 401) {
+                client.updateToken("")
+                session.clearToken()
+                error = "上次的登录过期了，重新登录一下"
+            } else {
+                error = e.toUserMessage()
+            }
+        } catch (e: Exception) {
+            error = "网络不太稳，稍后再试"
+        } finally {
+            restoring = false
+        }
+    }
+
     suspend fun signIn() {
         if (loading) return
         if (email.isBlank()) {
@@ -62,9 +104,15 @@ class LoginController(private val client: PicaClient) {
         error = null
         try {
             client.auth.signIn(email.trim(), password)
+            val account = email.trim()
+            if (rememberAccount) {
+                session.save(client.token.value, account)
+            } else {
+                session.clearAll()
+            }
             // token 已经进了 client，顺手拉一次资料，好让首页有名字可显示。
             profile = runCatching { client.users.profile() }
-                .getOrElse { UserProfile(name = email.trim()) }
+                .getOrElse { UserProfile(name = account) }
         } catch (e: PicaException) {
             error = e.toUserMessage()
         } catch (e: Exception) {
@@ -75,7 +123,8 @@ class LoginController(private val client: PicaClient) {
     }
 
     fun signOut() {
-        client.token.value = ""
+        client.updateToken("")
+        session.clearToken()
         profile = null
         password = ""
         error = null

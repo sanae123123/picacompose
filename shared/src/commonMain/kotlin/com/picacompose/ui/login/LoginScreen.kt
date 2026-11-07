@@ -2,6 +2,7 @@ package com.picacompose.ui.login
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
@@ -163,6 +165,15 @@ private fun LoginCard(
             EmailField(controller)
             Spacer(Modifier.height(12.dp))
             PasswordField(controller, onSubmit)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RememberRow(controller, Modifier.weight(1f))
+                TextButton(onClick = onForgotPassword) {
+                    Text("忘记密码？", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
             AnimatedVisibility(visible = controller.error != null) {
                 Column {
                     Spacer(Modifier.height(14.dp))
@@ -194,15 +205,6 @@ private fun LoginCard(
                     Text("登录", style = MaterialTheme.typography.labelLarge)
                     Spacer(Modifier.width(8.dp))
                     PicaGlyph(PicaIcon.ArrowRight, Modifier.size(18.dp), colors.onPrimary)
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onForgotPassword) {
-                    Text("忘记密码？", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -262,6 +264,30 @@ private fun PasswordField(controller: LoginController, onSubmit: () -> Unit) {
         keyboardActions = KeyboardActions(onDone = { onSubmit() }),
         colors = picaFieldColors(),
     )
+}
+
+@Composable
+private fun RememberRow(controller: LoginController, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = modifier
+            .clip(MaterialTheme.shapes.small)
+            .clickable(enabled = !controller.loading) {
+                controller.onRememberChange(!controller.rememberAccount)
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(
+            checked = controller.rememberAccount,
+            onCheckedChange = controller::onRememberChange,
+            enabled = !controller.loading,
+        )
+        Text(
+            text = "记住账号，下次打开直接进",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.onSurfaceVariant,
+        )
+    }
 }
 
 @Composable
