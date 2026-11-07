@@ -348,3 +348,172 @@ data class ChangePasswordRequest(
     @SerialName("old_password") val oldPassword: String,
     val password: String,
 )
+
+// ---- 按官方 App 逆向文档（55 端点）补齐的模型 ----
+
+/** `POST auth/forgot-password` 返回的三个密保问题（用于后续 reset）。 */
+@Serializable
+data class ForgotPasswordData(
+    val question1: String? = null,
+    val question2: String? = null,
+    val question3: String? = null,
+)
+
+/** `POST auth/reset-password` 返回重置后的新密码。 */
+@Serializable
+data class ResetPasswordData(val password: String? = null)
+
+/** `GET chat` 聊天室入口列表（消息本身走 socket.io）。 */
+@Serializable
+data class ChatData(val chatList: List<ChatRoom> = emptyList())
+
+@Serializable
+data class ChatRoom(
+    val title: String = "",
+    val description: String? = null,
+    val url: String = "",
+    val avatar: String? = null,
+)
+
+/** `GET pica-apps` 官方推荐的小应用。 */
+@Serializable
+data class PicaAppsData(val apps: List<PicaApp> = emptyList())
+
+@Serializable
+data class PicaApp(
+    val title: String = "",
+    val url: String = "",
+    val icon: String? = null,
+    val showTitleBar: Boolean = false,
+    val description: String? = null,
+)
+
+/** `GET announcements` 公告。 */
+@Serializable
+data class AnnouncementsData(val announcements: Paged<Announcement> = Paged())
+
+@Serializable
+data class Announcement(
+    @SerialName("_id") val id: String = "",
+    val title: String = "",
+    val content: String = "",
+    val thumb: Thumbnail? = null,
+)
+
+/** `GET applications?platform=android` 版本更新日志。 */
+@Serializable
+data class ApplicationsData(val applications: Paged<ApplicationDoc> = Paged())
+
+@Serializable
+data class ApplicationDoc(
+    @SerialName("_id") val id: String = "",
+    val version: String = "",
+    val updateContent: String? = null,
+    val downloadUrl: String? = null,
+    val apk: Thumbnail? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+)
+
+/** 游戏列表项（apps 区）。 */
+@Serializable
+data class GameSummary(
+    @SerialName("_id") val id: String = "",
+    val title: String = "",
+    val version: String? = null,
+    val publisher: String? = null,
+    val suggest: Boolean = false,
+    val adult: Boolean = false,
+    val android: Boolean = false,
+    val ios: Boolean = false,
+    val picaLink: Boolean = false,
+    val icon: Thumbnail? = null,
+    val androidLinks: List<String> = emptyList(),
+    val iosLinks: List<String> = emptyList(),
+)
+
+@Serializable
+data class GameDetail(
+    @SerialName("_id") val id: String = "",
+    val title: String = "",
+    val description: String? = null,
+    val version: String? = null,
+    val publisher: String? = null,
+    val icon: Thumbnail? = null,
+    val screenshots: List<Thumbnail> = emptyList(),
+    val adult: Boolean = false,
+    val suggest: Boolean = false,
+    val android: Boolean = false,
+    val ios: Boolean = false,
+    val picaLink: Boolean = false,
+    val androidLinks: List<String> = emptyList(),
+    val iosLinks: List<String> = emptyList(),
+    val androidSize: Long = 0,
+    val iosSize: Long = 0,
+    val downloadsCount: Int = 0,
+    val likesCount: Int = 0,
+    val commentsCount: Int = 0,
+    val isLiked: Boolean = false,
+    val updateContent: String? = null,
+    val videoLink: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
+)
+
+@Serializable
+data class GameListData(val games: Paged<GameSummary> = Paged())
+
+@Serializable
+data class GameDetailData(val game: GameDetail = GameDetail())
+
+/** 只回一句 message 的接口（隐藏/举报评论等）。 */
+@Serializable
+data class MessageData(val message: String? = null)
+
+/** `POST comments/{id}/top`。 */
+@Serializable
+data class TopCommentData(val isTop: Boolean = false)
+
+/** `POST users/{id}/dirty`。 */
+@Serializable
+data class DirtyData(val dirty: Boolean = false)
+
+/** `PUT users/avatar`。 */
+@Serializable
+data class AvatarData(val avatar: Thumbnail? = null)
+
+// ---- 请求体（字段名取自官方 App 的 Gson 模型，未混淆） ----
+
+@Serializable
+data class ForgotPasswordRequest(val email: String)
+
+@Serializable
+data class ResetPasswordRequest(
+    val email: String,
+    val questionNo: Int,
+    val answer: String,
+)
+
+@Serializable
+data class UpdatePicaIdRequest(val email: String, val name: String)
+
+@Serializable
+data class UpdateQandARequest(
+    val question1: String,
+    val answer1: String,
+    val question2: String,
+    val answer2: String,
+    val question3: String,
+    val answer3: String,
+)
+
+@Serializable
+data class TitleRequest(val title: String)
+
+@Serializable
+data class AvatarRequest(val avatar: String)
+
+@Serializable
+data class UserIdRequest(val userId: String)
+
+@Serializable
+data class AdjustExpRequest(val userId: String, val exp: Int)

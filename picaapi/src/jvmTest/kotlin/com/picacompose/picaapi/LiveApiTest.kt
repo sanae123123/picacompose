@@ -118,6 +118,26 @@ class LiveApiTest {
             println("notifications: total=${notifications.total} 本页=${notifications.docs.size}")
             notifications.docs.firstOrNull()?.let { println("  第一条: ${it.title}") }
 
+            // 官方文档里剩下的元数据接口
+            val chat = client.meta.chat()
+            val apps = client.meta.picaApps()
+            val announcements = client.meta.announcements()
+            val applications = client.meta.applications()
+            println("chat=${chat.size} picaApps=${apps.size} announcements=${announcements.total} applications=${applications.total}")
+
+            // 游戏区
+            val games = client.games.list()
+            println("games: total=${games.total} 本页=${games.docs.size}")
+            val game = games.docs.first()
+            val gameDetail = client.games.detail(game.id)
+            assertTrue(gameDetail.title.isNotBlank(), "游戏详情标题不应为空")
+            val gameComments = client.games.comments(game.id)
+            println("  ${gameDetail.title} 截图=${gameDetail.screenshots.size} 评论=${gameComments.comments.total}")
+
+            // 找回密码第一步（只读，返回密保问题，不会改密码）
+            val questions = client.auth.forgotPassword(email)
+            println("forgot-password: ${questions.question1}")
+
             // 错误信封
             val error = assertFailsWith<PicaException> {
                 client.comics.detail("000000000000000000000000")

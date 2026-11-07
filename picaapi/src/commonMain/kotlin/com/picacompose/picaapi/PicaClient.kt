@@ -3,9 +3,11 @@ package com.picacompose.picaapi
 import com.picacompose.picaapi.api.AuthApi
 import com.picacompose.picaapi.api.ComicApi
 import com.picacompose.picaapi.api.CommentApi
+import com.picacompose.picaapi.api.GameApi
 import com.picacompose.picaapi.api.EpisodeApi
 import com.picacompose.picaapi.api.MetaApi
 import com.picacompose.picaapi.api.UserApi
+import com.picacompose.picaapi.api.UtilsApi
 import com.picacompose.picaapi.model.Envelope
 import com.picacompose.picaapi.model.Thumbnail
 import com.picacompose.picaapi.model.UserProfile
@@ -86,6 +88,8 @@ class PicaClient(
     val comments: CommentApi get() = commentApi
     val users: UserApi get() = userApi
     val meta: MetaApi get() = metaApi
+    val games: GameApi get() = gameApi
+    val utils: UtilsApi get() = utilsApi
 
     private val authApi = AuthApi(this)
     private val comicApi = ComicApi(this)
@@ -93,6 +97,8 @@ class PicaClient(
     private val commentApi = CommentApi(this)
     private val userApi = UserApi(this)
     private val metaApi = MetaApi(this)
+    private val gameApi = GameApi(this)
+    private val utilsApi = UtilsApi(this)
 
     /** 图片地址拼接，自动带上配置里的 imageServer。 */
     fun imageUrl(thumbnail: Thumbnail?): String? = PicaImage.url(thumbnail, imageServer.value)

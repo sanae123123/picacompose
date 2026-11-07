@@ -2,6 +2,8 @@ package com.picacompose.picaapi
 
 import com.picacompose.picaapi.model.ComicListData
 import com.picacompose.picaapi.model.Envelope
+import com.picacompose.picaapi.model.GameListData
+import com.picacompose.picaapi.model.PicaAppsData
 import com.picacompose.picaapi.model.MyCommentsData
 import com.picacompose.picaapi.model.NotificationsData
 import com.picacompose.picaapi.model.Thumbnail
@@ -74,6 +76,32 @@ class ModelTest {
         ).data!!.comments
         assertEquals("测试漫画", mine.docs.single().comic?.title)
         assertEquals(1, mine.docs.single().childsCount)
+    }
+
+    @Test
+    fun decodesGamesAndPicaApps() {
+        val games = json.decodeFromString(
+            Envelope.serializer(GameListData.serializer()),
+            """
+            {"code":200,"message":"success","data":{"games":{"total":1,"limit":20,"page":1,"pages":1,
+            "docs":[{"_id":"g1","title":"星神少女","version":"1.0.0","publisher":"OP","adult":true,
+            "androidLinks":["https://example.com/g1"],
+            "icon":{"fileServer":"https://storage-b.picacomic.com","path":"tobs/a.png","originalName":"a.png"}}]}}}
+            """.trimIndent(),
+        ).data!!.games
+        assertEquals("星神少女", games.docs.single().title)
+        assertEquals(1, games.docs.single().androidLinks.size)
+
+        val apps = json.decodeFromString(
+            Envelope.serializer(PicaAppsData.serializer()),
+            """
+            {"code":200,"message":"success","data":{"apps":[{"title":"嗶咔AI互動小說",
+            "url":"https://example.com","icon":"https://example.com/i.jpg","showTitleBar":false,
+            "description":"说明"}]}}
+            """.trimIndent(),
+        ).data!!.apps
+        assertEquals("嗶咔AI互動小說", apps.single().title)
+        assertTrue(!apps.single().showTitleBar)
     }
 
     @Test
