@@ -2,6 +2,8 @@ package com.picacompose.picaapi
 
 import com.picacompose.picaapi.model.ComicListData
 import com.picacompose.picaapi.model.Envelope
+import com.picacompose.picaapi.model.MyCommentsData
+import com.picacompose.picaapi.model.NotificationsData
 import com.picacompose.picaapi.model.Thumbnail
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
@@ -42,6 +44,36 @@ class ModelTest {
         val envelope = json.decodeFromString(Envelope.serializer(ComicListData.serializer()), text)
         assertEquals(0, envelope.data!!.comics.total)
         assertTrue(envelope.data!!.comics.docs.isEmpty())
+    }
+
+    @Test
+    fun decodesNotificationsAndMyComments() {
+        // 通知：_sender 是对象、cover 是缩略图
+        val notifications = json.decodeFromString(
+            Envelope.serializer(NotificationsData.serializer()),
+            """
+            {"code":200,"message":"success","data":{"notifications":{"total":1,"limit":20,"page":1,"pages":1,
+            "docs":[{"_id":"n1","title":"有人回复了你","content":"内容","created_at":"2026-11-07T00:00:00.000Z",
+            "cover":{"fileServer":"https://s3.picacomic.com","path":"c.jpg","originalName":"c.jpg"},
+            "_sender":{"_id":"u1","name":"古手葵花","level":3,"avatar":{"fileServer":"https://s3.picacomic.com","path":"a.png"}},
+            "system":false}]}}}
+            """.trimIndent(),
+        ).data!!.notifications
+        assertEquals(1, notifications.total)
+        assertEquals("有人回复了你", notifications.docs.single().title)
+        assertEquals("古手葵花", notifications.docs.single().sender?.name)
+
+        // 我的评论：_comic 是对象而不是字符串 id
+        val mine = json.decodeFromString(
+            Envelope.serializer(MyCommentsData.serializer()),
+            """
+            {"code":200,"message":"success","data":{"comments":{"total":1,"limit":20,"page":1,"pages":1,
+            "docs":[{"_id":"c1","content":"好看","likesCount":2,"commentsCount":1,
+            "_comic":{"_id":"comic1","title":"测试漫画"}}]}}}
+            """.trimIndent(),
+        ).data!!.comments
+        assertEquals("测试漫画", mine.docs.single().comic?.title)
+        assertEquals(1, mine.docs.single().childsCount)
     }
 
     @Test

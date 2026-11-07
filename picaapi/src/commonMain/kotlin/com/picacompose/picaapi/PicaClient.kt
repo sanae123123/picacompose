@@ -24,6 +24,8 @@ import io.ktor.http.takeFrom
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
@@ -140,6 +142,25 @@ class PicaClient(
         }
         return envelope.data
             ?: throw PicaException(httpCode, envelope.code.toString(), envelope.message ?: "响应中没有 data", text)
+    }
+
+    /**
+     * 发请求并返回整个 JSON 体（不拆信封）。
+     *
+     * 给 `auth/register` 这种响应结构不完全统一、或者暂时没有建模型的接口用。
+     */
+    internal suspend fun callRaw(
+        method: HttpMethod,
+        path: String,
+        query: Map<String, String?> = emptyMap(),
+        bodyJson: String? = null,
+        authorized: Boolean = true,
+    ): JsonElement {
+        val response = send(method, path, query, bodyJson, authorized)
+        val httpCode = response.status.value
+        val text = response.bodyAsText()
+        if (httpCode !in 200..299) throw errorFrom(httpCode, text)
+        return runCatching { json.parseToJsonElement(text) }.getOrDefault(JsonNull)
     }
 
     /** 只关心成功与否的接口（点赞、收藏、评论等）。 */

@@ -68,6 +68,7 @@ Xcode 工程（`iosApp.xcodeproj`）还没建：生成它需要在 macOS 上跑�
 
 - [czp3009/picacomic-api](https://github.com/czp3009/picacomic-api)（Ktor 1.x，JVM-only）
 - [qiunanrima/PicACG-Api-Java](https://github.com/qiunanrima/PicACG-Api-Java)（OkHttp + Gson，JVM-only）
+- [shizq123/BIKA](https://github.com/shizq123/BIKA) 的 `core/network`（Ktor 3 + 协程，补全了注册、合集、骑士榜、高级搜索、通知、我的评论等接口）
 
 和它们最大的区别：**全部代码在 `commonMain`**，Android / JVM / iOS 共用一份，
 签名算法（HMAC-SHA256）和 SHA-256 也是纯 Kotlin 实现，不依赖任何平台的加密库。
@@ -83,9 +84,11 @@ val pages = pica.comics.pages(detail.id, order = eps.docs.first().order)
 val url = pica.imageUrl(pages.pages.docs.first().media)
 ```
 
-已实现的接口：登录、初始化 / 分类 / 轮播 / 热搜、漫画列表与检索、随机推荐、排行榜、详情、
-章节、按章节取图、相关推荐、点赞与收藏、我的收藏、评论列表 / 楼中楼 / 发评论 / 点赞、
-用户资料、签到。聊天室（socket.io）没有移植，需要的话是另一套协议。
+已实现的接口：登录 / 注册、初始化 / 分类 / 轮播 / 热搜 / 合集、漫画列表与检索 / 高级搜索、
+随机推荐、排行榜 / 骑士榜、详情、章节、按章节取图、相关推荐、点赞与收藏、我的收藏、
+评论列表 / 楼中楼 / 发评论 / 回复 / 点赞 / 我的评论、用户资料 / 改签名 / 改密码 / 签到 / 通知。
+缺的是：头像与 ID 改写、游戏、公告与 pica-apps、评论隐藏/举报/置顶、utils 下的管理接口，
+以及聊天室（socket.io 是另一套协议）。
 
 几个实现细节：
 

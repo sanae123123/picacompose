@@ -1,7 +1,13 @@
 package com.picacompose.picaapi.api
 
 import com.picacompose.picaapi.PicaClient
+import com.picacompose.picaapi.model.AdvancedSearchRequest
+import com.picacompose.picaapi.model.CollectionGroup
+import com.picacompose.picaapi.model.CollectionsData
 import com.picacompose.picaapi.model.ComicDetail
+import com.picacompose.picaapi.model.AdvancedSearchRequest
+import com.picacompose.picaapi.model.CollectionGroup
+import com.picacompose.picaapi.model.CollectionsData
 import com.picacompose.picaapi.model.ComicDetailData
 import com.picacompose.picaapi.model.ComicListData
 import com.picacompose.picaapi.model.ComicPagesData
@@ -9,7 +15,9 @@ import com.picacompose.picaapi.model.ComicRandomData
 import com.picacompose.picaapi.model.ComicSummary
 import com.picacompose.picaapi.model.Episode
 import com.picacompose.picaapi.model.EpisodeListData
+import com.picacompose.picaapi.model.KnightLeaderboardData
 import com.picacompose.picaapi.model.Paged
+import com.picacompose.picaapi.model.UserBasic
 import io.ktor.http.HttpMethod
 
 /** 漫画相关接口。 */
@@ -45,6 +53,44 @@ class ComicApi internal constructor(private val client: PicaClient) {
         ),
         serializer = ComicListData.serializer(),
     ).comics
+
+    /**
+     * `POST comics/advanced-search`，高级搜索（关键词 + 分类 + 排序）。
+     *
+     * 注意分页是 query 参数，筛选条件在 body 里，和普通搜索正好反过来。
+     */
+    suspend fun advancedSearch(
+        keyword: String,
+        categories: List<String> = emptyList(),
+        sort: String? = null,
+        page: Int = 1,
+    ): Paged<ComicSummary> {
+        val body = client.json.encodeToString(
+            AdvancedSearchRequest.serializer(),
+            AdvancedSearchRequest(keyword = keyword, sort = sort, categories = categories),
+        )
+        return client.call(
+            method = HttpMethod.Post,
+            path = "comics/advanced-search",
+            query = mapOf("page" to page.toString()),
+            bodyJson = body,
+            serializer = ComicListData.serializer(),
+        ).comics
+    }
+
+    /** `GET collections`，首页的合集分组。 */
+    suspend fun collections(): List<CollectionGroup> = client.call(
+        method = HttpMethod.Get,
+        path = "collections",
+        serializer = CollectionsData.serializer(),
+    ).collections
+
+    /** `GET comics/knight-leaderboard`，骑士榜（上传/翻译贡献榜）。 */
+    suspend fun knightLeaderboard(): List<UserBasic> = client.call(
+        method = HttpMethod.Get,
+        path = "comics/knight-leaderboard",
+        serializer = KnightLeaderboardData.serializer(),
+    ).users
 
     /** `GET comics/random`，随机推荐。 */
     suspend fun random(): List<ComicSummary> = client.call(

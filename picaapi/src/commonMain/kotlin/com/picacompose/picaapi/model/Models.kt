@@ -240,3 +240,111 @@ data class SignInRequest(val email: String, val password: String)
 
 @Serializable
 data class CommentRequest(val content: String)
+
+// ---- 补全的接口模型（参考 Bika 客户端 core/network） ----
+
+/** `GET collections`：首页合集，每个分组里是一串漫画。 */
+@Serializable
+data class CollectionsData(val collections: List<CollectionGroup> = emptyList())
+
+@Serializable
+data class CollectionGroup(val comics: List<ComicSummary> = emptyList())
+
+/** `GET comics/knight-leaderboard`：骑士榜（贡献者）。 */
+@Serializable
+data class KnightLeaderboardData(val users: List<UserBasic> = emptyList())
+
+/** `POST comics/advanced-search` 请求体。`sort` 同列表接口：`dd` / `da` / `ld` / `vd`。 */
+@Serializable
+data class AdvancedSearchRequest(
+    val keyword: String = "",
+    val sort: String? = null,
+    val categories: List<String> = emptyList(),
+)
+
+/**
+ * `GET users/my-comments`：自己发过的评论。
+ * 这里的 `_comic` / `_game` 是对象（带标题），跟漫画评论区的字符串 id 不一样，
+ * 所以单独建模型，免得反序列化炸掉。
+ */
+@Serializable
+data class MyCommentsData(val comments: Paged<MyComment> = Paged())
+
+@Serializable
+data class MyComment(
+    @SerialName("_id") val id: String = "",
+    val content: String = "",
+    @SerialName("created_at") val createdAt: String? = null,
+    val likesCount: Int = 0,
+    @SerialName("commentsCount") val childsCount: Int = 0,
+    val isLiked: Boolean = false,
+    val hide: Boolean = false,
+    @SerialName("_comic") val comic: CommentTarget? = null,
+    @SerialName("_game") val game: CommentTarget? = null,
+)
+
+/** 评论所属对象的最小信息（`_comic` / `_game` 字段）。 */
+@Serializable
+data class CommentTarget(
+    @SerialName("_id") val id: String = "",
+    val title: String = "",
+)
+
+/** `GET users/notifications`。 */
+@Serializable
+data class NotificationsData(val notifications: Paged<NotificationDoc> = Paged())
+
+@Serializable
+data class NotificationDoc(
+    @SerialName("_id") val id: String = "",
+    val title: String = "",
+    val content: String = "",
+    val cover: Thumbnail? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("_redirectId") val redirectId: String? = null,
+    val redirectType: String? = null,
+    @SerialName("_sender") val sender: NotificationSender? = null,
+    val system: Boolean = false,
+    @SerialName("_user") val userId: String? = null,
+)
+
+@Serializable
+data class NotificationSender(
+    @SerialName("_id") val id: String = "",
+    val name: String = "",
+    val avatar: Thumbnail? = null,
+    val level: Int = 0,
+    val role: String? = null,
+    val title: String? = null,
+    val slogan: String? = null,
+    val gender: String? = null,
+    val character: String? = null,
+)
+
+/** `POST auth/register` 请求体。字段与服务端一一对应，密保问题三组都得填。 */
+@Serializable
+data class RegisterRequest(
+    val email: String,
+    val password: String,
+    val name: String,
+    val birthday: String,
+    val gender: String,
+    val question1: String,
+    val answer1: String,
+    val question2: String,
+    val answer2: String,
+    val question3: String,
+    val answer3: String,
+)
+
+/** `PUT users/profile` 请求体（改签名）。 */
+@Serializable
+data class SloganRequest(val slogan: String)
+
+/** `PUT users/password` 请求体。注意旧密码的字段名是 `old_password`。 */
+@Serializable
+data class ChangePasswordRequest(
+    @SerialName("old_password") val oldPassword: String,
+    val password: String,
+)

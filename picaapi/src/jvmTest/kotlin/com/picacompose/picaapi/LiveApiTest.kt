@@ -97,6 +97,27 @@ class LiveApiTest {
             val favourites = client.comics.favourites()
             println("favourites: total=${favourites.total}")
 
+            // 合集 / 骑士榜（新增）
+            val collections = client.comics.collections()
+            assertTrue(collections.isNotEmpty(), "合集不应为空")
+            println("collections: groups=${collections.size} 首个=${collections.first().comics.size} 本")
+
+            val knights = client.comics.knightLeaderboard()
+            println("knight-leaderboard: ${knights.size} 人，首位=${knights.firstOrNull()?.name}")
+
+            // 高级搜索（POST，但是只读）
+            val advanced = client.comics.advancedSearch(keyword = "丝袜", page = 1)
+            println("advanced-search: total=${advanced.total} 本页=${advanced.docs.size}")
+
+            // 我的评论 / 通知（新增）
+            val myComments = client.comments.myComments()
+            println("my-comments: total=${myComments.total}")
+            myComments.docs.firstOrNull()?.let { println("  第一条: ${it.comic?.title} / ${it.content.take(20)}") }
+
+            val notifications = client.users.notifications()
+            println("notifications: total=${notifications.total} 本页=${notifications.docs.size}")
+            notifications.docs.firstOrNull()?.let { println("  第一条: ${it.title}") }
+
             // 错误信封
             val error = assertFailsWith<PicaException> {
                 client.comics.detail("000000000000000000000000")

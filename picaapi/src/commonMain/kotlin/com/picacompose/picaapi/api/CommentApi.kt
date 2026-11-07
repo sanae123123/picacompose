@@ -5,6 +5,9 @@ import com.picacompose.picaapi.model.ActionData
 import com.picacompose.picaapi.model.Comment
 import com.picacompose.picaapi.model.CommentListData
 import com.picacompose.picaapi.model.CommentRequest
+import com.picacompose.picaapi.model.MyComment
+import com.picacompose.picaapi.model.MyCommentsData
+import com.picacompose.picaapi.model.Paged
 import io.ktor.http.HttpMethod
 
 /** 评论相关接口。 */
@@ -36,6 +39,24 @@ class CommentApi internal constructor(private val client: PicaClient) {
             bodyJson = body,
         )
     }
+
+    /** `POST comments/{commentId}`，回复某条评论（楼中楼）。 */
+    suspend fun reply(commentId: String, content: String) {
+        val body = client.json.encodeToString(CommentRequest.serializer(), CommentRequest(content))
+        client.callWithoutResult(
+            method = HttpMethod.Post,
+            path = "comments/$commentId",
+            bodyJson = body,
+        )
+    }
+
+    /** `GET users/my-comments`，我发过的评论（带所在漫画的标题）。 */
+    suspend fun myComments(page: Int = 1): Paged<MyComment> = client.call(
+        method = HttpMethod.Get,
+        path = "users/my-comments",
+        query = mapOf("page" to page.toString()),
+        serializer = MyCommentsData.serializer(),
+    ).comments
 
     /** `POST comments/{commentId}/like`，给评论点赞 / 取消。 */
     suspend fun like(commentId: String): String? = client.call(
