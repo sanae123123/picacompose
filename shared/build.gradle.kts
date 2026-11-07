@@ -40,6 +40,13 @@ kotlin {
 
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+            implementation(libs.picacomic.api)
+            implementation(libs.ktor.client.okhttp)
+        }
+
+        jvmMain.dependencies {
+            implementation(libs.picacomic.api)
+            implementation(libs.ktor.client.cio)
         }
     }
 }

@@ -8,6 +8,7 @@ plugins {
 dependencies {
     implementation(projects.shared)
     implementation(libs.androidx.activity.compose)
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 }
 
 android {
@@ -31,6 +32,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        // picacomic-api 用了 java.time，minSdk 24 需要脱糖
+        isCoreLibraryDesugaringEnabled = true
     }
 }
 
