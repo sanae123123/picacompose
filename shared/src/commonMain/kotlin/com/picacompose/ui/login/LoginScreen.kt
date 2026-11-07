@@ -72,12 +72,12 @@ fun LoginScreen(
                 .verticalScroll(rememberScrollState())
                 .safeDrawingPadding()
                 .imePadding()
-                .padding(horizontal = 20.dp, vertical = 28.dp),
+                .padding(horizontal = 20.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.widthIn(max = 440.dp).fillMaxWidth()) {
                 BrandRow()
-                Spacer(Modifier.height(34.dp))
+                Spacer(Modifier.height(24.dp))
                 Text(
                     text = "欢迎回来",
                     style = MaterialTheme.typography.headlineLarge,
@@ -89,11 +89,11 @@ fun LoginScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.onSurfaceVariant,
                 )
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(20.dp))
                 LoginCard(controller = controller, onSubmit = onSubmit, onForgotPassword = onForgotPassword)
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
                 SignUpRow(onRegister)
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(16.dp))
                 Text(
                     text = "同一个 PicACG 账号即可登录",
                     style = MaterialTheme.typography.bodySmall,
@@ -153,13 +153,13 @@ private fun LoginCard(
         shadowElevation = 10.dp,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(horizontal = 22.dp, vertical = 24.dp)) {
+        Column(Modifier.padding(horizontal = 22.dp, vertical = 22.dp)) {
             Text(
                 text = "账号登录",
                 style = MaterialTheme.typography.titleMedium,
                 color = colors.onSurfaceVariant,
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
             EmailField(controller)
             Spacer(Modifier.height(12.dp))
             PasswordField(controller, onSubmit)
@@ -169,10 +169,10 @@ private fun LoginCard(
                     ErrorBanner(controller.error.orEmpty())
                 }
             }
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(20.dp))
             Button(
                 onClick = onSubmit,
-                enabled = controller.canSubmit,
+                enabled = !controller.loading,
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.primary,

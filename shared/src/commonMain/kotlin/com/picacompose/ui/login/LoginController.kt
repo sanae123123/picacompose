@@ -34,9 +34,6 @@ class LoginController(private val client: PicaClient) {
     var profile by mutableStateOf<UserProfile?>(null)
         private set
 
-    val canSubmit: Boolean
-        get() = email.isNotBlank() && password.isNotBlank() && !loading
-
     fun onEmailChange(value: String) {
         email = value
         error = null
@@ -52,7 +49,15 @@ class LoginController(private val client: PicaClient) {
     }
 
     suspend fun signIn() {
-        if (!canSubmit) return
+        if (loading) return
+        if (email.isBlank()) {
+            error = "先填邮箱或用户名"
+            return
+        }
+        if (password.isBlank()) {
+            error = "密码还没填"
+            return
+        }
         loading = true
         error = null
         try {
