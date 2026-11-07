@@ -206,12 +206,15 @@ class PicaClient(
             if (authorized) {
                 token.value?.takeIf { it.isNotBlank() }?.let { header("authorization", it) }
             }
+            // 服务端对 charset 大小写敏感：必须是 `UTF-8`，写成小写 `utf-8` 会让 POST 接口
+            // 返回 400/1023 "too many requests"（登录会被误判成限流）。
+            val jsonContentType = ContentType.Application.Json.withCharset(Charsets.UTF_8)
             if (bodyJson != null) {
-                contentType(ContentType.Application.Json)
+                contentType(jsonContentType)
                 setBody(bodyJson)
             } else if (method == HttpMethod.Post || method == HttpMethod.Put) {
                 // 官方客户端（OkHttp）对空 body 的 POST 也会带 JSON content-type
-                contentType(ContentType.Application.Json)
+                contentType(jsonContentType)
                 setBody("")
             }
         }

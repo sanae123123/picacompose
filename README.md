@@ -92,6 +92,8 @@ val url = pica.imageUrl(pages.pages.docs.first().media)
 - 签名原文是 `(path + time + nonce + method + apiKey).lowercase()`，`path` 含 query 且不带前导斜杠；
   `PicaSignature.sign()` 里就是这个公式，`CryptoTest` 里有固定测试向量。
 - `time` 用本地时钟；客户端会从响应头 `Server-Time` 自动算偏移量并持续校正，所以手机时间不准也能用。
+- POST 的 `Content-Type` 必须是 `application/json; charset=UTF-8`（大写）。写成小写 `utf-8`
+  或没有 charset，服务端会返回 400/1023 "too many requests"，登录会被误判成限流——这是踩过的坑。
 - 响应统一是 `{ code, message, data }` 信封，`PicaClient` 负责解信封，失败抛 `PicaException`。
 - 所有 JSON 模型都用 `ignoreUnknownKeys` + 默认值，服务端加字段不会炸。
 
