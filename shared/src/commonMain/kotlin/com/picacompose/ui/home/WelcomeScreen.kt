@@ -74,10 +74,11 @@ fun WelcomeScreen(profile: UserProfile, onSignOut: () -> Unit) {
                     InfoChip("经验 ${profile.exp}")
                     if (profile.isPunched) InfoChip("今日已签到")
                 }
-                if (!profile.slogan.isNullOrBlank()) {
+                val slogan = profile.slogan
+                if (!slogan.isNullOrBlank()) {
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        text = profile.slogan,
+                        text = slogan,
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.onSurfaceVariant,
                         textAlign = TextAlign.Center,
