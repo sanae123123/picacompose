@@ -32,6 +32,16 @@ picacompose/
 
 新增界面时，优先改 `shared/src/commonMain`，三个平台会同时生效；只有确实需要平台 API 时才在 `androidMain` / `iosMain` 里写 `expect/actual`。
 
+## 界面
+
+Material You（M3）风格：固定走 M3 基线配色（Compose Multiplatform 里没有 Android 动态取色），
+大圆角卡片、渐变背景、胶囊按钮；图标是 Canvas 手绘的，不依赖 material-icons-extended。
+
+![登录页](docs/login.png)
+
+登录成功走真实接口拉资料，落到一个临时欢迎页（头像、昵称、等级/经验/签到状态、签名），
+后面首页做好了会替换掉它。
+
 ## 环境要求
 
 - JDK 17 及以上（项目按 JDK 21 验证）
