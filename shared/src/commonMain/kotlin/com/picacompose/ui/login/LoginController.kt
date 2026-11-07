@@ -103,10 +103,10 @@ class LoginController(
         loading = true
         error = null
         try {
-            client.auth.signIn(email.trim(), password)
+            val signedIn = client.auth.signIn(email.trim(), password)
             val account = email.trim()
             if (rememberAccount) {
-                session.save(client.token.value, account)
+                session.save(signedIn.token, account)
             } else {
                 session.clearAll()
             }
