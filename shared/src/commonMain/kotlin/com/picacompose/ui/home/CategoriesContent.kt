@@ -67,11 +67,9 @@ fun CategoriesContent(
             .onSuccess { adCover = it }
     }
 
-    PageScaffold {
-        item {
-            PageHeader(title = "分类", subtitle = "站里的题材都在这里。")
-            Spacer(Modifier.height(18.dp))
-        }
+    PageScaffold(
+        header = { PageHeader(title = "分类", subtitle = "站里的题材都在这里。") },
+    ) {
         item {
             SectionTitle("熱門分類")
             Spacer(Modifier.height(12.dp))

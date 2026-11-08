@@ -55,11 +55,10 @@ fun GamesContent(
             }
     }
 
-    StaggeredPageScaffold(state = listState) {
-        item(span = StaggeredGridItemSpan.FullLine) {
-            PageHeader(title = "游戏", subtitle = "PicACG 站内的小游戏。")
-            Spacer(Modifier.height(18.dp))
-        }
+    StaggeredPageScaffold(
+        state = listState,
+        header = { PageHeader(title = "游戏", subtitle = "PicACG 站内的小游戏。") },
+    ) {
         if (pager.items.isEmpty()) {
             item(span = StaggeredGridItemSpan.FullLine) {
                 when {

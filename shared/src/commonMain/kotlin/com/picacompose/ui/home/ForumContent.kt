@@ -45,8 +45,10 @@ fun ForumContent(
     CommentLoadMore(listState, pager)
 
     Column(modifier.fillMaxSize()) {
-        PageScaffold(state = listState, modifier = Modifier.weight(1f)) {
-            item {
+        PageScaffold(
+            state = listState,
+            modifier = Modifier.weight(1f),
+            header = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                         PicaGlyph(
@@ -58,8 +60,8 @@ fun ForumContent(
                     Spacer(Modifier.width(6.dp))
                     PageHeader(title = "嗶咔留言版", subtitle = "全站的留言都在这儿，跟评论区同一套。")
                 }
-                Spacer(Modifier.height(16.dp))
-            }
+            },
+        ) {
             commentItems(
                 pager = pager,
                 onRetry = { scope.launch { pager.retry() } },

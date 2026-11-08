@@ -65,11 +65,9 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
     var showSlogan by remember(slogan) { mutableStateOf(false) }
     var showAvatar by remember(avatarUrl) { mutableStateOf(false) }
 
-    PageScaffold {
-        item {
-            PageHeader(title = "我的", subtitle = "当前登录的账号。")
-            Spacer(Modifier.height(18.dp))
-        }
+    PageScaffold(
+        header = { PageHeader(title = "我的", subtitle = "当前登录的账号。") },
+    ) {
         item {
             PicaCard {
                 Box(Modifier.fillMaxWidth()) {

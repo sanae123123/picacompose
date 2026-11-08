@@ -95,14 +95,15 @@ fun HomeContent(
 
     LaunchedEffect(feed.reload) { feed.load() }
 
-    PageScaffold(state = listState) {
-        item {
+    PageScaffold(
+        state = listState,
+        header = {
             PageHeader(
                 title = "欢迎回来",
                 subtitle = "今天的本子，先看推荐。",
             )
-            Spacer(Modifier.height(18.dp))
-        }
+        },
+    ) {
         item {
             PicaCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {

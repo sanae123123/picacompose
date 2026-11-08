@@ -29,11 +29,9 @@ fun SettingsContent(onSignOut: () -> Unit) {
     val latency = route.savedLatencyMs
     val ipCount = route.savedIps.size
 
-    PageScaffold {
-        item {
-            PageHeader(title = "设置", subtitle = "选项还少，先把状态说清楚。")
-            Spacer(Modifier.height(18.dp))
-        }
+    PageScaffold(
+        header = { PageHeader(title = "设置", subtitle = "选项还少，先把状态说清楚。") },
+    ) {
         item {
             PicaCard {
                 DetailRow(

@@ -78,8 +78,10 @@ fun MessagesContent(
             }
     }
 
-    PageScaffold(state = listState, modifier = modifier) {
-        item {
+    PageScaffold(
+        state = listState,
+        modifier = modifier,
+        header = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                     PicaGlyph(
@@ -91,8 +93,8 @@ fun MessagesContent(
                 Spacer(Modifier.width(6.dp))
                 PageHeader(title = "消息", subtitle = "回复、@ 和系统通知。")
             }
-            Spacer(Modifier.height(16.dp))
-        }
+        },
+    ) {
         if (pager.items.isEmpty()) {
             item {
                 when {
