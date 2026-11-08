@@ -29,7 +29,9 @@ object PicaImage {
             return imageServer.trimEnd('/') + "/" + path.trimStart('/')
         }
         val base = fileServer.trimEnd('/')
-        val relative = path.trimStart('/')
+        // 游戏图标在 storage-b 上是 `tobs/<file>`，服务端 301 到去掉 `tobs/` 的地址，
+        // 这里直接拼最终地址，省一次跳转。
+        val relative = path.trimStart('/').removePrefix("tobs/")
         return if (hasDirectory(base)) "$base/$relative" else "$base/static/$relative"
     }
 

@@ -19,6 +19,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridScope
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -169,6 +174,30 @@ fun PageScaffold(
         LazyColumn(
             state = state,
             contentPadding = contentPadding,
+            modifier = Modifier.widthIn(max = 460.dp).fillMaxSize(),
+            content = content,
+        )
+    }
+}
+
+/**
+ * 双列瀑布流容器：和 [PageScaffold] 一样是懒加载，只是换成两列、高度不等的格子。
+ *
+ * 整宽的内容（标题、错误提示、底部状态）用 `item(span = StaggeredGridItemSpan.FullLine)`。
+ */
+@Composable
+fun StaggeredPageScaffold(
+    state: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
+    contentPadding: PaddingValues = PaddingValues(horizontal = 22.dp, vertical = 26.dp),
+    content: LazyStaggeredGridScope.() -> Unit,
+) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        LazyVerticalStaggeredGrid(
+            columns = StaggeredGridCells.Fixed(2),
+            state = state,
+            contentPadding = contentPadding,
+            verticalItemSpacing = 12.dp,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.widthIn(max = 460.dp).fillMaxSize(),
             content = content,
         )

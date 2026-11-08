@@ -10,7 +10,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -36,7 +36,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     val tab = HomeTab.entries.firstOrNull { it.name == current } ?: HomeTab.Home
     // 放这里让页面切走再回来时保留已加载的分页和滚动位置。
     val gamePager = remember { Pager { page -> pica.games.list(page = page) } }
-    val gameListState = rememberLazyListState()
+    val gameListState = rememberLazyStaggeredGridState()
 
     Box(Modifier.fillMaxSize()) {
         PicaBackdrop()
