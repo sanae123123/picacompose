@@ -109,8 +109,20 @@ fun LeaderboardContent(
     }
 
     val popularPager = popularPagers.getValue(range)
-    val popularState = rememberLazyListState()
+    // 三个时间各留一份滚动位置，切页时把它拨回顶部。
+    val dayState = rememberLazyListState()
+    val weekState = rememberLazyListState()
+    val monthState = rememberLazyListState()
+    val popularState = when (range) {
+        PopularRange.Day -> dayState
+        PopularRange.Week -> weekState
+        PopularRange.Month -> monthState
+    }
     val knightState = rememberLazyListState()
+    LaunchedEffect(tab, range) {
+        val current = if (tab == LeaderboardTab.Popular) popularState else knightState
+        current.scrollToItem(0)
+    }
     val activePager: Pager<*> = if (tab == LeaderboardTab.Popular) popularPager else knightPager
     LaunchedEffect(activePager) {
         if (activePager.items.isEmpty() && activePager.error == null) activePager.loadNext()

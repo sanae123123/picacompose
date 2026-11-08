@@ -108,6 +108,27 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
         )
     }
     val gameListState = rememberLazyStaggeredGridState()
+    // 分类页的列表位置也提上来，换页时好把它拨回顶部。
+    val categoryListState = rememberLazyListState()
+
+    // 换了一页就从头看：底部栏切到哪一栏，那一栏的列表滚回顶部。
+    LaunchedEffect(tab) {
+        when (tab) {
+            HomeTab.Home -> homeListState.scrollToItem(0)
+            HomeTab.Category -> categoryListState.scrollToItem(0)
+            HomeTab.Game -> gameListState.scrollToItem(0)
+            HomeTab.Mine, HomeTab.Settings -> Unit
+        }
+    }
+
+    // 打开整页也从头看，别接着上次读到的地方。
+    LaunchedEffect(overlay) {
+        when (overlay) {
+            OverlayPage.Messages -> messageListState.scrollToItem(0)
+            OverlayPage.Forum -> forumListState.scrollToItem(0)
+            OverlayPage.None, OverlayPage.Leaderboard -> Unit
+        }
+    }
 
     // 各栏的滚动位置在滑走再回来时也能接上（懒列表的状态本身是可保存的）。
     val tabStates = rememberSaveableStateHolder()
@@ -172,6 +193,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                     )
 
                                     HomeTab.Category -> CategoriesContent(
+                                        state = categoryListState,
                                         forumTileModifier = forumSource,
                                         leaderboardTileModifier = leaderboardSource,
                                         onOpenLeaderboard = {

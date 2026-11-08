@@ -3,6 +3,8 @@ package com.picacompose.ui.home
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,6 +43,7 @@ import com.picacompose.ui.components.url
  */
 @Composable
 fun CategoriesContent(
+    state: LazyListState = rememberLazyListState(),
     onOpenForum: () -> Unit = {},
     onOpenGames: () -> Unit = {},
     onOpenLeaderboard: () -> Unit = {},
@@ -73,6 +76,7 @@ fun CategoriesContent(
     }
 
     PageScaffold(
+        state = state,
         header = { PageHeader(title = "分类") },
         onRefresh = { loadCategories() },
     ) {
