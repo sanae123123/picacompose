@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -28,19 +32,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
-import com.picacompose.data.AnnouncementStore
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.Announcement
-import androidx.compose.ui.layout.ContentScale
+import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.PicaImageViewer
 import com.picacompose.ui.components.url
 
@@ -48,23 +53,28 @@ import com.picacompose.ui.components.url
 private val urlPattern = Regex("""https?://[^\s"'<>，。、）】]+""")
 
 /**
- * 公告弹窗，仿官方那块公告板：顶图 + 标题 + 正文，底下「不再顯示 / 確定」。
+ * 公告弹窗：首图 + 标题 + 正文一起滚，底下「公告列表 / 確定」。
  *
  * 只有用户自己点「公告」才打开，不会自己冒出来。
  */
 @Composable
 fun AnnouncementsDialog(onDismiss: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    val store = remember { AnnouncementStore() }
     var announcements by remember { mutableStateOf<List<Announcement>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var index by remember { mutableStateOf(0) }
-    // 点公告顶图放大看。
+    // 打开公告列表面板。
+    var showList by remember { mutableStateOf(false) }
+    // 点公告首图放大看。
     var viewing by remember { mutableStateOf<String?>(null) }
+    val scrollState = rememberScrollState()
+
+    // 换一条公告就回到最顶上。
+    LaunchedEffect(index) { scrollState.scrollTo(0) }
 
     LaunchedEffect(Unit) {
         runCatching { pica.meta.announcements(page = 1).docs }
-            .onSuccess { docs -> announcements = docs.filterNot { it.id in store.dismissedIds() } }
+            .onSuccess { announcements = it }
             .onFailure { error = it.message ?: "公告没拉到" }
     }
 
@@ -96,7 +106,7 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
 
                 list.isEmpty() -> Column(Modifier.padding(24.dp)) {
                     Text(
-                        text = "暂时没有新公告。",
+                        text = "暂时没有公告。",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.onSurfaceVariant,
                     )
@@ -106,14 +116,24 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
                     }
                 }
 
+                showList -> AnnouncementList(
+                    items = list,
+                    current = index,
+                    onPick = {
+                        index = it
+                        showList = false
+                    },
+                    onClose = { showList = false },
+                )
+
                 else -> {
                     val current = list.getOrNull(index.coerceIn(0, list.lastIndex))
                     Column {
-                        // 首图和标题跟着正文一起滚，所以图不用再裁成一条横幅。
+                        // 首图和标题跟着正文一起滚，所以图不用裁成一条横幅。
                         Column(
                             modifier = Modifier
                                 .heightIn(max = 520.dp)
-                                .verticalScroll(rememberScrollState()),
+                                .verticalScroll(scrollState),
                         ) {
                             val thumb = current?.thumb.url()
                             if (thumb != null) {
@@ -141,12 +161,7 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
                                 .padding(end = 12.dp),
                             horizontalArrangement = Arrangement.End,
                         ) {
-                            TextButton(
-                                onClick = {
-                                    current?.let { store.dismiss(it.id) }
-                                    if (index < list.lastIndex) index++ else onDismiss()
-                                },
-                            ) { Text("不再顯示") }
+                            TextButton(onClick = { showList = true }) { Text("公告列表") }
                             TextButton(
                                 onClick = {
                                     if (index < list.lastIndex) index++ else onDismiss()
@@ -161,6 +176,69 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
 
     viewing?.let { url ->
         PicaImageViewer(url = url, onDismiss = { viewing = null })
+    }
+}
+
+/** 公告列表面板：缩略图 + 标题，点一条就看那条。 */
+@Composable
+private fun AnnouncementList(
+    items: List<Announcement>,
+    current: Int,
+    onPick: (Int) -> Unit,
+    onClose: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Column {
+        Text(
+            text = "公告列表",
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.onSurface,
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 20.dp, bottom = 6.dp),
+        )
+        LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
+            itemsIndexed(items) { i, item ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onPick(i) }
+                        .padding(horizontal = 22.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PicaImage(
+                        url = item.thumb.url(),
+                        contentDescription = item.title,
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(RoundedCornerShape(10.dp)),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = item.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = if (i == current) colors.primary else colors.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = item.content.trim().lineSequence().firstOrNull().orEmpty(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = 12.dp),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            TextButton(onClick = onClose) { Text("關閉") }
+        }
     }
 }
 
