@@ -24,6 +24,7 @@ import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.home.HomeShell
 import com.picacompose.ui.login.LoginController
 import com.picacompose.ui.login.LoginScreen
+import com.picacompose.ui.routing.RoutingScreen
 import com.picacompose.ui.theme.PicaTheme
 
 /** 启动时要停在哪儿：先试着恢复上次的登录，恢复了就直接进首页。 */
@@ -32,53 +33,60 @@ private enum class Screen { Restoring, Login, Home }
 /**
  * 应用根组件，Android / iOS / Desktop 共用这一份 UI。
  *
- * 目前两屏：未登录 → 登录页；已登录 → 带底部导航的壳（主页/分类/游戏/我的/设置）。
- * 登录时勾了「记住账号」，下次启动会先拿存着的 token 试一次，成功就直接进首页。
+ * 冷启动顺序：**选线路**（自动测速，自动选最快的一条）→ 恢复登录态 → 登录页或首页。
  */
 @Composable
 fun App() {
     PicaTheme {
-        val controller = remember { LoginController(pica) }
-        var pendingFeature by remember { mutableStateOf<String?>(null) }
-
-        LaunchedEffect(Unit) { controller.restoreSession() }
-
-        val screen = when {
-            controller.restoring -> Screen.Restoring
-            controller.profile == null -> Screen.Login
-            else -> Screen.Home
+        var routed by remember { mutableStateOf(false) }
+        Crossfade(targetState = routed) { ready ->
+            if (ready) MainScreens() else RoutingScreen(onReady = { routed = true })
         }
+    }
+}
 
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
-        ) {
-            Crossfade(targetState = screen) { current ->
-                when (current) {
-                    Screen.Restoring -> RestoreScreen()
-                    Screen.Login -> LoginScreen(
-                        controller = controller,
-                        onForgotPassword = { pendingFeature = "找回密码" },
-                        onRegister = { pendingFeature = "注册" },
-                    )
+@Composable
+private fun MainScreens() {
+    val controller = remember { LoginController(pica) }
+    var pendingFeature by remember { mutableStateOf<String?>(null) }
 
-                    Screen.Home -> controller.profile?.let { profile ->
-                        HomeShell(profile = profile, onSignOut = controller::signOut)
-                    }
+    LaunchedEffect(Unit) { controller.restoreSession() }
+
+    val screen = when {
+        controller.restoring -> Screen.Restoring
+        controller.profile == null -> Screen.Login
+        else -> Screen.Home
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+    ) {
+        Crossfade(targetState = screen) { current ->
+            when (current) {
+                Screen.Restoring -> RestoreScreen()
+                Screen.Login -> LoginScreen(
+                    controller = controller,
+                    onForgotPassword = { pendingFeature = "找回密码" },
+                    onRegister = { pendingFeature = "注册" },
+                )
+
+                Screen.Home -> controller.profile?.let { profile ->
+                    HomeShell(profile = profile, onSignOut = controller::signOut)
                 }
             }
         }
+    }
 
-        pendingFeature?.let { feature ->
-            AlertDialog(
-                onDismissRequest = { pendingFeature = null },
-                title = { Text("$feature 还没做") },
-                text = { Text("先把登录流程跑通，$feature 页面排在下一步。") },
-                confirmButton = {
-                    TextButton(onClick = { pendingFeature = null }) { Text("好") }
-                },
-            )
-        }
+    pendingFeature?.let { feature ->
+        AlertDialog(
+            onDismissRequest = { pendingFeature = null },
+            title = { Text("$feature 还没做") },
+            text = { Text("先把登录流程跑通，$feature 页面排在下一步。") },
+            confirmButton = {
+                TextButton(onClick = { pendingFeature = null }) { Text("好") }
+            },
+        )
     }
 }
 

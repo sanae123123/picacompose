@@ -46,6 +46,21 @@ Material You（M3）风格：固定走 M3 基线配色（Compose Multiplatform �
 勾了「记住账号」就把 token 存在本机（Android 用 SharedPreferences，桌面用 java.util.prefs，
 iOS 用 NSUserDefaults），下次打开直接恢复会话进首页；只存 token，不存密码。
 
+## 线路分流
+
+官方客户端的分流不是「多个 API 域名」，而是**域名固定 + 服务端下发 IP 池 + 自定义 DNS**：
+
+- 域名永远 `https://picaapi.picacomic.com/`，它参与签名，改了签名就失效；
+- 冷启动先明文 `GET http://68.183.234.72/init`（失败换 `http://206.189.95.169/init`）拿 `addresses[]`；
+- 选中「下发 IP」的线路时，把这些 IP 钉进 OkHttp 的 `Dns`，TLS 的 SNI / 证书仍按原域名走。
+
+客户端冷启动第一屏就是线路选择：拉列表、给「系统解析」和「下发 IP」各打一次点，**自动选最快的一条**，
+停一秒左右自动进入；想换随时点别的卡片，秒进。上次选过哪条会标「上次」，也记在设置页里。
+
+- Android：`picaapi` 的 `pinnedEngine()` 用 OkHttp 自定义 DNS 实现；`/init` 是明文 HTTP，manifest 开了
+  `usesCleartextTraffic`。
+- 桌面（CIO）和 iOS（Darwin）引擎没有 DNS 钩子，`pinnedEngine()` 返回 `null`，线路 2/3 会退化成系统解析。
+
 ## 环境要求
 
 - JDK 17 及以上（项目按 JDK 21 验证）

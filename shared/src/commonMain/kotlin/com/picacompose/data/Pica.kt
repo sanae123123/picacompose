@@ -1,9 +1,30 @@
 package com.picacompose.data
 
 import com.picacompose.picaapi.PicaClient
+import com.picacompose.picaapi.pinnedEngine
 
 /**
- * App 里默认共用的客户端。登录后 token 会存在客户端内部，直接复用即可。
- * 需要多账号 / 多配置时自己 new PicaClient(config)。
+ * 当前使用的客户端。分流选中线路后会整个换掉 —— DNS 是建引擎那一刻定下的，改不了热生效，
+ * 官方客户端也是靠重建 OkHttpClient（`MyApplication.bw()`）来切换的。
  */
-val pica: PicaClient by lazy { PicaClient() }
+var pica: PicaClient = PicaClient()
+    private set
+
+/**
+ * 按线路重建客户端，把登录态一起带过去。
+ *
+ * 线路 1 不钉 DNS；线路 2/3 用下发 IP 池，平台不支持时 `pinnedEngine` 返回 null，退化成系统解析。
+ */
+suspend fun applyPicaRoute(line: PicaLine, ips: List<String>) {
+    val old = pica
+    val engine = if (line.pinnedDns) pinnedEngine(ips) else null
+    pica = PicaClient(
+        config = old.config.copy(
+            appChannel = line.channel,
+            authorization = old.token.value,
+            timeOffsetSeconds = old.serverTimeOffsetSeconds,
+        ),
+        engine = engine,
+    )
+    old.close()
+}

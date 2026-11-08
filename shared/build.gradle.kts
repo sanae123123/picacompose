@@ -39,6 +39,8 @@ kotlin {
             implementation(compose.animation)
             implementation(compose.ui)
             implementation(compose.materialIconsExtended)
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor3)
         }
 
         androidMain.dependencies {

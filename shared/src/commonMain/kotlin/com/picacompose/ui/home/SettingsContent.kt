@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.picacompose.data.RouteStore
 import com.picacompose.data.SessionStore
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
@@ -23,6 +24,10 @@ fun SettingsContent(onSignOut: () -> Unit) {
     val session = remember { SessionStore() }
     val savedAccount = session.savedAccount
     val rememberOn = session.savedToken != null
+    val route = remember { RouteStore() }
+    val line = route.savedLine
+    val latency = route.savedLatencyMs
+    val ipCount = route.savedIps.size
 
     PageScaffold {
         PageHeader(title = "设置", subtitle = "选项还少，先把状态说清楚。")
@@ -46,6 +51,23 @@ fun SettingsContent(onSignOut: () -> Unit) {
         }
         Spacer(Modifier.height(14.dp))
         PicaCard {
+            DetailRow(
+                icon = PicaIcon.ArrowRight,
+                title = "线路",
+                value = line?.let { "${it.title} · 通道 ${it.channel}" } ?: "还没选",
+            )
+            DetailRow(
+                icon = PicaIcon.Gear,
+                title = "测速",
+                value = when {
+                    latency != null -> "$latency ms"
+                    ipCount > 0 -> "$ipCount 个下发 IP"
+                    else -> "系统解析"
+                },
+            )
+        }
+        Spacer(Modifier.height(14.dp))
+        PicaCard {
             DetailRow(PicaIcon.Grid, "主题", "Material You 基线配色")
             DetailRow(PicaIcon.Gear, "版本", "0.1.0")
             DetailRow(PicaIcon.ArrowRight, "接口", "picaapi 模块")
@@ -53,7 +75,8 @@ fun SettingsContent(onSignOut: () -> Unit) {
         Spacer(Modifier.height(14.dp))
         Text(
             text = "记住账号只保存 token 和账号名，下次打开直接恢复会话；" +
-                "退出登录会清掉 token，账号名留着方便下次登录。",
+                "退出登录会清掉 token，账号名留着方便下次登录。线路每次冷启动都会重新测速，" +
+                "换网络后不用手动改。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
+import com.picacompose.ui.components.PicaImage
+import com.picacompose.ui.components.url
 import com.picacompose.picaapi.model.Category
 
 /** 分类页：拉真实分类接口，两列排开。 */
@@ -93,32 +96,37 @@ private fun CategoryCard(
         tonalElevation = if (selected) 0.dp else 1.dp,
         modifier = modifier,
     ) {
-        Column(
-            modifier = Modifier
-                .clickable(onClick = onClick)
-                .padding(horizontal = 14.dp, vertical = 16.dp),
-        ) {
-            Text(
-                text = category.title,
-                style = MaterialTheme.typography.titleSmall,
-                color = if (selected) colors.onPrimaryContainer else colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        Column(modifier = Modifier.clickable(onClick = onClick)) {
+            PicaImage(
+                url = category.thumb.url(),
+                contentDescription = category.title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(4f / 3f),
             )
-            val description = category.description?.takeIf { it.isNotBlank() && it != "未知" }
-            if (!description.isNullOrBlank()) {
-                Spacer(Modifier.height(6.dp))
+            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
                 Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (selected) {
-                        colors.onPrimaryContainer.copy(alpha = 0.8f)
-                    } else {
-                        colors.onSurfaceVariant
-                    },
+                    text = category.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (selected) colors.onPrimaryContainer else colors.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                val description = category.description?.takeIf { it.isNotBlank() && it != "未知" }
+                if (!description.isNullOrBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (selected) {
+                            colors.onPrimaryContainer.copy(alpha = 0.8f)
+                        } else {
+                            colors.onSurfaceVariant
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }
