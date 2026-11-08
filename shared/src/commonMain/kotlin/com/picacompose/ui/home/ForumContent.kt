@@ -108,7 +108,7 @@ fun ForumContent(
     }
 
     if (showJump) {
-        CommentJumpDialog(
+        PagerJumpDialog(
             pager = pager,
             onDismiss = { showJump = false },
             // 跳完回到顶部，那一页从第一条开始看。

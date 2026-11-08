@@ -91,9 +91,10 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     // 本子列表：哪个分类、变形 key、以及它自己的分页和滚动位置。
     var comicTitle by rememberSaveable { mutableStateOf("") }
     var comicKey by rememberSaveable { mutableStateOf("comicsPage") }
-    val comicPager = remember(comicTitle) {
+    var comicSort by rememberSaveable { mutableStateOf<String?>(null) }
+    val comicPager = remember(comicTitle, comicSort) {
         Pager(
-            load = { page -> pica.comics.list(page = page, category = comicTitle) },
+            load = { page -> pica.comics.list(page = page, category = comicTitle, sort = comicSort) },
             itemKey = { it.id },
         )
     }
@@ -312,6 +313,8 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                     title = comicTitle,
                                     pager = comicPager,
                                     listState = comicListState,
+                                    sort = comicSort,
+                                    onSortChange = { comicSort = it },
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
                                 )
 

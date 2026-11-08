@@ -232,11 +232,11 @@ private fun ReportCommentDialog(comment: Comment, onDismiss: () -> Unit) {
 /**
  * 跳页弹窗：输入页码直接翻到那一页。
  *
- * 评论很多时不靠一页页往下续，知道大概在哪页就直接过去。
+ * 评论很多时不靠一页页往下续，知道大概在哪页就直接过去；本子列表也用同一个。
  */
 @Composable
-fun CommentJumpDialog(
-    pager: Pager<Comment>,
+fun PagerJumpDialog(
+    pager: Pager<*>,
     onDismiss: () -> Unit,
     onJumped: () -> Unit,
 ) {

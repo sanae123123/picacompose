@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -53,13 +56,19 @@ fun ComicListContent(
     listState: LazyListState = rememberLazyListState(),
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    sort: String? = null,
+    onSortChange: (String?) -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
     // 详情页还没做，点一本就先弹个说明。
     var teaser by remember { mutableStateOf<ComicSummary?>(null) }
+    var menuOpen by remember { mutableStateOf(false) }
+    var showJump by remember { mutableStateOf(false) }
 
     LaunchedEffect(pager) {
+        // 换排序会换一个 pager，回到顶部重新看。
+        listState.scrollToItem(0)
         if (pager.items.isEmpty()) pager.loadNext()
     }
 
@@ -100,8 +109,56 @@ fun ComicListContent(
                         text = "${compactCount(pager.total)} 本",
                         style = MaterialTheme.typography.labelMedium,
                         color = colors.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 12.dp),
                     )
+                }
+                // 汉堡菜单：跳页 + 排序方式。
+                Box {
+                    IconButton(
+                        onClick = { menuOpen = true },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        PicaGlyph(
+                            icon = PicaIcon.Menu,
+                            modifier = Modifier.size(22.dp),
+                            tint = colors.onBackground,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("跳页") },
+                            leadingIcon = {
+                                PicaGlyph(PicaIcon.ArrowRight, Modifier.size(18.dp), colors.onSurfaceVariant)
+                            },
+                            onClick = {
+                                menuOpen = false
+                                showJump = true
+                            },
+                        )
+                        HorizontalDivider()
+                        Text(
+                            text = "排序方式",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp),
+                        )
+                        ComicSort.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.label) },
+                                trailingIcon = {
+                                    if (option.value == sort) {
+                                        PicaGlyph(PicaIcon.Check, Modifier.size(18.dp), colors.primary)
+                                    }
+                                },
+                                onClick = {
+                                    menuOpen = false
+                                    onSortChange(option.value)
+                                },
+                            )
+                        }
+                    }
                 }
             }
         },
@@ -137,6 +194,23 @@ fun ComicListContent(
     teaser?.let { comic ->
         ComicTeaserDialog(comic = comic, onDismiss = { teaser = null })
     }
+
+    if (showJump) {
+        PagerJumpDialog(
+            pager = pager,
+            onDismiss = { showJump = false },
+            onJumped = { scope.launch { listState.scrollToItem(0) } },
+        )
+    }
+}
+
+/** 排序方式：`s` 参数跟官方一致，默認就是服务端原来的顺序。 */
+private enum class ComicSort(val label: String, val value: String?) {
+    Default("默認", null),
+    Newest("最新", "dd"),
+    Oldest("最早", "da"),
+    MostLiked("最多愛心", "ld"),
+    MostViewed("最多瀏覽", "vd"),
 }
 
 /** 单列里的一条：左边封面，右边标题 / 作者 / 数据，够一屏塞五六条。 */

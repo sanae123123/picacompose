@@ -6,7 +6,10 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.Sort
 import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Lock
@@ -20,7 +23,10 @@ import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.rounded.ArrowForward as RoundedArrowForward
 import androidx.compose.material.icons.rounded.Category as RoundedCategory
+import androidx.compose.material.icons.rounded.Check as RoundedCheck
 import androidx.compose.material.icons.rounded.Email as RoundedEmail
+import androidx.compose.material.icons.rounded.Menu as RoundedMenu
+import androidx.compose.material.icons.rounded.Sort as RoundedSort
 import androidx.compose.material.icons.rounded.EventAvailable as RoundedEventAvailable
 import androidx.compose.material.icons.rounded.Home as RoundedHome
 import androidx.compose.material.icons.rounded.Lock as RoundedLock
@@ -47,6 +53,7 @@ import androidx.compose.ui.unit.dp
  */
 enum class PicaIcon {
     Mail, Back, Lock, Person, Eye, EyeOff, ArrowRight, Logout, Home, Grid, Gamepad, Gear, CheckIn, Notice, Like,
+    Menu, Check, Sort,
 }
 
 private fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
@@ -65,6 +72,9 @@ private fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
     PicaIcon.CheckIn -> if (filled) Icons.Rounded.RoundedEventAvailable else Icons.Outlined.EventAvailable
     PicaIcon.Notice -> if (filled) Icons.Rounded.RoundedNotifications else Icons.Outlined.Notifications
     PicaIcon.Like -> if (filled) Icons.Rounded.RoundedThumbUp else Icons.Outlined.ThumbUp
+    PicaIcon.Menu -> if (filled) Icons.Rounded.RoundedMenu else Icons.Outlined.Menu
+    PicaIcon.Check -> if (filled) Icons.Rounded.RoundedCheck else Icons.Outlined.Check
+    PicaIcon.Sort -> if (filled) Icons.Rounded.RoundedSort else Icons.Outlined.Sort
 }
 
 @Composable
