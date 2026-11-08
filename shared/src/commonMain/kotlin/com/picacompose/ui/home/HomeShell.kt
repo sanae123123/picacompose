@@ -1,6 +1,8 @@
 package com.picacompose.ui.home
 
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.background
@@ -33,6 +35,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.UserProfile
@@ -42,7 +46,8 @@ import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.overlayBounds
 import com.picacompose.ui.components.WebPageContent
-import com.picacompose.ui.components.overlayPageFade
+import com.picacompose.ui.components.overlayPageEnter
+import com.picacompose.ui.components.overlayPageExit
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -163,23 +168,27 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
         PicaBackdrop()
         SharedTransitionLayout {
             val shared = this
-            AnimatedContent(
-                targetState = overlay,
-                transitionSpec = { overlayPageFade() },
-                modifier = Modifier.fillMaxSize(),
-                label = "overlayPage",
-            ) { page ->
-                val contentScope = this
-                if (page == OverlayPage.None) {
+            Box(Modifier.fillMaxSize()) {
+                // 主界面常驻这一层：整页盖上来的时候也不销毁，返回时下边的卡片还在原位，
+                // 不会因为整页重建而错位。外面这层 AnimatedVisibility 只是借一个
+                // 给变形源用的 scope（它自己永远 visible，不参与任何动画）。
+                AnimatedVisibility(
+                    visible = true,
+                    enter = EnterTransition.None,
+                    exit = ExitTransition.None,
+                    modifier = Modifier.fillMaxSize(),
+                    label = "mainShell",
+                ) {
+                    val shellScope = this
                     // 主界面：消息卡和留言版磁贴各自挂上变形源，等被点的时候长成整页。
                     val messagesSource = with(shared) {
-                        overlayBounds(OverlayPage.Messages.sharedKey, contentScope)
+                        overlayBounds(OverlayPage.Messages.sharedKey, shellScope)
                     }
                     val forumSource = with(shared) {
-                        overlayBounds(OverlayPage.Forum.sharedKey, contentScope)
+                        overlayBounds(OverlayPage.Forum.sharedKey, shellScope)
                     }
                     val leaderboardSource = with(shared) {
-                        overlayBounds(OverlayPage.Leaderboard.sharedKey, contentScope)
+                        overlayBounds(OverlayPage.Leaderboard.sharedKey, shellScope)
                     }
                     Scaffold(
                         containerColor = Color.Transparent,
@@ -196,7 +205,6 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                         HorizontalPager(
                             state = pagerState,
                             modifier = Modifier.fillMaxSize().padding(inner),
-                            // 整页盖上来的时候别让横滑把底下的栏翻走。
                             userScrollEnabled = true,
                             key = { tabs[it].name },
                         ) { index ->
@@ -221,7 +229,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         // isWeb 的分类磁贴各自挂一个变形源，点开时从它身上长成整屏。
                                         webTileModifier = { id ->
                                             with(shared) {
-                                                overlayBounds("categoryWeb-$id", contentScope)
+                                                overlayBounds("categoryWeb-$id", shellScope)
                                             }
                                         },
                                         onOpenWeb = { category ->
@@ -251,43 +259,72 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                             }
                         }
                     }
-                } else {
-                    // 整页本体：从按钮那一块变形到整屏，所以它自带底色、盖住底部栏。
-                    val pageKey = if (page == OverlayPage.Web) webKey else page.sharedKey
-                    val pageBounds = with(shared) {
-                        overlayBounds(pageKey, contentScope)
-                    }
-                    Box(modifier = pageBounds) {
-                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
-                        PicaBackdrop()
-                        Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
-                            when (page) {
-                                OverlayPage.Messages -> MessagesContent(
-                                    pager = messagePager,
-                                    listState = messageListState,
-                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
-                                    onNewestLoaded = noticeUnread::markSeen,
-                                )
+                }
 
-                                OverlayPage.Forum -> ForumContent(
-                                    pager = forumFeed.pager,
-                                    listState = forumListState,
-                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
-                                    topComments = forumFeed.topComments,
-                                )
+                // 整页层：从按钮那一块变形到整屏，所以它自带底色、盖住底部栏。
+                // 退场动画期间还得按老页面画，所以单独记一份「上一次显示的页」。
+                var shownPage by remember { mutableStateOf(OverlayPage.Web) }
+                if (overlay != OverlayPage.None) shownPage = overlay
+                AnimatedVisibility(
+                    visible = overlay != OverlayPage.None,
+                    enter = overlayPageEnter(),
+                    exit = overlayPageExit(),
+                    modifier = Modifier.fillMaxSize(),
+                    label = "overlayPage",
+                ) {
+                    val pageScope = this
+                    val page = shownPage
+                    Box(Modifier.fillMaxSize()) {
+                        // 挡住下边那一层：整页开着的时候点击和横滑都别漏下去。
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .pointerInput(Unit) {
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            awaitPointerEvent(PointerEventPass.Main)
+                                                .changes
+                                                .forEach { it.consume() }
+                                        }
+                                    }
+                                },
+                        )
+                        val pageKey = if (page == OverlayPage.Web) webKey else page.sharedKey
+                        val pageBounds = with(shared) {
+                            overlayBounds(pageKey, pageScope)
+                        }
+                        Box(modifier = pageBounds) {
+                            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                            PicaBackdrop()
+                            Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
+                                when (page) {
+                                    OverlayPage.Messages -> MessagesContent(
+                                        pager = messagePager,
+                                        listState = messageListState,
+                                        onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                        onNewestLoaded = noticeUnread::markSeen,
+                                    )
 
-                                OverlayPage.Leaderboard -> LeaderboardContent(
-                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
-                                )
+                                    OverlayPage.Forum -> ForumContent(
+                                        pager = forumFeed.pager,
+                                        listState = forumListState,
+                                        onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                        topComments = forumFeed.topComments,
+                                    )
 
-                                OverlayPage.Web -> WebPageContent(
-                                    title = webTitle,
-                                    url = webUrl,
-                                    showWebView = webMounted,
-                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
-                                )
+                                    OverlayPage.Leaderboard -> LeaderboardContent(
+                                        onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                    )
 
-                                OverlayPage.None -> Unit
+                                    OverlayPage.Web -> WebPageContent(
+                                        title = webTitle,
+                                        url = webUrl,
+                                        showWebView = webMounted,
+                                        onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                    )
+
+                                    OverlayPage.None -> Unit
+                                }
                             }
                         }
                     }
