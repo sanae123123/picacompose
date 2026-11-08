@@ -35,3 +35,26 @@ fun UserTitleBadge(title: String?, modifier: Modifier = Modifier) {
         )
     }
 }
+
+/**
+ * 接口里的性别代码转官方文案：`m` = 绅士，`f` = 淑女，`bot` = 机械人。
+ *
+ * 认不出来（或者压根没填）就返回 null，调用方不显示就是了。
+ */
+fun genderLabel(raw: String?): String? = when (raw?.trim()?.lowercase()) {
+    "m", "male" -> "绅士"
+    "f", "female" -> "淑女"
+    "bot", "robot" -> "机械人"
+    else -> null
+}
+
+/** 简介里那行资料：`绅士 · Lv.3 · 经验 1234`，缺哪样就不写哪样。 */
+fun userDetailLine(
+    gender: String? = null,
+    level: Int? = null,
+    exp: Int? = null,
+): String? = listOfNotNull(
+    genderLabel(gender),
+    level?.let { "Lv.$it" },
+    exp?.let { "经验 $it" },
+).joinToString(" · ").takeIf { it.isNotBlank() }

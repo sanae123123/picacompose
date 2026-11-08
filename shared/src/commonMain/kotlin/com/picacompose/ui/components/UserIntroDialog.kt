@@ -150,6 +150,7 @@ fun UserProfileDialog(
     seedSlogan: String? = null,
     seedLevel: Int? = null,
     seedExp: Int? = null,
+    seedGender: String? = null,
     onDismiss: () -> Unit,
 ) {
     var profile by remember(userId) { mutableStateOf<UserProfile?>(null) }
@@ -166,16 +167,14 @@ fun UserProfileDialog(
     val slogan = loaded?.slogan?.trim() ?: seedSlogan?.trim()
     val level = loaded?.level ?: seedLevel
     val exp = loaded?.exp ?: seedExp
+    val gender = loaded?.gender ?: seedGender
 
     UserIntroDialog(
         name = loaded?.name?.takeIf { it.isNotBlank() } ?: seedName.orEmpty(),
         avatarUrl = loaded?.avatar.url() ?: seedAvatarUrl,
         title = loaded?.title?.takeIf { it.isNotBlank() } ?: seedTitle,
         slogan = slogan,
-        detail = if (level == null) null else listOfNotNull(
-            "Lv.$level",
-            exp?.let { "经验 $it" },
-        ).joinToString(" · "),
+        detail = userDetailLine(gender = gender, level = level, exp = exp),
         loading = loaded == null && slogan.isNullOrBlank() && error == null,
         error = error,
         onDismiss = onDismiss,

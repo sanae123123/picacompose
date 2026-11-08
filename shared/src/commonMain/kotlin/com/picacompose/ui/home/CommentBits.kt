@@ -620,6 +620,9 @@ fun CommentRow(
                     seedAvatarUrl = user.avatar.url(),
                     seedTitle = user.title,
                     seedSlogan = user.slogan,
+                    seedLevel = user.level,
+                    seedExp = user.exp,
+                    seedGender = user.gender,
                     onDismiss = { introUser = null },
                 )
             }
@@ -779,6 +782,9 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
             seedAvatarUrl = user.avatar.url(),
             seedTitle = user.title,
             seedSlogan = user.slogan,
+            seedLevel = user.level,
+            seedExp = user.exp,
+            seedGender = user.gender,
             onDismiss = { introUser = null },
         )
     }

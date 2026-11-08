@@ -42,6 +42,8 @@ import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.UserIntroDialog
 import com.picacompose.ui.components.UserTitleBadge
+import com.picacompose.ui.components.genderLabel
+import com.picacompose.ui.components.userDetailLine
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.url
 import kotlinx.coroutines.launch
@@ -187,6 +189,7 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
         item {
             PicaCard {
                 DetailRow(PicaIcon.Person, "邮箱", profile.email ?: "未填")
+                DetailRow(PicaIcon.Person, "性别", genderLabel(profile.gender) ?: "未填")
                 DetailRow(PicaIcon.Grid, "等级 / 经验", "Lv.${profile.level} · ${profile.exp}")
                 LevelProgress(level = profile.level, exp = profile.exp)
                 DetailRow(PicaIcon.Home, "注册时间", profile.createdAt?.take(10) ?: "不知道")
@@ -213,6 +216,11 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
             avatarUrl = avatarUrl,
             title = profile.title,
             slogan = slogan,
+            detail = userDetailLine(
+                gender = profile.gender,
+                level = profile.level,
+                exp = profile.exp,
+            ),
             onDismiss = { showSlogan = false },
         )
     }
