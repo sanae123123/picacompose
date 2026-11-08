@@ -61,6 +61,20 @@ iOS 用 NSUserDefaults），下次打开直接恢复会话进首页；只存 tok
   `usesCleartextTraffic`。
 - 桌面（CIO）和 iOS（Darwin）引擎没有 DNS 钩子，`pinnedEngine()` 返回 `null`，线路 2/3 会退化成系统解析。
 
+## 本地构建
+
+这台机器上不跑 CI，debug 包直接本机出，改一行代码到装进手机大概 6 秒。关键在三处：
+
+- **Gradle 常驻 + 缓存**：`./gradlew --console=plain --configuration-cache :androidApp:assembleDebug --offline`
+  （配置缓存和构建缓存都开着；无改动构建约 1s，改一个文件约 5s，daemon 停了第一次会多 5s 左右）
+- **依赖离线**：`GRADLE_USER_HOME=/data/local/tmp/gradle-home`，依赖都在本地，`--offline` 跳过联网检查。
+  新加依赖时离线会失败，去掉 `--offline` 联网跑一次即可。
+- **关掉安装校验**：`settings put global verifier_verify_adb_installs 0`、
+  `settings put global package_verifier_enable 0`，`pm install -r -g` 从 ~15s 掉到 ~0.4s。
+  这两项重启后可能被系统改回去，慢了就再设一次。
+
+daemon 常驻会占 ~2G 内存，不用了可以 `./gradlew --stop` 还回去。
+
 ## 环境要求
 
 - JDK 17 及以上（项目按 JDK 21 验证）
