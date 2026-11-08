@@ -9,6 +9,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -141,6 +142,91 @@ data class CommentReplyTarget(
     val root: Comment,
     val mentionName: String? = null,
 )
+
+/**
+ * 长按一条留言：问一句要不要举报，确认后调 `comments/{id}/report`。
+ *
+ * 举报是提交给站务的，删不删由他们定，所以文案别承诺结果。
+ */
+@Composable
+private fun ReportCommentDialog(comment: Comment, onDismiss: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val pop = rememberDialogPop(onDismiss)
+    val scope = rememberCoroutineScope()
+    var sending by remember { mutableStateOf(false) }
+    var reported by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = pop::dismiss,
+        modifier = pop.modifier,
+        title = {
+            Text(
+                text = if (reported) "已提交" else "举报这条留言？",
+                style = MaterialTheme.typography.titleMedium,
+            )
+        },
+        text = {
+            Column {
+                if (reported) {
+                    Text(
+                        text = "已经提交给站务了，处理结果以他们为准。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                    )
+                } else {
+                    Text(
+                        text = "${comment.user?.name.orEmpty().ifBlank { "这位绅士" }}：${comment.content}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = "确认要举报的话就点下面的举报，提交给站务处理。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurface,
+                    )
+                    error?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.error,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (reported) {
+                TextButton(onClick = pop::dismiss) { Text("好") }
+            } else {
+                TextButton(
+                    enabled = !sending,
+                    onClick = {
+                        scope.launch {
+                            sending = true
+                            error = null
+                            runCatching { pica.comments.report(comment.id) }
+                                .onSuccess { reported = true }
+                                .onFailure { error = it.message ?: "举报没提交成功" }
+                            sending = false
+                        }
+                    },
+                ) {
+                    Text(if (sending) "提交中" else "举报")
+                }
+            }
+        },
+        dismissButton = if (reported) {
+            null
+        } else {
+            { TextButton(onClick = pop::dismiss) { Text("取消") } }
+        },
+    )
+}
 
 /**
  * 跳页弹窗：输入页码直接翻到那一页。
@@ -482,6 +568,7 @@ fun CommentRow(
     val avatar = comment.user?.avatar.url()
     var expanded by remember(comment.id) { mutableStateOf(false) }
     var introUser by remember(comment.id) { mutableStateOf<UserBasic?>(null) }
+    var reporting by remember(comment.id) { mutableStateOf(false) }
     val replyPager = remember(comment.id) {
         Pager(
             load = { page -> pica.comments.children(comment.id, page) },
@@ -521,7 +608,10 @@ fun CommentRow(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .then(if (hasReplies) Modifier.clickable { expanded = !expanded } else Modifier),
+                    .combinedClickable(
+                        onClick = { if (hasReplies) expanded = !expanded },
+                        onLongClick = { reporting = true },
+                    ),
             ) {
                 val user = comment.user
                 if (avatar != null) {
@@ -612,6 +702,9 @@ fun CommentRow(
                         }
                     }
                 }
+            }
+            if (reporting) {
+                ReportCommentDialog(comment = comment, onDismiss = { reporting = false })
             }
             introUser?.let { user ->
                 UserProfileDialog(
@@ -704,8 +797,14 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
     val avatar = comment.user?.avatar.url()
     val user = comment.user
     var introUser by remember(comment.id) { mutableStateOf<UserBasic?>(null) }
+    var reporting by remember(comment.id) { mutableStateOf(false) }
 
-    Row(modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = {}, onLongClick = { reporting = true })
+            .padding(bottom = 10.dp),
+    ) {
         if (avatar != null) {
             PicaImage(
                 url = avatar,
@@ -773,6 +872,10 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
                 }
             }
         }
+    }
+
+    if (reporting) {
+        ReportCommentDialog(comment = comment, onDismiss = { reporting = false })
     }
 
     introUser?.let { user ->
