@@ -1,20 +1,28 @@
 package com.picacompose.ui.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,14 +31,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
+import com.picacompose.ui.components.url
 import kotlinx.coroutines.launch
 
-/** 我的：资料明细 + 签到 + 退出登录。 */
+/** 我的：头像 + 简介 + 资料明细 + 签到 + 退出登录。 */
 @Composable
 fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
     val colors = MaterialTheme.colorScheme
@@ -39,6 +53,11 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
     var checkedIn by remember(profile) { mutableStateOf(profile.isPunched) }
     var punching by remember { mutableStateOf(false) }
     var punchError by remember { mutableStateOf<String?>(null) }
+
+    val slogan = profile.slogan?.trim().orEmpty()
+    // 简介两行放不下才给「展开」，点开是能滚的弹窗。
+    var sloganOverflows by remember(slogan) { mutableStateOf(false) }
+    var showSlogan by remember(slogan) { mutableStateOf(false) }
 
     PageScaffold {
         item {
@@ -52,6 +71,7 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
+                        // 底下垫首字母，头像没加载出来（或没有头像）时不至于空一块。
                         Surface(
                             shape = CircleShape,
                             color = colors.primaryContainer,
@@ -63,6 +83,15 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
                                     style = MaterialTheme.typography.headlineSmall,
                                     color = colors.onPrimaryContainer,
                                 )
+                                val avatarUrl = profile.avatar.url()
+                                if (avatarUrl != null) {
+                                    AsyncImage(
+                                        model = avatarUrl,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    )
+                                }
                             }
                         }
                         Spacer(Modifier.height(12.dp))
@@ -79,6 +108,32 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.onSurfaceVariant,
                             )
+                        }
+                        if (slogan.isNotEmpty()) {
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                text = slogan,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                                onTextLayout = { sloganOverflows = it.hasVisualOverflow },
+                            )
+                            if (sloganOverflows) {
+                                Text(
+                                    text = "展开",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = colors.primary,
+                                    modifier = Modifier
+                                        .align(Alignment.End)
+                                        .padding(top = 4.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .clickable { showSlogan = true }
+                                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                                )
+                            }
                         }
                     }
                     // 头像卡的右上角，只留一个图标；签过了就不出现。
@@ -151,5 +206,33 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
                 Text("退出登录", style = MaterialTheme.typography.labelLarge)
             }
         }
+    }
+
+    if (showSlogan) {
+        AlertDialog(
+            onDismissRequest = { showSlogan = false },
+            title = {
+                Text(
+                    text = "简介",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    Text(
+                        text = slogan,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showSlogan = false }) { Text("关闭") }
+            },
+        )
     }
 }
