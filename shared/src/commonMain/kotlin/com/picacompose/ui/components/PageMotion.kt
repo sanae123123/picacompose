@@ -1,35 +1,37 @@
 package com.picacompose.ui.components
 
-import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 
 /**
- * 点按钮打开一整页时用的过渡：新页从右边整屏推进来，返回时再整屏滑回去。
+ * 二级页的「容器变形」动画：点按钮 / 卡片时，那一块从原地长成整屏页面；返回时再缩回原处。
  *
- * 官方 App 里「留言版」「消息」这类二级页就是盖满整屏、带推入动画的，
- * 这里用同一套。 [isPageOpen] 用来判断目标状态算不算「打开了一层新页面」，
- * 比如 `{ it != OverlayPage.None }` 或者 `{ it }`。
- *
- * 底下那一层不动：动画期间只让新页滑，省得两页都在动、看着晃。
+ * 用法：外层套一个 [SharedTransitionLayout]，源（按钮、卡片）和目标（整页）用**同一个 key**
+ * 各挂一次 [overlayBounds]，再把源和目标放进同一个 AnimatedContent 的两个 state 里，
+ * 变形就自己串起来了。页面本体会铺满整屏，所以顺手把底部栏也盖住。
  */
-fun <S> AnimatedContentTransitionScope<S>.picaPagePush(
-    isPageOpen: (S) -> Boolean,
-): ContentTransform {
-    val opening = isPageOpen(targetState)
-    val enter = slideInHorizontally(tween(durationMillis = 320, easing = FastOutSlowInEasing)) { fullWidth ->
-        fullWidth
-    } + fadeIn(tween(durationMillis = 180))
-    val exit = slideOutHorizontally(tween(durationMillis = 300, easing = FastOutSlowInEasing)) { fullWidth ->
-        fullWidth
-    } + fadeOut(tween(durationMillis = 200))
-    return if (opening) enter togetherWith ExitTransition.None else EnterTransition.None togetherWith exit
-}
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun SharedTransitionScope.overlayBounds(
+    key: String,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+): Modifier = Modifier.sharedBounds(
+    sharedContentState = rememberSharedContentState(key = key),
+    animatedVisibilityScope = animatedVisibilityScope,
+)
+
+/**
+ * 配合 [overlayBounds] 用的进出动画：变形本身由 sharedBounds 负责，
+ * 这里只压一层淡入淡出，免得两套动画打架。
+ */
+fun overlayPageFade(): ContentTransform =
+    fadeIn(tween(durationMillis = 260, delayMillis = 80)) togetherWith
+        fadeOut(tween(durationMillis = 90))

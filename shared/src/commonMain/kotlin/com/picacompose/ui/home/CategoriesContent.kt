@@ -43,6 +43,7 @@ import com.picacompose.ui.components.url
 fun CategoriesContent(
     onOpenForum: () -> Unit = {},
     onOpenGames: () -> Unit = {},
+    forumTileModifier: Modifier = Modifier,
 ) {
     var reload by remember { mutableStateOf(0) }
     var categories by remember { mutableStateOf<List<Category>?>(null) }
@@ -80,7 +81,7 @@ fun CategoriesContent(
                 HotTile("遊戲推薦", art = "game", onClick = onOpenGames),
                 HotTile("點擊救嗶咔", url = adCover) { comingSoon = "點擊救嗶咔" },
                 HotTile("嗶咔小程式", art = "love_pica") { comingSoon = "嗶咔小程式" },
-                HotTile("嗶咔留言版", art = "forum", onClick = onOpenForum),
+                HotTile("嗶咔留言版", art = "forum", modifier = forumTileModifier, onClick = onOpenForum),
                 HotTile("最新更新", art = "latest") { comingSoon = "最新更新" },
                 HotTile("隨機本子", art = "random") { comingSoon = "隨機本子" },
             )
@@ -166,6 +167,7 @@ private data class HotTile(
     val label: String,
     val art: String? = null,
     val url: String? = null,
+    val modifier: Modifier = Modifier,
     val onClick: () -> Unit,
 )
 
@@ -179,7 +181,7 @@ private fun HotTileCard(
         shape = MaterialTheme.shapes.medium,
         color = colors.surface,
         tonalElevation = 1.dp,
-        modifier = modifier,
+        modifier = modifier.then(tile.modifier),
     ) {
         Column(modifier = Modifier.clickable(onClick = tile.onClick)) {
             val art = tile.art?.let { hotTileArt(it) }

@@ -1,6 +1,8 @@
 package com.picacompose.ui.home
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -37,11 +39,20 @@ import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.BackHandlerCompat
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
-import com.picacompose.ui.components.picaPagePush
+import com.picacompose.ui.components.overlayBounds
+import com.picacompose.ui.components.overlayPageFade
 import kotlinx.coroutines.launch
 
-/** 盖在主界面上的整页：官方那种从右边推进来的二级页。 */
+/** 从按钮长出来的整屏页面。 */
 private enum class OverlayPage { None, Messages, Forum }
+
+/** 变形动画要配对用的 key：源（按钮/卡片）和目标（整页）必须一致。 */
+private val OverlayPage.sharedKey: String
+    get() = when (this) {
+        OverlayPage.Messages -> "messagesCard"
+        OverlayPage.Forum -> "forumTile"
+        OverlayPage.None -> "mainShell"
+    }
 
 /**
  * 登录之后的壳：底部五个入口 + 对应内容。
@@ -49,9 +60,10 @@ private enum class OverlayPage { None, Messages, Forum }
  * 页面用一个横向 pager 装：点底部栏滑过去，左右拖动也能翻页，翻页动画由 pager 自己带。
  * 各页自己管滚动和内边距，这里只负责切换和底部栏。
  *
- * 消息页、留言板是「点按钮打开的整页」，盖在底部栏之上、整屏推入（见 [OverlayPage]），
- * 这样进出都有一整屏的动画，跟官方一致。
+ * 消息页、留言板是「点按钮打开的整页」：用 SharedTransitionLayout 的容器变形，
+ * 从卡片 / 磁贴那一块长成整屏（盖住底部栏），返回时缩回原处。
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     val scope = rememberCoroutineScope()
@@ -89,82 +101,98 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
 
     Box(Modifier.fillMaxSize()) {
         PicaBackdrop()
-        Scaffold(
-            containerColor = Color.Transparent,
-            bottomBar = {
-                PicaNavigationBar(
-                    selected = tab,
-                    onSelect = {
-                        overlayOrdinal = OverlayPage.None.ordinal
-                        scope.launch { pagerState.animateScrollToPage(it.ordinal) }
-                    },
-                )
-            },
-        ) { inner ->
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize().padding(inner),
-                // 整页盖上来的时候别让横滑把底下的栏翻走。
-                userScrollEnabled = overlay == OverlayPage.None,
-                key = { tabs[it].name },
+        SharedTransitionLayout {
+            val shared = this
+            AnimatedContent(
+                targetState = overlay,
+                transitionSpec = { overlayPageFade() },
+                modifier = Modifier.fillMaxSize(),
+                label = "overlayPage",
             ) { page ->
-                tabStates.SaveableStateProvider(tabs[page].name) {
-                    when (tabs[page]) {
-                        HomeTab.Home -> HomeContent(
-                            profile = profile,
-                            listState = homeListState,
-                            feed = homeFeed,
-                            onOpenMessages = { overlayOrdinal = OverlayPage.Messages.ordinal },
-                        )
-
-                        HomeTab.Category -> CategoriesContent(
-                            onOpenForum = { overlayOrdinal = OverlayPage.Forum.ordinal },
-                            onOpenGames = {
-                                overlayOrdinal = OverlayPage.None.ordinal
-                                scope.launch { pagerState.animateScrollToPage(HomeTab.Game.ordinal) }
-                            },
-                        )
-
-                        HomeTab.Game -> GamesContent(pager = gamePager, listState = gameListState)
-                        HomeTab.Mine -> MineContent(profile = profile, onSignOut = onSignOut)
-                        HomeTab.Settings -> SettingsContent(onSignOut = onSignOut)
+                val contentScope = this
+                if (page == OverlayPage.None) {
+                    // 主界面：消息卡和留言版磁贴各自挂上变形源，等被点的时候长成整页。
+                    val messagesSource = with(shared) {
+                        overlayBounds(OverlayPage.Messages.sharedKey, contentScope)
                     }
-                }
-            }
-        }
-
-        // 整页层：盖住底部栏，从右边整屏推入；关掉时再整屏滑回去。
-        AnimatedContent(
-            targetState = overlay,
-            transitionSpec = { picaPagePush { it != OverlayPage.None } },
-            modifier = Modifier.fillMaxSize(),
-            label = "overlayPage",
-        ) { page ->
-            if (page == OverlayPage.None) {
-                Box(Modifier.fillMaxSize())
-            } else {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
-                ) {
-                    // 二级页也铺同一块渐变底，看起来是同一套皮。
-                    PicaBackdrop()
-                    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
-                        when (page) {
-                            OverlayPage.Messages -> MessagesContent(
-                                pager = messagePager,
-                                listState = messageListState,
-                                onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                    val forumSource = with(shared) {
+                        overlayBounds(OverlayPage.Forum.sharedKey, contentScope)
+                    }
+                    Scaffold(
+                        containerColor = Color.Transparent,
+                        bottomBar = {
+                            PicaNavigationBar(
+                                selected = tab,
+                                onSelect = {
+                                    overlayOrdinal = OverlayPage.None.ordinal
+                                    scope.launch { pagerState.animateScrollToPage(it.ordinal) }
+                                },
                             )
+                        },
+                    ) { inner ->
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxSize().padding(inner),
+                            // 整页盖上来的时候别让横滑把底下的栏翻走。
+                            userScrollEnabled = true,
+                            key = { tabs[it].name },
+                        ) { index ->
+                            tabStates.SaveableStateProvider(tabs[index].name) {
+                                when (tabs[index]) {
+                                    HomeTab.Home -> HomeContent(
+                                        profile = profile,
+                                        listState = homeListState,
+                                        feed = homeFeed,
+                                        messagesCardModifier = messagesSource,
+                                        onOpenMessages = {
+                                            overlayOrdinal = OverlayPage.Messages.ordinal
+                                        },
+                                    )
 
-                            OverlayPage.Forum -> ForumContent(
-                                pager = forumPager,
-                                listState = forumListState,
-                                onBack = { overlayOrdinal = OverlayPage.None.ordinal },
-                            )
+                                    HomeTab.Category -> CategoriesContent(
+                                        forumTileModifier = forumSource,
+                                        onOpenForum = {
+                                            overlayOrdinal = OverlayPage.Forum.ordinal
+                                        },
+                                        onOpenGames = {
+                                            overlayOrdinal = OverlayPage.None.ordinal
+                                            scope.launch {
+                                                pagerState.animateScrollToPage(HomeTab.Game.ordinal)
+                                            }
+                                        },
+                                    )
 
-                            OverlayPage.None -> Unit
+                                    HomeTab.Game -> GamesContent(pager = gamePager, listState = gameListState)
+                                    HomeTab.Mine -> MineContent(profile = profile, onSignOut = onSignOut)
+                                    HomeTab.Settings -> SettingsContent(onSignOut = onSignOut)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // 整页本体：从按钮那一块变形到整屏，所以它自带底色、盖住底部栏。
+                    val pageBounds = with(shared) {
+                        overlayBounds(page.sharedKey, contentScope)
+                    }
+                    Box(modifier = pageBounds) {
+                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                        PicaBackdrop()
+                        Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
+                            when (page) {
+                                OverlayPage.Messages -> MessagesContent(
+                                    pager = messagePager,
+                                    listState = messageListState,
+                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                )
+
+                                OverlayPage.Forum -> ForumContent(
+                                    pager = forumPager,
+                                    listState = forumListState,
+                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                )
+
+                                OverlayPage.None -> Unit
+                            }
                         }
                     }
                 }
