@@ -50,6 +50,25 @@ class Pager<T>(
     /** 续页失败后的重试：清掉错误再拉同一页。 */
     suspend fun retry() = loadNext()
 
+    /**
+     * 重拉第一页并替换掉现有内容，列表不闪空。
+     *
+     * 给「关掉页面再进来」用：点赞状态、回复数这种会变的东西以服务端为准，重新拉一遍就行。
+     */
+    suspend fun reloadFirstPage() {
+        if (loading) return
+        loading = true
+        error = null
+        runCatching { load(1) }
+            .onSuccess { paged ->
+                items = paged.docs
+                loadedPage = 1
+                lastPage = paged.pages.coerceAtLeast(1)
+            }
+            .onFailure { error = it.message ?: "列表没拉到" }
+        loading = false
+    }
+
     /** 整个列表从头再来（下拉刷新 / 切线路后）。 */
     suspend fun refresh() {
         if (loading) return

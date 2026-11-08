@@ -39,9 +39,7 @@ fun ForumContent(
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(pager) {
-        if (pager.items.isEmpty()) pager.loadNext()
-    }
+    CommentAutoRefresh(pager)
     CommentLoadMore(listState, pager)
 
     Column(modifier.fillMaxSize()) {

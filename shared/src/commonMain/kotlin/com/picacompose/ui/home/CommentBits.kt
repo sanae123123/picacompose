@@ -1,5 +1,11 @@
 package com.picacompose.ui.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -52,6 +58,18 @@ const val FORUM_COMIC_ID = "5822a6e3ad7ede654696e482"
 @Composable
 fun rememberCommentPager(comicId: String): Pager<Comment> = remember(comicId) {
     Pager { page -> pica.comments.list(comicId, page).comments }
+}
+
+/**
+ * 进评论区时拉数据：第一次进来拉第一页，之后再进来重拉一遍并替换内容。
+ *
+ * 点赞状态、回复数这些会变，以服务端为准，本地不缓存「我点没点过」。
+ */
+@Composable
+fun CommentAutoRefresh(pager: Pager<Comment>) {
+    LaunchedEffect(pager) {
+        if (pager.items.isEmpty()) pager.loadNext() else pager.reloadFirstPage()
+    }
 }
 
 /** 滚到离底部还剩几行时续页。评论区和留言板共用。 */
@@ -112,8 +130,9 @@ fun LazyListScope.commentItems(
 private fun LikeButton(comment: Comment, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
-    var liked by remember(comment.id) { mutableStateOf(comment.isLiked) }
-    var likes by remember(comment.id) { mutableStateOf(comment.likesCount) }
+    // 键里带上服务端那份数据：重新拉到评论后，状态跟着最新的 isLiked 走。
+    var liked by remember(comment.id, comment.isLiked) { mutableStateOf(comment.isLiked) }
+    var likes by remember(comment.id, comment.likesCount) { mutableStateOf(comment.likesCount) }
     var busy by remember(comment.id) { mutableStateOf(false) }
 
     Row(
@@ -146,6 +165,7 @@ private fun LikeButton(comment: Comment, modifier: Modifier = Modifier) {
             icon = PicaIcon.Like,
             modifier = Modifier.size(15.dp),
             tint = if (liked) colors.primary else colors.onSurfaceVariant,
+            filled = liked,
         )
         Spacer(Modifier.width(4.dp))
         Text(
@@ -265,7 +285,11 @@ fun CommentRow(
                     }
                 }
             }
-            if (expanded) {
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(animationSpec = tween(220)) + fadeIn(tween(160)),
+                exit = shrinkVertically(animationSpec = tween(220)) + fadeOut(tween(120)),
+            ) {
                 CommentReplies(
                     pager = replyPager,
                     onReply = onReply,
