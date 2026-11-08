@@ -137,6 +137,7 @@ data class UserBasic(
     val gender: String? = null,
     val verified: Boolean = false,
     val title: String? = null,
+    val slogan: String? = null,
 )
 
 @Serializable

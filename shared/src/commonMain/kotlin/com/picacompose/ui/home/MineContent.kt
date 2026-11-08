@@ -39,6 +39,7 @@ import com.picacompose.data.pica
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.UserIntroDialog
+import com.picacompose.ui.components.UserTitleBadge
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.url
 import kotlinx.coroutines.launch
@@ -92,19 +93,16 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
                             }
                         }
                         Spacer(Modifier.height(12.dp))
-                        Text(
-                            text = profile.name.ifBlank { "已登录" },
-                            style = MaterialTheme.typography.titleMedium,
-                            color = colors.onSurface,
-                        )
-                        val title = profile.title
-                        if (!title.isNullOrBlank()) {
-                            Spacer(Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = title,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.onSurfaceVariant,
+                                text = profile.name.ifBlank { "已登录" },
+                                style = MaterialTheme.typography.titleMedium,
+                                color = colors.onSurface,
                             )
+                            if (!profile.title.isNullOrBlank()) {
+                                Spacer(Modifier.width(6.dp))
+                                UserTitleBadge(profile.title)
+                            }
                         }
                         if (slogan.isNotEmpty()) {
                             Spacer(Modifier.height(12.dp))
@@ -210,6 +208,7 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
         UserIntroDialog(
             name = profile.name,
             avatarUrl = avatarUrl,
+            title = profile.title,
             slogan = slogan,
             onDismiss = { showSlogan = false },
         )

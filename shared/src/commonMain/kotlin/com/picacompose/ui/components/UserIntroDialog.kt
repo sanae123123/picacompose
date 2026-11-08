@@ -2,11 +2,13 @@ package com.picacompose.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -25,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.picacompose.data.pica
@@ -40,6 +43,7 @@ fun UserIntroDialog(
     name: String,
     avatarUrl: String?,
     slogan: String?,
+    title: String? = null,
     detail: String? = null,
     loading: Boolean = false,
     error: String? = null,
@@ -73,12 +77,20 @@ fun UserIntroDialog(
                     )
                     Spacer(Modifier.height(12.dp))
                 }
-                if (name.isNotBlank()) {
-                    Text(
-                        text = name,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = colors.onSurface,
-                    )
+                if (name.isNotBlank() || !title.isNullOrBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = colors.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (!title.isNullOrBlank()) {
+                            Spacer(Modifier.width(6.dp))
+                            UserTitleBadge(title)
+                        }
+                    }
                 }
                 if (!detail.isNullOrBlank()) {
                     Spacer(Modifier.height(4.dp))
@@ -90,28 +102,26 @@ fun UserIntroDialog(
                 }
                 Spacer(Modifier.height(12.dp))
                 when {
-                    loading -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = colors.primary,
-                        )
-                    }
+                    !slogan.isNullOrBlank() -> Text(
+                        text = slogan,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    loading -> CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = colors.primary,
+                    )
                     !error.isNullOrBlank() -> Text(
                         text = error,
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.error,
                     )
-                    slogan.isNullOrBlank() -> Text(
+                    else -> Text(
                         text = "这个人还没写简介",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.onSurfaceVariant,
-                    )
-                    else -> Text(
-                        text = slogan,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
@@ -136,32 +146,37 @@ fun UserProfileDialog(
     userId: String,
     seedName: String? = null,
     seedAvatarUrl: String? = null,
+    seedTitle: String? = null,
+    seedSlogan: String? = null,
+    seedLevel: Int? = null,
+    seedExp: Int? = null,
     onDismiss: () -> Unit,
 ) {
     var profile by remember(userId) { mutableStateOf<UserProfile?>(null) }
-    var loading by remember(userId) { mutableStateOf(true) }
     var error by remember(userId) { mutableStateOf<String?>(null) }
+    val loaded = profile
 
     LaunchedEffect(userId) {
         runCatching { pica.users.profileById(userId) }
             .onSuccess { profile = it }
             .onFailure { error = it.message ?: "资料没拉到" }
-        loading = false
     }
 
-    val loaded = profile
+    // 列表里本来就带着昵称/头像/称号/简介，先用它铺满，服务端资料回来再覆盖。
+    val slogan = loaded?.slogan?.trim() ?: seedSlogan?.trim()
+    val level = loaded?.level ?: seedLevel
+    val exp = loaded?.exp ?: seedExp
+
     UserIntroDialog(
         name = loaded?.name?.takeIf { it.isNotBlank() } ?: seedName.orEmpty(),
         avatarUrl = loaded?.avatar.url() ?: seedAvatarUrl,
-        slogan = loaded?.slogan?.trim(),
-        detail = loaded?.let { user ->
-            listOfNotNull(
-                "Lv.${user.level}",
-                user.title?.takeIf { it.isNotBlank() },
-                "经验 ${user.exp}",
-            ).joinToString(" · ")
-        },
-        loading = loading,
+        title = loaded?.title?.takeIf { it.isNotBlank() } ?: seedTitle,
+        slogan = slogan,
+        detail = if (level == null) null else listOfNotNull(
+            "Lv.$level",
+            exp?.let { "经验 $it" },
+        ).joinToString(" · "),
+        loading = loaded == null && slogan.isNullOrBlank() && error == null,
         error = error,
         onDismiss = onDismiss,
     )

@@ -44,6 +44,7 @@ import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.UserProfileDialog
+import com.picacompose.ui.components.UserTitleBadge
 import com.picacompose.ui.components.url
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -249,6 +250,10 @@ fun CommentRow(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false),
                         )
+                        if (!comment.user?.title.isNullOrBlank()) {
+                            Spacer(Modifier.width(6.dp))
+                            UserTitleBadge(comment.user?.title)
+                        }
                         if (comment.isTop) {
                             Spacer(Modifier.width(8.dp))
                             InfoChip("置顶")
@@ -307,6 +312,8 @@ fun CommentRow(
                     userId = user.id,
                     seedName = user.name,
                     seedAvatarUrl = user.avatar.url(),
+                    seedTitle = user.title,
+                    seedSlogan = user.slogan,
                     onDismiss = { introUser = null },
                 )
             }
@@ -411,6 +418,10 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
+                if (!comment.user?.title.isNullOrBlank()) {
+                    Spacer(Modifier.width(6.dp))
+                    UserTitleBadge(comment.user?.title)
+                }
                 Spacer(Modifier.weight(1f))
                 val time = relativeTime(comment.createdAt)
                 if (time.isNotBlank()) {
@@ -451,6 +462,8 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
             userId = user.id,
             seedName = user.name,
             seedAvatarUrl = user.avatar.url(),
+            seedTitle = user.title,
+            seedSlogan = user.slogan,
             onDismiss = { introUser = null },
         )
     }
