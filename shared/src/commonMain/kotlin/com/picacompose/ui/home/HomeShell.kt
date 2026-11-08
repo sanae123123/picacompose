@@ -219,13 +219,13 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         forumTileModifier = forumSource,
                                         leaderboardTileModifier = leaderboardSource,
                                         // isWeb 的分类磁贴各自挂一个变形源，点开时从它身上长成整屏。
-                                        webTileModifier = { id ->
+                                        webTileModifier = { key ->
                                             with(shared) {
-                                                overlayBounds("categoryWeb-$id", contentScope)
+                                                overlayBounds(key, contentScope)
                                             }
                                         },
                                         onOpenWeb = { category ->
-                                            webKey = "categoryWeb-${category.id}"
+                                            webKey = categoryWebKey(category)
                                             webTitle = category.title
                                             webUrl = category.link.orEmpty()
                                             overlayOrdinal = OverlayPage.Web.ordinal

@@ -44,6 +44,17 @@ import com.picacompose.ui.components.url
  * 小程式 / 留言版 / 最新更新 / 隨機本子；除「點擊救嗶咔」用广告图外，其余是官方资源包
  * 里那套 cat_*.jpg，直接打进 App（见 composeResources/drawable）。
  */
+/**
+ * 网页磁贴的变形 key。
+ *
+ * 注意别用「分类 id」硬拼：服务端下发的网页分区有的干脆没有 `_id`，
+ * 拼出来全是同一个 key，几个磁贴会共用一份变形状态，动画就变成一起挤到一处。
+ */
+internal fun categoryWebKey(category: Category): String {
+    val unique = category.id.ifBlank { category.title }
+    return "categoryWeb-$unique"
+}
+
 @Stable
 class CategoriesState {
     var categories by mutableStateOf<List<Category>?>(null)
@@ -93,6 +104,7 @@ fun CategoriesContent(
     forumTileModifier: Modifier = Modifier,
     leaderboardTileModifier: Modifier = Modifier,
     // isWeb 的分类磁贴：外层给每块挂变形源，点开由外层打开整页浏览器。
+    // 参数是 [categoryWebKey] 算出来的 key，源和目标必须用同一个。
     webTileModifier: @Composable (String) -> Modifier = { Modifier },
     onOpenWeb: (Category) -> Unit = {},
 ) {
@@ -175,7 +187,7 @@ fun CategoriesContent(
                                     .weight(1f)
                                     .then(
                                         if (category.isWeb && !category.link.isNullOrBlank()) {
-                                            webTileModifier(category.id)
+                                            webTileModifier(categoryWebKey(category))
                                         } else {
                                             Modifier
                                         },
