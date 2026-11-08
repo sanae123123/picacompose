@@ -26,7 +26,7 @@ import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.url
 import com.picacompose.picaapi.model.Category
 
-/** 分类页：拉真实分类接口，两列排开。 */
+/** 分类页：拉真实分类接口，两列排开，卡片本身走懒加载。 */
 @Composable
 fun CategoriesContent() {
     val colors = MaterialTheme.colorScheme
@@ -44,20 +44,23 @@ fun CategoriesContent() {
     }
 
     PageScaffold {
-        PageHeader(title = "分类", subtitle = "站里的题材都在这里。")
-        Spacer(Modifier.height(18.dp))
+        item {
+            PageHeader(title = "分类", subtitle = "站里的题材都在这里。")
+            Spacer(Modifier.height(18.dp))
+        }
         val list = categories
         when {
-            error != null -> FailedBlock(error.orEmpty()) { reload++ }
-            list == null -> LoadingBlock()
-            list.isEmpty() -> EmptyBlock("接口没返回分类")
+            error != null -> item { FailedBlock(error.orEmpty()) { reload++ } }
+            list == null -> item { LoadingBlock() }
+            list.isEmpty() -> item { EmptyBlock("接口没返回分类") }
             else -> {
-                list.chunked(2).forEach { pair ->
+                val rows = list.chunked(2)
+                items(rows.size) { index ->
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        pair.forEach { category ->
+                        rows[index].forEach { category ->
                             CategoryCard(
                                 category = category,
                                 selected = category.title == selected,
@@ -65,17 +68,18 @@ fun CategoriesContent() {
                                 modifier = Modifier.weight(1f),
                             )
                         }
-                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                        if (rows[index].size == 1) Spacer(Modifier.weight(1f))
                     }
-                    Spacer(Modifier.height(12.dp))
                 }
                 selected?.let { title ->
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "选中的是「$title」，漫画列表下一步接上。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
-                    )
+                    item {
+                        Text(
+                            text = "选中的是「$title」，漫画列表下一步接上。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
                 }
             }
         }

@@ -10,14 +10,17 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.picacompose.data.pica
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
@@ -31,6 +34,9 @@ import com.picacompose.ui.components.PicaGlyph
 fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     var current by rememberSaveable { mutableStateOf(HomeTab.Home.name) }
     val tab = HomeTab.entries.firstOrNull { it.name == current } ?: HomeTab.Home
+    // 放这里让页面切走再回来时保留已加载的分页和滚动位置。
+    val gamePager = remember { Pager { page -> pica.games.list(page = page) } }
+    val gameListState = rememberLazyListState()
 
     Box(Modifier.fillMaxSize()) {
         PicaBackdrop()
@@ -49,7 +55,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                     )
 
                     HomeTab.Category -> CategoriesContent()
-                    HomeTab.Game -> GamesContent()
+                    HomeTab.Game -> GamesContent(pager = gamePager, listState = gameListState)
                     HomeTab.Mine -> MineContent(profile = profile, onSignOut = onSignOut)
                     HomeTab.Settings -> SettingsContent(onSignOut = onSignOut)
                 }

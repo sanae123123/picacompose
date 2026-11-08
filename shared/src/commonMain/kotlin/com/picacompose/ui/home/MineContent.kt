@@ -25,9 +25,12 @@ import com.picacompose.ui.components.PicaIcon
 fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     PageScaffold {
-        PageHeader(title = "我的", subtitle = "当前登录的账号。")
-        Spacer(Modifier.height(18.dp))
-        PicaCard {
+        item {
+            PageHeader(title = "我的", subtitle = "当前登录的账号。")
+            Spacer(Modifier.height(18.dp))
+        }
+        item {
+            PicaCard {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth(),
@@ -61,23 +64,26 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
                     )
                 }
             }
+            }
         }
-        Spacer(Modifier.height(14.dp))
-        PicaCard {
-            DetailRow(PicaIcon.Person, "邮箱", profile.email ?: "未填")
-            DetailRow(PicaIcon.Grid, "等级 / 经验", "Lv.${profile.level} · ${profile.exp}")
-            DetailRow(PicaIcon.Home, "注册时间", profile.createdAt?.take(10) ?: "不知道")
-            DetailRow(PicaIcon.Gear, "今日签到", if (profile.isPunched) "已签到" else "未签到")
+        item {
+            PicaCard {
+                DetailRow(PicaIcon.Person, "邮箱", profile.email ?: "未填")
+                DetailRow(PicaIcon.Grid, "等级 / 经验", "Lv.${profile.level} · ${profile.exp}")
+                DetailRow(PicaIcon.Home, "注册时间", profile.createdAt?.take(10) ?: "不知道")
+                DetailRow(PicaIcon.Gear, "今日签到", if (profile.isPunched) "已签到" else "未签到")
+            }
         }
-        Spacer(Modifier.height(18.dp))
-        OutlinedButton(
-            onClick = onSignOut,
-            shape = CircleShape,
-            modifier = Modifier.height(52.dp).fillMaxWidth(),
-        ) {
-            PicaGlyph(PicaIcon.Logout, Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("退出登录", style = MaterialTheme.typography.labelLarge)
+        item {
+            OutlinedButton(
+                onClick = onSignOut,
+                shape = CircleShape,
+                modifier = Modifier.height(52.dp).fillMaxWidth(),
+            ) {
+                PicaGlyph(PicaIcon.Logout, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("退出登录", style = MaterialTheme.typography.labelLarge)
+            }
         }
     }
 }

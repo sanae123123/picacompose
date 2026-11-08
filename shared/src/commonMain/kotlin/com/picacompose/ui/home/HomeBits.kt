@@ -2,6 +2,7 @@ package com.picacompose.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -13,9 +14,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -150,21 +153,78 @@ fun FailedBlock(message: String, onRetry: () -> Unit) {
     }
 }
 
-/** 整页容器：负责滚动 + 左右留白 + 最大宽度。 */
+/**
+ * 整页容器：内部是 LazyColumn，滚出屏幕的条目不再参与组合。
+ *
+ * 各页把内容拆成 `item { }` / `items(...)` 放进去。以前是 `verticalScroll` 的 Column，
+ * 进页面时几十个卡片一次性组合，会卡住一两秒。
+ */
 @Composable
-fun PageScaffold(content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 22.dp, vertical = 26.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top,
-    ) {
-        Column(
-            modifier = Modifier.widthIn(max = 460.dp).fillMaxWidth(),
+fun PageScaffold(
+    state: LazyListState = rememberLazyListState(),
+    contentPadding: PaddingValues = PaddingValues(horizontal = 22.dp, vertical = 26.dp),
+    content: LazyListScope.() -> Unit,
+) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        LazyColumn(
+            state = state,
+            contentPadding = contentPadding,
+            modifier = Modifier.widthIn(max = 460.dp).fillMaxSize(),
             content = content,
         )
+    }
+}
+
+/** 列表底部：续页中转圈、续页失败给重试、到底了说一声。 */
+@Composable
+fun ListFooter(
+    loading: Boolean,
+    error: String?,
+    hasMore: Boolean,
+    onRetry: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    when {
+        loading -> Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = "再拉一页…",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+            )
+        }
+
+        error != null -> Column(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = error,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.error,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(10.dp))
+            Button(onClick = onRetry, shape = CircleShape) { Text("再试一次") }
+        }
+
+        !hasMore -> Box(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "到底了",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+            )
+        }
+
+        else -> Spacer(Modifier.height(18.dp))
     }
 }
 
