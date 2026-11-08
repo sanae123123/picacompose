@@ -43,6 +43,7 @@ import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.overlayBounds
 import com.picacompose.ui.components.WebPageContent
 import com.picacompose.ui.components.overlayPageFade
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** 从按钮长出来的整屏页面。 */
@@ -87,6 +88,17 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     var webTitle by rememberSaveable { mutableStateOf("") }
     var webUrl by rememberSaveable { mutableStateOf("") }
     val overlay = OverlayPage.entries.getOrElse(overlayOrdinal) { OverlayPage.None }
+    // 网页视图等整页变形放完再挂（平台视图不参与容器变形）。
+    var webMounted by remember { mutableStateOf(false) }
+    LaunchedEffect(overlay) {
+        if (overlay == OverlayPage.Web) {
+            delay(480)
+            webMounted = true
+        } else {
+            // 返回时先卸掉，缩回磁贴的那段也交给页面本身。
+            webMounted = false
+        }
+    }
     // 消息是主页里的一层，没有独立的底部入口；退出去回到首页。
     val messagePager = remember {
         Pager(
@@ -271,6 +283,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                 OverlayPage.Web -> WebPageContent(
                                     title = webTitle,
                                     url = webUrl,
+                                    showWebView = webMounted,
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
                                 )
 

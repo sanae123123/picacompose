@@ -37,6 +37,9 @@ fun WebPageContent(
     url: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    /** 变形动画放完再挂网页视图：Android 的 WebView 是独立渲染的平台视图，不跟着容器变形走，
+     *  挂早了会直接以整屏尺寸弹出来，看着就不是从磁贴长出来的。 */
+    showWebView: Boolean = true,
 ) {
     val colors = MaterialTheme.colorScheme
     // 「刷新」= 把网页视图整个换掉重新请求，比在各平台上各接一套 reload 干净。
@@ -86,9 +89,11 @@ fun WebPageContent(
             )
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            // key 一变就重建网页视图，等于刷新。
-            key(reloadKey) {
-                PlatformWebView(url = url, modifier = Modifier.fillMaxSize())
+            if (showWebView) {
+                // key 一变就重建网页视图，等于刷新。
+                key(reloadKey) {
+                    PlatformWebView(url = url, modifier = Modifier.fillMaxSize())
+                }
             }
         }
     }
