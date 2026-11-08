@@ -50,7 +50,6 @@ import com.picacompose.ui.components.url
 @Composable
 fun HomeContent(
     profile: UserProfile,
-    onOpenCategory: () -> Unit,
     onOpenGame: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -59,6 +58,7 @@ fun HomeContent(
     var reload by remember { mutableStateOf(0) }
     // 点封面先给个说法，详情页还没做。
     var tapped by remember { mutableStateOf<ComicSummary?>(null) }
+    var showAnnouncements by remember { mutableStateOf(false) }
 
     LaunchedEffect(reload) {
         collections = null
@@ -157,10 +157,10 @@ fun HomeContent(
             Spacer(Modifier.height(2.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 QuickCard(
-                    icon = PicaIcon.Grid,
-                    title = "分类",
-                    subtitle = "按题材找漫画",
-                    onClick = onOpenCategory,
+                    icon = PicaIcon.Notice,
+                    title = "公告",
+                    subtitle = "站里的通知",
+                    onClick = { showAnnouncements = true },
                     modifier = Modifier.weight(1f),
                 )
                 QuickCard(
@@ -172,6 +172,10 @@ fun HomeContent(
                 )
             }
         }
+    }
+
+    if (showAnnouncements) {
+        AnnouncementsDialog(onDismiss = { showAnnouncements = false })
     }
 
     tapped?.let { comic ->

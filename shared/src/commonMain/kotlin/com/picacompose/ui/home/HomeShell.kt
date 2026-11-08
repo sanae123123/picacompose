@@ -50,7 +50,6 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                 when (tab) {
                     HomeTab.Home -> HomeContent(
                         profile = profile,
-                        onOpenCategory = { current = HomeTab.Category.name },
                         onOpenGame = { current = HomeTab.Game.name },
                     )
 

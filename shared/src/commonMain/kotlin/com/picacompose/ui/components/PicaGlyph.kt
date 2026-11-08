@@ -9,6 +9,7 @@ import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SportsEsports
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.rounded.EventAvailable as RoundedEventAva
 import androidx.compose.material.icons.rounded.Home as RoundedHome
 import androidx.compose.material.icons.rounded.Lock as RoundedLock
 import androidx.compose.material.icons.rounded.Logout as RoundedLogout
+import androidx.compose.material.icons.rounded.Notifications as RoundedNotifications
 import androidx.compose.material.icons.rounded.Person as RoundedPerson
 import androidx.compose.material.icons.rounded.Settings as RoundedSettings
 import androidx.compose.material.icons.rounded.SportsEsports as RoundedSportsEsports
@@ -39,7 +41,7 @@ import androidx.compose.ui.unit.dp
  *
  * 默认用 outlined，底部导航选中时换 filled —— Material You 里就是这么区分的。
  */
-enum class PicaIcon { Mail, Lock, Person, Eye, EyeOff, ArrowRight, Logout, Home, Grid, Gamepad, Gear, CheckIn }
+enum class PicaIcon { Mail, Lock, Person, Eye, EyeOff, ArrowRight, Logout, Home, Grid, Gamepad, Gear, CheckIn, Notice }
 
 private fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
     PicaIcon.Mail -> if (filled) Icons.Rounded.RoundedEmail else Icons.Outlined.Email
@@ -54,6 +56,7 @@ private fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
     PicaIcon.Gamepad -> if (filled) Icons.Rounded.RoundedSportsEsports else Icons.Outlined.SportsEsports
     PicaIcon.Gear -> if (filled) Icons.Rounded.RoundedSettings else Icons.Outlined.Settings
     PicaIcon.CheckIn -> if (filled) Icons.Rounded.RoundedEventAvailable else Icons.Outlined.EventAvailable
+    PicaIcon.Notice -> if (filled) Icons.Rounded.RoundedNotifications else Icons.Outlined.Notifications
 }
 
 @Composable
