@@ -163,11 +163,15 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     }
 
     // 打开整页也从头看，别接着上次读到的地方。
+    // 但从详情页退回列表页不算「打开整页」：刚翻到第几十本，退回来当然还在那一页。
+    var lastOverlay by remember { mutableStateOf(OverlayPage.None) }
     LaunchedEffect(overlay) {
+        val fromDetail = lastOverlay == OverlayPage.Detail
+        lastOverlay = overlay
         when (overlay) {
             OverlayPage.Messages -> messageListState.scrollToItem(0)
             OverlayPage.Forum -> forumListState.scrollToItem(0)
-            OverlayPage.Comics -> comicListState.scrollToItem(0)
+            OverlayPage.Comics -> if (!fromDetail) comicListState.scrollToItem(0)
             OverlayPage.None, OverlayPage.Leaderboard, OverlayPage.Web,
             OverlayPage.Detail -> Unit
         }
