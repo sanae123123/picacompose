@@ -250,11 +250,15 @@ private fun ComicCover(
     onClick: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    Column(modifier = Modifier.width(132.dp).clip(MaterialTheme.shapes.large).clickable(onClick = onClick)) {
+    // 圆角只裁封面，别把下面作者的左下角一起削掉。
+    Column(modifier = Modifier.width(132.dp).clickable(onClick = onClick)) {
         PicaImage(
             url = comic.thumb.url(),
             contentDescription = comic.title,
-            modifier = Modifier.fillMaxWidth().aspectRatio(3f / 4f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(3f / 4f)
+                .clip(MaterialTheme.shapes.large),
         )
         Spacer(Modifier.height(8.dp))
         Text(
