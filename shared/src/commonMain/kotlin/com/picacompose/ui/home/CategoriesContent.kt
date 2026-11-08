@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.Category
 import com.picacompose.ui.components.PicaImage
-import com.picacompose.ui.components.WebBrowserDialog
 import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.url
 
@@ -50,13 +49,14 @@ fun CategoriesContent(
     onOpenLeaderboard: () -> Unit = {},
     forumTileModifier: Modifier = Modifier,
     leaderboardTileModifier: Modifier = Modifier,
+    // isWeb 的分类磁贴：外层给每块挂变形源，点开由外层打开整页浏览器。
+    webTileModifier: @Composable (String) -> Modifier = { Modifier },
+    onOpenWeb: (Category) -> Unit = {},
 ) {
     var reload by remember { mutableStateOf(0) }
     var categories by remember { mutableStateOf<List<Category>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var selected by remember { mutableStateOf<String?>(null) }
-    // isWeb 的分类点开是网页，用内置浏览器盖上来。
-    var webTarget by remember { mutableStateOf<Category?>(null) }
     var adCover by remember { mutableStateOf<String?>(null) }
     // 还没接的入口点一下给个说明，别让磁贴看起来像坏的。
     var comingSoon by remember { mutableStateOf<String?>(null) }
@@ -137,12 +137,20 @@ fun CategoriesContent(
                                 onClick = {
                                     val link = category.link
                                     if (category.isWeb && !link.isNullOrBlank()) {
-                                        webTarget = category
+                                        onOpenWeb(category)
                                     } else {
                                         selected = category.title
                                     }
                                 },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .then(
+                                        if (category.isWeb && !category.link.isNullOrBlank()) {
+                                            webTileModifier(category.id)
+                                        } else {
+                                            Modifier
+                                        },
+                                    ),
                             )
                         }
                         if (rows[index].size == 1) Spacer(Modifier.weight(1f))
@@ -160,14 +168,6 @@ fun CategoriesContent(
                 }
             }
         }
-    }
-
-    webTarget?.let { category ->
-        WebBrowserDialog(
-            title = category.title,
-            url = category.link.orEmpty(),
-            onDismiss = { webTarget = null },
-        )
     }
 
     comingSoon?.let { title ->

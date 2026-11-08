@@ -41,11 +41,12 @@ import com.picacompose.data.NoticeUnread
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.overlayBounds
+import com.picacompose.ui.components.WebPageContent
 import com.picacompose.ui.components.overlayPageFade
 import kotlinx.coroutines.launch
 
 /** 从按钮长出来的整屏页面。 */
-private enum class OverlayPage { None, Messages, Forum, Leaderboard }
+private enum class OverlayPage { None, Messages, Forum, Leaderboard, Web }
 
 /** 变形动画要配对用的 key：源（按钮/卡片）和目标（整页）必须一致。 */
 private val OverlayPage.sharedKey: String
@@ -53,6 +54,8 @@ private val OverlayPage.sharedKey: String
         OverlayPage.Messages -> "messagesCard"
         OverlayPage.Forum -> "forumTile"
         OverlayPage.Leaderboard -> "leaderboardTile"
+        // 网页整页的 key 跟着具体磁贴走，这里只是兜底。
+        OverlayPage.Web -> "webPage"
         OverlayPage.None -> "mainShell"
     }
 
@@ -79,6 +82,10 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     }
     // 叠在主页上的两级整页：消息（从首页卡片开）、留言板（从分类磁贴开）。
     var overlayOrdinal by rememberSaveable { mutableStateOf(OverlayPage.None.ordinal) }
+    // 分类里 isWeb 的条目：点开哪个就把它的标题 / 地址 / 变形 key 记下来。
+    var webKey by rememberSaveable { mutableStateOf("webPage") }
+    var webTitle by rememberSaveable { mutableStateOf("") }
+    var webUrl by rememberSaveable { mutableStateOf("") }
     val overlay = OverlayPage.entries.getOrElse(overlayOrdinal) { OverlayPage.None }
     // 消息是主页里的一层，没有独立的底部入口；退出去回到首页。
     val messagePager = remember {
@@ -126,7 +133,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
         when (overlay) {
             OverlayPage.Messages -> messageListState.scrollToItem(0)
             OverlayPage.Forum -> forumListState.scrollToItem(0)
-            OverlayPage.None, OverlayPage.Leaderboard -> Unit
+            OverlayPage.None, OverlayPage.Leaderboard, OverlayPage.Web -> Unit
         }
     }
 
@@ -196,6 +203,18 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         state = categoryListState,
                                         forumTileModifier = forumSource,
                                         leaderboardTileModifier = leaderboardSource,
+                                        // isWeb 的分类磁贴各自挂一个变形源，点开时从它身上长成整屏。
+                                        webTileModifier = { id ->
+                                            with(shared) {
+                                                overlayBounds("categoryWeb-$id", contentScope)
+                                            }
+                                        },
+                                        onOpenWeb = { category ->
+                                            webKey = "categoryWeb-${category.id}"
+                                            webTitle = category.title
+                                            webUrl = category.link.orEmpty()
+                                            overlayOrdinal = OverlayPage.Web.ordinal
+                                        },
                                         onOpenLeaderboard = {
                                             overlayOrdinal = OverlayPage.Leaderboard.ordinal
                                         },
@@ -219,8 +238,9 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                     }
                 } else {
                     // 整页本体：从按钮那一块变形到整屏，所以它自带底色、盖住底部栏。
+                    val pageKey = if (page == OverlayPage.Web) webKey else page.sharedKey
                     val pageBounds = with(shared) {
-                        overlayBounds(page.sharedKey, contentScope)
+                        overlayBounds(pageKey, contentScope)
                     }
                     Box(modifier = pageBounds) {
                         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
@@ -242,6 +262,12 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                 )
 
                                 OverlayPage.Leaderboard -> LeaderboardContent(
+                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                )
+
+                                OverlayPage.Web -> WebPageContent(
+                                    title = webTitle,
+                                    url = webUrl,
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
                                 )
 
