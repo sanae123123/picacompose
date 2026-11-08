@@ -138,6 +138,8 @@ data class UserBasic(
     val verified: Boolean = false,
     val title: String? = null,
     val slogan: String? = null,
+    /** 骑士榜里带着：这个骑士传了多少本。 */
+    val comicsUploaded: Int = 0,
 )
 
 @Serializable

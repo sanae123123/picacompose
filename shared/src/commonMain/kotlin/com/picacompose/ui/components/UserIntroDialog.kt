@@ -46,6 +46,7 @@ fun UserIntroDialog(
     slogan: String?,
     title: String? = null,
     detail: String? = null,
+    frameUrl: String? = null,
     loading: Boolean = false,
     error: String? = null,
     onDismiss: () -> Unit,
@@ -67,14 +68,12 @@ fun UserIntroDialog(
             ) {
                 // 头像跟着简介一起滚；点开是全屏看图。
                 if (avatarUrl != null) {
-                    AsyncImage(
-                        model = avatarUrl,
+                    UserAvatar(
+                        avatarUrl = avatarUrl,
+                        frameUrl = frameUrl,
+                        size = 88.dp,
                         contentDescription = "头像",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(88.dp)
-                            .clip(CircleShape)
-                            .clickable { showAvatar = true },
+                        modifier = Modifier.clickable { showAvatar = true },
                     )
                     Spacer(Modifier.height(12.dp))
                 }
@@ -151,6 +150,7 @@ fun UserProfileDialog(
     seedLevel: Int? = null,
     seedExp: Int? = null,
     seedGender: String? = null,
+    seedFrame: String? = null,
     onDismiss: () -> Unit,
 ) {
     var profile by remember(userId) { mutableStateOf<UserProfile?>(null) }
@@ -168,10 +168,12 @@ fun UserProfileDialog(
     val level = loaded?.level ?: seedLevel
     val exp = loaded?.exp ?: seedExp
     val gender = loaded?.gender ?: seedGender
+    val frame = loaded?.character ?: seedFrame
 
     UserIntroDialog(
         name = loaded?.name?.takeIf { it.isNotBlank() } ?: seedName.orEmpty(),
         avatarUrl = loaded?.avatar.url() ?: seedAvatarUrl,
+        frameUrl = frame,
         title = loaded?.title?.takeIf { it.isNotBlank() } ?: seedTitle,
         slogan = slogan,
         detail = userDetailLine(gender = gender, level = level, exp = exp),

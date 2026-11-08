@@ -39,6 +39,7 @@ import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
 import com.picacompose.picaapi.model.NotificationDoc
 import com.picacompose.ui.components.PicaGlyph
+import com.picacompose.ui.components.UserAvatar
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.url
@@ -206,11 +207,10 @@ private fun NotificationAvatar(message: NotificationDoc) {
             } else {
                 val avatarUrl = message.sender?.avatar.url()
                 if (avatarUrl != null) {
-                    AsyncImage(
-                        model = avatarUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    UserAvatar(
+                        avatarUrl = avatarUrl,
+                        frameUrl = message.sender?.character,
+                        size = 42.dp,
                     )
                 } else {
                     Text(

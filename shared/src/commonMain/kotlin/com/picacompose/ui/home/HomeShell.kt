@@ -45,13 +45,14 @@ import com.picacompose.ui.components.overlayPageFade
 import kotlinx.coroutines.launch
 
 /** 从按钮长出来的整屏页面。 */
-private enum class OverlayPage { None, Messages, Forum }
+private enum class OverlayPage { None, Messages, Forum, Leaderboard }
 
 /** 变形动画要配对用的 key：源（按钮/卡片）和目标（整页）必须一致。 */
 private val OverlayPage.sharedKey: String
     get() = when (this) {
         OverlayPage.Messages -> "messagesCard"
         OverlayPage.Forum -> "forumTile"
+        OverlayPage.Leaderboard -> "leaderboardTile"
         OverlayPage.None -> "mainShell"
     }
 
@@ -135,6 +136,9 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                     val forumSource = with(shared) {
                         overlayBounds(OverlayPage.Forum.sharedKey, contentScope)
                     }
+                    val leaderboardSource = with(shared) {
+                        overlayBounds(OverlayPage.Leaderboard.sharedKey, contentScope)
+                    }
                     Scaffold(
                         containerColor = Color.Transparent,
                         bottomBar = {
@@ -169,6 +173,10 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
 
                                     HomeTab.Category -> CategoriesContent(
                                         forumTileModifier = forumSource,
+                                        leaderboardTileModifier = leaderboardSource,
+                                        onOpenLeaderboard = {
+                                            overlayOrdinal = OverlayPage.Leaderboard.ordinal
+                                        },
                                         onOpenForum = {
                                             overlayOrdinal = OverlayPage.Forum.ordinal
                                         },
@@ -209,6 +217,10 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                     listState = forumListState,
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
                                     topComments = forumFeed.topComments,
+                                )
+
+                                OverlayPage.Leaderboard -> LeaderboardContent(
+                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
                                 )
 
                                 OverlayPage.None -> Unit

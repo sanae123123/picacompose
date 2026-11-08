@@ -43,7 +43,9 @@ import com.picacompose.ui.components.url
 fun CategoriesContent(
     onOpenForum: () -> Unit = {},
     onOpenGames: () -> Unit = {},
+    onOpenLeaderboard: () -> Unit = {},
     forumTileModifier: Modifier = Modifier,
+    leaderboardTileModifier: Modifier = Modifier,
 ) {
     var reload by remember { mutableStateOf(0) }
     var categories by remember { mutableStateOf<List<Category>?>(null) }
@@ -79,7 +81,12 @@ fun CategoriesContent(
             Spacer(Modifier.height(12.dp))
             val hotTiles = listOf(
                 HotTile("支持嗶咔", art = "support") { comingSoon = "支持嗶咔" },
-                HotTile("嗶咔排行榜", art = "leaderboard") { comingSoon = "嗶咔排行榜" },
+                HotTile(
+                    label = "嗶咔排行榜",
+                    art = "leaderboard",
+                    modifier = leaderboardTileModifier,
+                    onClick = onOpenLeaderboard,
+                ),
                 HotTile("遊戲推薦", art = "game", onClick = onOpenGames),
                 HotTile("點擊救嗶咔", url = adCover) { comingSoon = "點擊救嗶咔" },
                 HotTile("嗶咔小程式", art = "love_pica") { comingSoon = "嗶咔小程式" },

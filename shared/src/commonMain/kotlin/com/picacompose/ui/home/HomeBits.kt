@@ -33,6 +33,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.geometry.Offset
@@ -59,10 +61,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import com.picacompose.picaapi.model.ComicSummary
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
+import com.picacompose.ui.components.rememberDialogPop
 
 /** 页面顶部的标题。只放标题，说明文字不占这儿的位置。 */
 @Composable
@@ -448,6 +453,52 @@ fun ListFooter(
 
         else -> Spacer(Modifier.height(18.dp))
     }
+}
+
+/**
+ * 点一张封面但详情页还没做：先把标题、作者、分类亮出来，别让点击显得没反应。
+ *
+ * 首页合集和排行榜共用。
+ */
+@Composable
+fun ComicTeaserDialog(comic: ComicSummary, onDismiss: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val pop = rememberDialogPop(onDismiss)
+    AlertDialog(
+        onDismissRequest = pop::dismiss,
+        modifier = pop.modifier,
+        title = { Text(comic.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        text = {
+            Column {
+                val author = comic.author
+                if (!author.isNullOrBlank()) {
+                    Text(
+                        text = author,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+                val cats = comic.categories
+                if (cats.isNotEmpty()) {
+                    Text(
+                        text = cats.joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+                Text(
+                    text = "详情页还没做，先看看封面。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = pop::dismiss) { Text("好") }
+        },
+    )
 }
 
 /** 空状态提示。 */

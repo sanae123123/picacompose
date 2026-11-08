@@ -61,6 +61,7 @@ import com.picacompose.picaapi.model.UserBasic
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaImage
+import com.picacompose.ui.components.UserAvatar
 import com.picacompose.ui.components.UserProfileDialog
 import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.UserTitleBadge
@@ -615,15 +616,14 @@ fun CommentRow(
             ) {
                 val user = comment.user
                 if (avatar != null) {
-                    PicaImage(
-                        url = avatar,
+                    UserAvatar(
+                        avatarUrl = avatar,
+                        frameUrl = user?.character,
+                        size = 38.dp,
                         contentDescription = user?.name,
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(19.dp))
-                            .then(
-                                if (user != null) Modifier.clickable { introUser = user } else Modifier,
-                            ),
+                        modifier = Modifier.then(
+                            if (user != null) Modifier.clickable { introUser = user } else Modifier,
+                        ),
                     )
                 } else {
                     Surface(
@@ -716,6 +716,7 @@ fun CommentRow(
                     seedLevel = user.level,
                     seedExp = user.exp,
                     seedGender = user.gender,
+                    seedFrame = user.character,
                     onDismiss = { introUser = null },
                 )
             }
@@ -806,13 +807,14 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
             .padding(bottom = 10.dp),
     ) {
         if (avatar != null) {
-            PicaImage(
-                url = avatar,
+            UserAvatar(
+                avatarUrl = avatar,
+                frameUrl = user?.character,
+                size = 26.dp,
                 contentDescription = comment.user?.name,
-                modifier = Modifier
-                    .size(26.dp)
-                    .clip(RoundedCornerShape(13.dp))
-                    .then(if (user != null) Modifier.clickable { introUser = user } else Modifier),
+                modifier = Modifier.then(
+                    if (user != null) Modifier.clickable { introUser = user } else Modifier,
+                ),
             )
         } else {
             Surface(
@@ -888,6 +890,7 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
             seedLevel = user.level,
             seedExp = user.exp,
             seedGender = user.gender,
+            seedFrame = user.character,
             onDismiss = { introUser = null },
         )
     }

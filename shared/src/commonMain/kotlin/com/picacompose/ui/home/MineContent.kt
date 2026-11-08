@@ -41,6 +41,7 @@ import com.picacompose.data.pica
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.UserIntroDialog
+import com.picacompose.ui.components.UserAvatar
 import com.picacompose.ui.components.UserTitleBadge
 import com.picacompose.ui.components.genderLabel
 import com.picacompose.ui.components.userDetailLine
@@ -60,6 +61,7 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
 
     val slogan = profile.slogan?.trim().orEmpty()
     val avatarUrl = profile.avatar.url()
+    val avatarFrame = profile.character
     // 简介两行放不下才给「展开」，点开是能滚的弹窗。
     var sloganOverflows by remember(slogan) { mutableStateOf(false) }
     var showSlogan by remember(slogan) { mutableStateOf(false) }
@@ -87,11 +89,10 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
                                     color = colors.onPrimaryContainer,
                                 )
                                 if (avatarUrl != null) {
-                                    AsyncImage(
-                                        model = avatarUrl,
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    UserAvatar(
+                                        avatarUrl = avatarUrl,
+                                        frameUrl = avatarFrame,
+                                        size = 72.dp,
                                     )
                                 }
                             }
@@ -214,6 +215,7 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
         UserIntroDialog(
             name = profile.name,
             avatarUrl = avatarUrl,
+            frameUrl = avatarFrame,
             title = profile.title,
             slogan = slogan,
             detail = userDetailLine(
