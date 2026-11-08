@@ -11,13 +11,18 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -26,16 +31,25 @@ import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.BackHandlerCompat
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
+import kotlinx.coroutines.launch
 
 /**
  * 登录之后的壳：底部五个入口 + 对应内容。
  *
+ * 页面用一个横向 pager 装：点底部栏滑过去，左右拖动也能翻页，翻页动画由 pager 自己带。
  * 各页自己管滚动和内边距，这里只负责切换和底部栏。
  */
 @Composable
 fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
-    var current by rememberSaveable { mutableStateOf(HomeTab.Home.name) }
-    val tab = HomeTab.entries.firstOrNull { it.name == current } ?: HomeTab.Home
+    val scope = rememberCoroutineScope()
+    val tabs = HomeTab.entries
+    var savedIndex by rememberSaveable { mutableStateOf(0) }
+    val pagerState = rememberPagerState(initialPage = savedIndex, pageCount = { tabs.size })
+    val tab = tabs[pagerState.currentPage.coerceIn(tabs.indices)]
+    // 进程被杀掉再回来还能停在原来那一栏。
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.currentPage }.collect { savedIndex = it }
+    }
     // 消息是主页里的一层，没有独立的底部入口；退出去回到首页。
     var showMessages by rememberSaveable { mutableStateOf(false) }
     val messagePager = remember { Pager { page -> pica.users.notifications(page = page) } }
@@ -56,13 +70,19 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                     selected = tab,
                     onSelect = {
                         showMessages = false
-                        current = it.name
+                        scope.launch { pagerState.animateScrollToPage(it.ordinal) }
                     },
                 )
             },
         ) { inner ->
-            Box(Modifier.fillMaxSize().padding(inner)) {
-                when (tab) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize().padding(inner),
+                // 消息页盖在主页那一栏上，这时候别让横滑把整页翻走。
+                userScrollEnabled = !showMessages,
+                key = { tabs[it].name },
+            ) { page ->
+                when (tabs[page]) {
                     HomeTab.Home -> if (showMessages) {
                         MessagesContent(
                             pager = messagePager,
