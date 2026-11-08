@@ -2,8 +2,6 @@ package com.picacompose.ui.components
 
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.tween
@@ -34,10 +32,6 @@ fun SharedTransitionScope.overlayBounds(
  * 配合 [overlayBounds] 用的进出动画：变形本身由 sharedBounds 负责，
  * 这里只压一层淡入淡出，免得两套动画打架。
  */
-fun overlayPageEnter(): EnterTransition =
-    fadeIn(tween(durationMillis = 260, delayMillis = 80))
-
-fun overlayPageExit(): ExitTransition = fadeOut(tween(durationMillis = 90))
-
 fun overlayPageFade(): ContentTransform =
-    overlayPageEnter() togetherWith overlayPageExit()
+    fadeIn(tween(durationMillis = 260, delayMillis = 80)) togetherWith
+        fadeOut(tween(durationMillis = 90))
