@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -62,9 +63,15 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     var showMessages by rememberSaveable { mutableStateOf(false) }
     val messagePager = remember { Pager { page -> pica.users.notifications(page = page) } }
     val messageListState = rememberLazyListState()
+    // 首页那条流也提上来：打开消息页再退回来时，不重拉推荐、不跳回顶部。
+    val homeListState = rememberLazyListState()
+    val homeFeed = rememberHomeFeedState()
     // 放这里让页面切走再回来时保留已加载的分页和滚动位置。
     val gamePager = remember { Pager { page -> pica.games.list(page = page) } }
     val gameListState = rememberLazyStaggeredGridState()
+
+    // 各栏的滚动位置在滑走再回来时也能接上（懒列表的状态本身是可保存的）。
+    val tabStates = rememberSaveableStateHolder()
 
     // 消息页是主页里的一层，系统返回先退回首页，而不是直接退出 App。
     BackHandlerCompat(enabled = showMessages) { showMessages = false }
@@ -90,6 +97,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                 userScrollEnabled = !showMessages,
                 key = { tabs[it].name },
             ) { page ->
+                tabStates.SaveableStateProvider(tabs[page].name) {
                 when (tabs[page]) {
                     // 消息页和首页那张卡共用一个 bound：卡片长成整页，退出时缩回去。
                     HomeTab.Home -> SharedTransitionLayout {
@@ -119,6 +127,8 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                 HomeContent(
                                     profile = profile,
                                     messagesCardModifier = bounds,
+                                    listState = homeListState,
+                                    feed = homeFeed,
                                     onOpenMessages = { showMessages = true },
                                 )
                             }
@@ -129,6 +139,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                     HomeTab.Game -> GamesContent(pager = gamePager, listState = gameListState)
                     HomeTab.Mine -> MineContent(profile = profile, onSignOut = onSignOut)
                     HomeTab.Settings -> SettingsContent(onSignOut = onSignOut)
+                }
                 }
             }
         }

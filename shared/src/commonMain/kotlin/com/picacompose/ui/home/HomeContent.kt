@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -25,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,30 +50,52 @@ import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.url
 
+/** 主页推荐流的状态。放在 [HomeContent] 外面，进出消息页时不用重拉、滚动位置也还在。 */
+@Stable
+class HomeFeedState {
+    var collections by mutableStateOf<List<CollectionGroup>?>(null)
+        internal set
+    var error by mutableStateOf<String?>(null)
+        internal set
+    var reload by mutableStateOf(0)
+        internal set
+
+    fun retry() {
+        reload++
+    }
+
+    internal suspend fun load() {
+        // 已经拉到了就不动，免得每次回到首页都闪一下 loading。
+        if (collections != null) return
+        error = null
+        runCatching { pica.comics.collections() }
+            .onSuccess { collections = it }
+            .onFailure { error = it.message ?: "推荐没拉到" }
+    }
+}
+
+@Composable
+fun rememberHomeFeedState(): HomeFeedState = remember { HomeFeedState() }
+
 /** 主页：资料卡 + 本子妹推荐 + 快捷入口。 */
 @Composable
 fun HomeContent(
     profile: UserProfile,
     onOpenMessages: () -> Unit,
     messagesCardModifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
+    feed: HomeFeedState = rememberHomeFeedState(),
 ) {
     val colors = MaterialTheme.colorScheme
-    var collections by remember { mutableStateOf<List<CollectionGroup>?>(null) }
-    var collectionError by remember { mutableStateOf<String?>(null) }
-    var reload by remember { mutableStateOf(0) }
+    val collections = feed.collections
+    val collectionError = feed.error
     // 点封面先给个说法，详情页还没做。
     var tapped by remember { mutableStateOf<ComicSummary?>(null) }
     var showAnnouncements by remember { mutableStateOf(false) }
 
-    LaunchedEffect(reload) {
-        collections = null
-        collectionError = null
-        runCatching { pica.comics.collections() }
-            .onSuccess { collections = it }
-            .onFailure { collectionError = it.message ?: "推荐没拉到" }
-    }
+    LaunchedEffect(feed.reload) { feed.load() }
 
-    PageScaffold {
+    PageScaffold(state = listState) {
         item {
             PageHeader(
                 title = "欢迎回来",
@@ -140,7 +165,7 @@ fun HomeContent(
                     color = colors.error,
                 )
                 Spacer(Modifier.height(8.dp))
-                Button(onClick = { reload++ }, shape = CircleShape) { Text("再试一次") }
+                Button(onClick = feed::retry, shape = CircleShape) { Text("再试一次") }
             }
 
             groups == null -> item { LoadingBlock("正在拉推荐…") }
