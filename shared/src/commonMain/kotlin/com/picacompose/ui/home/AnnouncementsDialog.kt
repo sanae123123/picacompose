@@ -47,6 +47,7 @@ import com.picacompose.data.pica
 import com.picacompose.picaapi.model.Announcement
 import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.PicaImageViewer
+import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.url
 
 /** 正文里的链接，抓出来单独标成可点的。 */
@@ -60,6 +61,7 @@ private val urlPattern = Regex("""https?://[^\s"'<>，。、）】]+""")
 @Composable
 fun AnnouncementsDialog(onDismiss: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val pop = rememberDialogPop(onDismiss)
     var announcements by remember { mutableStateOf<List<Announcement>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var index by remember { mutableStateOf(0) }
@@ -78,11 +80,12 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
             .onFailure { error = it.message ?: "公告没拉到" }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = pop::dismiss) {
         Surface(
             shape = RoundedCornerShape(28.dp),
             color = colors.surface,
             tonalElevation = 3.dp,
+            modifier = pop.modifier,
         ) {
             val list = announcements
             when {
@@ -112,7 +115,7 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
                     )
                     Spacer(Modifier.height(10.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = onDismiss) { Text("確定") }
+                        TextButton(onClick = pop::dismiss) { Text("確定") }
                     }
                 }
 
@@ -162,7 +165,7 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
                             horizontalArrangement = Arrangement.End,
                         ) {
                             TextButton(onClick = { showList = true }) { Text("公告列表") }
-                            TextButton(onClick = onDismiss) { Text("確定") }
+                            TextButton(onClick = pop::dismiss) { Text("確定") }
                         }
                     }
                 }

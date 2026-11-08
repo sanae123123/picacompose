@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
 import com.picacompose.ui.components.PicaBackdrop
+import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.home.HomeShell
 import com.picacompose.ui.login.LoginController
 import com.picacompose.ui.login.LoginScreen
@@ -79,12 +80,14 @@ private fun MainScreens() {
     }
 
     pendingFeature?.let { feature ->
+        val pop = rememberDialogPop(onDismiss = { pendingFeature = null })
         AlertDialog(
-            onDismissRequest = { pendingFeature = null },
+            onDismissRequest = pop::dismiss,
+            modifier = pop.modifier,
             title = { Text("$feature 还没做") },
             text = { Text("先把登录流程跑通，$feature 页面排在下一步。") },
             confirmButton = {
-                TextButton(onClick = { pendingFeature = null }) { Text("好") }
+                TextButton(onClick = pop::dismiss) { Text("好") }
             },
         )
     }

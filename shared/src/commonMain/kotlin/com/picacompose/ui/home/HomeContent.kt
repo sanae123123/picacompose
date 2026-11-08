@@ -44,6 +44,7 @@ import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaImage
+import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.url
 
 /** 主页：资料卡 + 本子妹推荐 + 快捷入口。 */
@@ -51,6 +52,7 @@ import com.picacompose.ui.components.url
 fun HomeContent(
     profile: UserProfile,
     onOpenMessages: () -> Unit,
+    messagesCardModifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     var collections by remember { mutableStateOf<List<CollectionGroup>?>(null) }
@@ -168,7 +170,8 @@ fun HomeContent(
                     title = "消息",
                     subtitle = "回复和通知",
                     onClick = onOpenMessages,
-                    modifier = Modifier.weight(1f),
+                    // 点下去这张卡会长成消息页，bound 的 key 和消息页那边对上。
+                    modifier = Modifier.weight(1f).then(messagesCardModifier),
                 )
             }
         }
@@ -179,8 +182,10 @@ fun HomeContent(
     }
 
     tapped?.let { comic ->
+        val pop = rememberDialogPop(onDismiss = { tapped = null })
         AlertDialog(
-            onDismissRequest = { tapped = null },
+            onDismissRequest = pop::dismiss,
+            modifier = pop.modifier,
             title = { Text(comic.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
             text = {
                 Column {
@@ -210,7 +215,7 @@ fun HomeContent(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { tapped = null }) { Text("好") }
+                TextButton(onClick = pop::dismiss) { Text("好") }
             },
         )
     }

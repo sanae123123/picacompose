@@ -1,5 +1,12 @@
 package com.picacompose.ui.home
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -39,6 +46,7 @@ import kotlinx.coroutines.launch
  * 页面用一个横向 pager 装：点底部栏滑过去，左右拖动也能翻页，翻页动画由 pager 自己带。
  * 各页自己管滚动和内边距，这里只负责切换和底部栏。
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     val scope = rememberCoroutineScope()
@@ -83,17 +91,38 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                 key = { tabs[it].name },
             ) { page ->
                 when (tabs[page]) {
-                    HomeTab.Home -> if (showMessages) {
-                        MessagesContent(
-                            pager = messagePager,
-                            listState = messageListState,
-                            onBack = { showMessages = false },
-                        )
-                    } else {
-                        HomeContent(
-                            profile = profile,
-                            onOpenMessages = { showMessages = true },
-                        )
+                    // 消息页和首页那张卡共用一个 bound：卡片长成整页，退出时缩回去。
+                    HomeTab.Home -> SharedTransitionLayout {
+                        val shared = this
+                        AnimatedContent(
+                            targetState = showMessages,
+                            transitionSpec = {
+                                fadeIn(tween(220)) togetherWith fadeOut(tween(110))
+                            },
+                            label = "messagesPage",
+                        ) { messagesOpen ->
+                            val contentScope = this
+                            val bounds = with(shared) {
+                                Modifier.sharedBounds(
+                                    sharedContentState = rememberSharedContentState(key = "messagesCard"),
+                                    animatedVisibilityScope = contentScope,
+                                )
+                            }
+                            if (messagesOpen) {
+                                MessagesContent(
+                                    pager = messagePager,
+                                    listState = messageListState,
+                                    modifier = bounds,
+                                    onBack = { showMessages = false },
+                                )
+                            } else {
+                                HomeContent(
+                                    profile = profile,
+                                    messagesCardModifier = bounds,
+                                    onOpenMessages = { showMessages = true },
+                                )
+                            }
+                        }
                     }
 
                     HomeTab.Category -> CategoriesContent()

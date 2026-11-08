@@ -42,6 +42,7 @@ import coil3.compose.AsyncImage
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.PicaGlyph
+import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaImageViewer
 import com.picacompose.ui.components.url
@@ -214,8 +215,10 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
     }
 
     if (showSlogan) {
+        val pop = rememberDialogPop(onDismiss = { showSlogan = false })
         AlertDialog(
-            onDismissRequest = { showSlogan = false },
+            onDismissRequest = pop::dismiss,
+            modifier = pop.modifier,
             title = {
                 Text(
                     text = "简介",
@@ -251,7 +254,7 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showSlogan = false }) { Text("关闭") }
+                TextButton(onClick = pop::dismiss) { Text("关闭") }
             },
         )
     }

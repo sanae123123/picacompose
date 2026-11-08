@@ -167,10 +167,11 @@ fun FailedBlock(message: String, onRetry: () -> Unit) {
 @Composable
 fun PageScaffold(
     state: LazyListState = rememberLazyListState(),
+    modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 22.dp, vertical = 26.dp),
     content: LazyListScope.() -> Unit,
 ) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+    Box(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
             state = state,
             contentPadding = contentPadding,

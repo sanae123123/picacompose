@@ -40,6 +40,7 @@ import coil3.compose.AsyncImage
 import com.picacompose.picaapi.model.NotificationDoc
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
+import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.url
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -54,6 +55,7 @@ fun MessagesContent(
     pager: Pager<NotificationDoc>,
     listState: LazyListState = rememberLazyListState(),
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
     var viewing by remember { mutableStateOf<NotificationDoc?>(null) }
@@ -76,7 +78,7 @@ fun MessagesContent(
             }
     }
 
-    PageScaffold(state = listState) {
+    PageScaffold(state = listState, modifier = modifier) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
@@ -219,11 +221,13 @@ private fun MessageDialog(
     onDismiss: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    Dialog(onDismissRequest = onDismiss) {
+    val pop = rememberDialogPop(onDismiss)
+    Dialog(onDismissRequest = pop::dismiss) {
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
             color = colors.surfaceContainerHigh,
             tonalElevation = 4.dp,
+            modifier = pop.modifier,
         ) {
             Column(Modifier.padding(horizontal = 22.dp, vertical = 20.dp)) {
                 Text(
@@ -252,7 +256,7 @@ private fun MessageDialog(
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    TextButton(onClick = onDismiss) { Text("关闭") }
+                    TextButton(onClick = pop::dismiss) { Text("关闭") }
                 }
             }
         }
