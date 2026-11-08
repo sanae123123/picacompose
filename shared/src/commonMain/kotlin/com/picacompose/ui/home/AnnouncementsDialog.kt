@@ -162,11 +162,7 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
                             horizontalArrangement = Arrangement.End,
                         ) {
                             TextButton(onClick = { showList = true }) { Text("公告列表") }
-                            TextButton(
-                                onClick = {
-                                    if (index < list.lastIndex) index++ else onDismiss()
-                                },
-                            ) { Text("確定") }
+                            TextButton(onClick = onDismiss) { Text("確定") }
                         }
                     }
                 }
