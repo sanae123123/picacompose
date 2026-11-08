@@ -41,6 +41,7 @@ import com.picacompose.data.pica
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
+import com.picacompose.ui.components.PicaImageViewer
 import com.picacompose.ui.components.url
 import kotlinx.coroutines.launch
 
@@ -55,9 +56,11 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
     var punchError by remember { mutableStateOf<String?>(null) }
 
     val slogan = profile.slogan?.trim().orEmpty()
+    val avatarUrl = profile.avatar.url()
     // 简介两行放不下才给「展开」，点开是能滚的弹窗。
     var sloganOverflows by remember(slogan) { mutableStateOf(false) }
     var showSlogan by remember(slogan) { mutableStateOf(false) }
+    var showAvatar by remember(avatarUrl) { mutableStateOf(false) }
 
     PageScaffold {
         item {
@@ -83,7 +86,6 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
                                     style = MaterialTheme.typography.headlineSmall,
                                     color = colors.onPrimaryContainer,
                                 )
-                                val avatarUrl = profile.avatar.url()
                                 if (avatarUrl != null) {
                                     AsyncImage(
                                         model = avatarUrl,
@@ -219,14 +221,29 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
             },
             text = {
                 Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .heightIn(max = 400.dp)
                         .verticalScroll(rememberScrollState()),
                 ) {
+                    // 头像跟着简介一起滚；点开是全屏看图。
+                    if (avatarUrl != null) {
+                        AsyncImage(
+                            model = avatarUrl,
+                            contentDescription = "头像",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(88.dp)
+                                .clip(CircleShape)
+                                .clickable { showAvatar = true },
+                        )
+                        Spacer(Modifier.height(14.dp))
+                    }
                     Text(
                         text = slogan,
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             },
@@ -234,5 +251,9 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
                 TextButton(onClick = { showSlogan = false }) { Text("关闭") }
             },
         )
+    }
+
+    if (showAvatar && avatarUrl != null) {
+        PicaImageViewer(url = avatarUrl, onDismiss = { showAvatar = false })
     }
 }
