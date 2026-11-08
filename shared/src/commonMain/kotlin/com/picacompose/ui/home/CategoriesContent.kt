@@ -1,17 +1,21 @@
 package com.picacompose.ui.home
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,25 +23,34 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.Category
 import com.picacompose.ui.components.PicaImage
+import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.url
 
 /**
- * 分类页：一块「嗶咔留言版」磁贴 + 接口返回的分类，两列网格排开。
+ * 分类页：照官方版式来 —— 上面一块「熱門分類」写死磁贴，下面「全部分類」走接口。
  *
- * 留言版磁贴的封面用的是占位漫画（`愛嗶咔請留言`）的封面，跟官方那张本地图一个意思。
+ * 磁贴图和顺序都对齐官方 App：顺序是 支持嗶咔 / 排行榜 / 遊戲推薦 / 點擊救嗶咔 /
+ * 小程式 / 留言版 / 最新更新 / 隨機本子；除「點擊救嗶咔」用广告图外，其余是官方资源包
+ * 里那套 cat_*.jpg，直接打进 App（见 composeResources/drawable）。
  */
 @Composable
-fun CategoriesContent(onOpenForum: () -> Unit = {}) {
+fun CategoriesContent(
+    onOpenForum: () -> Unit = {},
+    onOpenGames: () -> Unit = {},
+) {
     var reload by remember { mutableStateOf(0) }
     var categories by remember { mutableStateOf<List<Category>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
-    var forumCover by remember { mutableStateOf<String?>(null) }
     var selected by remember { mutableStateOf<String?>(null) }
+    var adCover by remember { mutableStateOf<String?>(null) }
+    // 还没接的入口点一下给个说明，别让磁贴看起来像坏的。
+    var comingSoon by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(reload) {
         categories = null
@@ -47,10 +60,10 @@ fun CategoriesContent(onOpenForum: () -> Unit = {}) {
             .onFailure { error = it.message ?: "分类没拉到" }
     }
 
-    // 留言版没有自己的封面图，借用占位漫画的封面（接口里现成的）。
+    // 官方的「點擊救嗶咔」磁贴是轮播的广告图，这里取第一批广告的封面。
     LaunchedEffect(Unit) {
-        runCatching { pica.comics.detail(FORUM_COMIC_ID).thumb.url() }
-            .onSuccess { forumCover = it }
+        runCatching { pica.meta.banners().firstOrNull()?.thumb.url() }
+            .onSuccess { adCover = it }
     }
 
     PageScaffold {
@@ -58,42 +71,55 @@ fun CategoriesContent(onOpenForum: () -> Unit = {}) {
             PageHeader(title = "分类", subtitle = "站里的题材都在这里。")
             Spacer(Modifier.height(18.dp))
         }
+        item {
+            SectionTitle("熱門分類")
+            Spacer(Modifier.height(12.dp))
+            val hotTiles = listOf(
+                HotTile("支持嗶咔", art = "support") { comingSoon = "支持嗶咔" },
+                HotTile("嗶咔排行榜", art = "leaderboard") { comingSoon = "嗶咔排行榜" },
+                HotTile("遊戲推薦", art = "game", onClick = onOpenGames),
+                HotTile("點擊救嗶咔", url = adCover) { comingSoon = "點擊救嗶咔" },
+                HotTile("嗶咔小程式", art = "love_pica") { comingSoon = "嗶咔小程式" },
+                HotTile("嗶咔留言版", art = "forum", onClick = onOpenForum),
+                HotTile("最新更新", art = "latest") { comingSoon = "最新更新" },
+                HotTile("隨機本子", art = "random") { comingSoon = "隨機本子" },
+            )
+            hotTiles.chunked(3).forEach { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    row.forEach { tile ->
+                        HotTileCard(tile = tile, modifier = Modifier.weight(1f))
+                    }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+        item {
+            SectionTitle("全部分類")
+            Spacer(Modifier.height(12.dp))
+        }
         val list = categories
         when {
             error != null -> item { FailedBlock(error.orEmpty()) { reload++ } }
             list == null -> item { LoadingBlock("正在拉分类…") }
             list.isEmpty() -> item { EmptyBlock("接口没返回分类") }
             else -> {
-                val tiles = buildList {
-                    add(
-                        CatTile(
-                            cover = forumCover,
-                            title = "嗶咔留言版",
-                            subtitle = "愛嗶咔請留言",
-                            selected = false,
-                            onClick = onOpenForum,
-                        ),
-                    )
-                    list.forEach { category ->
-                        add(
-                            CatTile(
-                                cover = category.thumb.url(),
-                                title = category.title,
-                                subtitle = category.description?.takeIf { it.isNotBlank() && it != "未知" },
-                                selected = category.title == selected,
-                                onClick = { selected = category.title },
-                            ),
-                        )
-                    }
-                }
-                val rows = tiles.chunked(2)
+                val rows = list.chunked(2)
                 items(rows.size) { index ->
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        rows[index].forEach { tile ->
-                            TileCard(tile = tile, modifier = Modifier.weight(1f))
+                        rows[index].forEach { category ->
+                            CategoryCard(
+                                category = category,
+                                selected = category.title == selected,
+                                onClick = { selected = category.title },
+                                modifier = Modifier.weight(1f),
+                            )
                         }
                         if (rows[index].size == 1) Spacer(Modifier.weight(1f))
                     }
@@ -111,52 +137,116 @@ fun CategoriesContent(onOpenForum: () -> Unit = {}) {
             }
         }
     }
+
+    comingSoon?.let { title ->
+        val pop = rememberDialogPop(onDismiss = { comingSoon = null })
+        AlertDialog(
+            onDismissRequest = pop::dismiss,
+            modifier = pop.modifier,
+            title = { Text(title) },
+            text = { Text("这个入口还没接，下一步补上。") },
+            confirmButton = {
+                TextButton(onClick = pop::dismiss) { Text("知道了") }
+            },
+        )
+    }
 }
 
-/** 网格里的一块磁贴，留言板和分类共用同一套样子。 */
-private data class CatTile(
-    val cover: String?,
-    val title: String,
-    val subtitle: String?,
-    val selected: Boolean,
+@Composable
+private fun SectionTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+    )
+}
+
+/** 「熱門分類」里的一块磁贴，图是官方的方形图，标题在下面。 */
+private data class HotTile(
+    val label: String,
+    val art: String? = null,
+    val url: String? = null,
     val onClick: () -> Unit,
 )
 
 @Composable
-private fun TileCard(
-    tile: CatTile,
+private fun HotTileCard(
+    tile: HotTile,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = colors.surface,
+        tonalElevation = 1.dp,
+        modifier = modifier,
+    ) {
+        Column(modifier = Modifier.clickable(onClick = tile.onClick)) {
+            val art = tile.art?.let { hotTileArt(it) }
+            if (art != null) {
+                Image(
+                    painter = art,
+                    contentDescription = tile.label,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                )
+            } else {
+                PicaImage(
+                    url = tile.url,
+                    contentDescription = tile.label,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                )
+            }
+            Text(
+                text = tile.label,
+                style = MaterialTheme.typography.labelMedium,
+                color = colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            )
+        }
+    }
+}
+
+/** 全部分类里的一张卡：接口封面 + 标题 + 描述。 */
+@Composable
+private fun CategoryCard(
+    category: Category,
+    selected: Boolean,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     Surface(
         shape = MaterialTheme.shapes.large,
-        color = if (tile.selected) colors.primaryContainer else colors.surface,
-        tonalElevation = if (tile.selected) 0.dp else 1.dp,
+        color = if (selected) colors.primaryContainer else colors.surface,
+        tonalElevation = if (selected) 0.dp else 1.dp,
         modifier = modifier,
     ) {
-        Column(modifier = Modifier.clickable(onClick = tile.onClick)) {
+        Column(modifier = Modifier.clickable(onClick = onClick)) {
             PicaImage(
-                url = tile.cover,
-                contentDescription = tile.title,
+                url = category.thumb.url(),
+                contentDescription = category.title,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(4f / 3f),
             )
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
                 Text(
-                    text = tile.title,
+                    text = category.title,
                     style = MaterialTheme.typography.titleSmall,
-                    color = if (tile.selected) colors.onPrimaryContainer else colors.onSurface,
+                    color = if (selected) colors.onPrimaryContainer else colors.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val subtitle = tile.subtitle
-                if (!subtitle.isNullOrBlank()) {
+                val description = category.description?.takeIf { it.isNotBlank() && it != "未知" }
+                if (!description.isNullOrBlank()) {
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = subtitle,
+                        text = description,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (tile.selected) {
+                        color = if (selected) {
                             colors.onPrimaryContainer.copy(alpha = 0.8f)
                         } else {
                             colors.onSurfaceVariant

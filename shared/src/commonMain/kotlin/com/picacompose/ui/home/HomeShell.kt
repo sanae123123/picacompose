@@ -156,7 +156,13 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                 onBack = { showForum = false },
                             )
                         } else {
-                            CategoriesContent(onOpenForum = { showForum = true })
+                            CategoriesContent(
+                                onOpenForum = { showForum = true },
+                                onOpenGames = {
+                                    showForum = false
+                                    scope.launch { pagerState.animateScrollToPage(HomeTab.Game.ordinal) }
+                                },
+                            )
                         }
                     }
                     HomeTab.Game -> GamesContent(pager = gamePager, listState = gameListState)
