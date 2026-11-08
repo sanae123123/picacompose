@@ -65,7 +65,7 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
     var showSlogan by remember(slogan) { mutableStateOf(false) }
 
     PageScaffold(
-        header = { PageHeader(title = "我的", subtitle = "当前登录的账号。") },
+        header = { PageHeader(title = "我的") },
     ) {
         item {
             PicaCard {

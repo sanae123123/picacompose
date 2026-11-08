@@ -64,25 +64,14 @@ import kotlinx.coroutines.launch
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 
-/** 页面顶部的标题 + 一句说明。 */
+/** 页面顶部的标题。只放标题，说明文字不占这儿的位置。 */
 @Composable
-fun PageHeader(title: String, subtitle: String? = null) {
-    val colors = MaterialTheme.colorScheme
-    Column {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineSmall,
-            color = colors.onBackground,
-        )
-        if (!subtitle.isNullOrBlank()) {
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.onSurfaceVariant,
-            )
-        }
-    }
+fun PageHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.headlineSmall,
+        color = MaterialTheme.colorScheme.onBackground,
+    )
 }
 
 /** 大圆角卡片，页面里的分区都用它装。 */

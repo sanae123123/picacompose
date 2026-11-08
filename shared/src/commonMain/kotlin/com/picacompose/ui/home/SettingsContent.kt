@@ -30,7 +30,7 @@ fun SettingsContent(onSignOut: () -> Unit) {
     val ipCount = route.savedIps.size
 
     PageScaffold(
-        header = { PageHeader(title = "设置", subtitle = "选项还少，先把状态说清楚。") },
+        header = { PageHeader(title = "设置") },
     ) {
         item {
             PicaCard {

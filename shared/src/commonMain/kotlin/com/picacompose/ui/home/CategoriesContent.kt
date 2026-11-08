@@ -71,7 +71,7 @@ fun CategoriesContent(
     }
 
     PageScaffold(
-        header = { PageHeader(title = "分类", subtitle = "站里的题材都在这里。") },
+        header = { PageHeader(title = "分类") },
         onRefresh = { loadCategories() },
     ) {
         item {

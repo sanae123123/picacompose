@@ -99,7 +99,7 @@ fun MessagesContent(
                     )
                 }
                 Spacer(Modifier.width(6.dp))
-                PageHeader(title = "消息", subtitle = "回复、@ 和系统通知。")
+                PageHeader(title = "消息")
             }
         },
     ) {

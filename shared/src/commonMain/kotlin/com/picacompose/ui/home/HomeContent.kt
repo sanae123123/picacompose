@@ -105,10 +105,7 @@ fun HomeContent(
     PageScaffold(
         state = listState,
         header = {
-            PageHeader(
-                title = "欢迎回来",
-                subtitle = "今天的本子，先看推荐。",
-            )
+            PageHeader(title = "欢迎回来")
         },
         onRefresh = { feed.refresh() },
     ) {

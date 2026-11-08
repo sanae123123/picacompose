@@ -73,7 +73,7 @@ fun ForumContent(
                     }
                     Spacer(Modifier.width(6.dp))
                     Box(Modifier.weight(1f)) {
-                        PageHeader(title = "嗶咔留言版", subtitle = "全站的留言都在这儿，跟评论区同一套。")
+                        PageHeader(title = "嗶咔留言版")
                     }
                     // 工具栏右上角：评论翻到几页之后，直接输页码跳。
                     Text(

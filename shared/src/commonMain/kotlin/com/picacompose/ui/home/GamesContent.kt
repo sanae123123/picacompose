@@ -57,7 +57,7 @@ fun GamesContent(
 
     StaggeredPageScaffold(
         state = listState,
-        header = { PageHeader(title = "游戏", subtitle = "PicACG 站内的小游戏。") },
+        header = { PageHeader(title = "游戏") },
         onRefresh = { pager.reloadFirstPage() },
     ) {
         if (pager.items.isEmpty()) {
