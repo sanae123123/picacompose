@@ -72,6 +72,8 @@ private enum class PopularRange(val label: String, val tt: String) {
 @Composable
 fun LeaderboardContent(
     onBack: () -> Unit,
+    /** 点一本打开详情页。 */
+    onOpenComic: (ComicSummary) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -128,7 +130,6 @@ fun LeaderboardContent(
         if (activePager.items.isEmpty() && activePager.error == null) activePager.loadNext()
     }
 
-    var tappedComic by remember { mutableStateOf<ComicSummary?>(null) }
     var tappedUser by remember { mutableStateOf<UserBasic?>(null) }
 
     Column(modifier.fillMaxSize()) {
@@ -172,7 +173,7 @@ fun LeaderboardContent(
                 emptyText = "这个榜单是空的",
                 modifier = Modifier.weight(1f),
             ) { comic, rank ->
-                ComicRankRow(rank = rank, comic = comic, onOpen = { tappedComic = comic })
+                ComicRankRow(rank = rank, comic = comic, onOpen = { onOpenComic(comic) })
             }
         } else {
             RankList(
@@ -189,9 +190,6 @@ fun LeaderboardContent(
         }
     }
 
-    tappedComic?.let { comic ->
-        ComicTeaserDialog(comic = comic, onDismiss = { tappedComic = null })
-    }
     tappedUser?.let { user ->
         UserProfileDialog(
             userId = user.id,
@@ -210,7 +208,7 @@ fun LeaderboardContent(
 
 /** 一排胶囊切换：选中的填色，没选中的留白。 */
 @Composable
-private fun PillTabs(
+internal fun PillTabs(
     labels: List<String>,
     selected: Int,
     onSelect: (Int) -> Unit,

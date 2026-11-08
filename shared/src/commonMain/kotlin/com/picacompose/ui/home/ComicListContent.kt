@@ -58,11 +58,13 @@ fun ComicListContent(
     modifier: Modifier = Modifier,
     sort: String? = null,
     onSortChange: (String?) -> Unit = {},
+    /** 点一本就打开详情页。 */
+    onOpenComic: (ComicSummary) -> Unit = {},
+    /** 每一行的变形源：详情页的 key 和它配对，点开从这一行长成整屏。 */
+    comicRowModifier: @Composable (ComicSummary) -> Modifier = { Modifier },
 ) {
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
-    // 详情页还没做，点一本就先弹个说明。
-    var teaser by remember { mutableStateOf<ComicSummary?>(null) }
     var menuOpen by remember { mutableStateOf(false) }
     var showJump by remember { mutableStateOf(false) }
 
@@ -177,7 +179,11 @@ fun ComicListContent(
         }
         items(count = pager.items.size, key = { pager.items[it].id }) { index ->
             val comic = pager.items[index]
-            ComicListRow(comic = comic, onClick = { teaser = comic })
+            ComicListRow(
+                comic = comic,
+                onClick = { onOpenComic(comic) },
+                modifier = comicRowModifier(comic),
+            )
         }
         if (pager.items.isNotEmpty()) {
             item(key = "comic-list-footer") {
@@ -189,10 +195,6 @@ fun ComicListContent(
                 )
             }
         }
-    }
-
-    teaser?.let { comic ->
-        ComicTeaserDialog(comic = comic, onDismiss = { teaser = null })
     }
 
     if (showJump) {
@@ -218,13 +220,14 @@ private enum class ComicSort(val label: String, val value: String?) {
 private fun ComicListRow(
     comic: ComicSummary,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     Surface(
         shape = MaterialTheme.shapes.large,
         color = colors.surface,
         tonalElevation = 1.dp,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+        modifier = modifier.fillMaxWidth().padding(bottom = 12.dp),
     ) {
         Row(
             modifier = Modifier

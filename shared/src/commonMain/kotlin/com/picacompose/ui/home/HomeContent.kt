@@ -92,12 +92,12 @@ fun HomeContent(
     messagesCardModifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
     feed: HomeFeedState = rememberHomeFeedState(),
+    /** 点封面打开详情页。 */
+    onOpenComic: (ComicSummary) -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
     val collections = feed.collections
     val collectionError = feed.error
-    // 点封面先给个说法，详情页还没做。
-    var tapped by remember { mutableStateOf<ComicSummary?>(null) }
     var showAnnouncements by remember { mutableStateOf(false) }
 
     LaunchedEffect(feed.reload) { feed.load() }
@@ -180,7 +180,7 @@ fun HomeContent(
                 item(key = "collection-${group.title}") {
                     CollectionSection(
                         group = group,
-                        onOpenComic = { tapped = it },
+                        onOpenComic = onOpenComic,
                     )
                 }
             }
@@ -213,9 +213,6 @@ fun HomeContent(
         AnnouncementsDialog(onDismiss = { showAnnouncements = false })
     }
 
-    tapped?.let { comic ->
-        ComicTeaserDialog(comic = comic, onDismiss = { tapped = null })
-    }
 }
 
 /** 一组官方合集：标题 + 能横着滑的封面。 */

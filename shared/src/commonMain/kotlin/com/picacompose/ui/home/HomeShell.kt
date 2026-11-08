@@ -47,7 +47,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** 从按钮长出来的整屏页面。 */
-private enum class OverlayPage { None, Messages, Forum, Leaderboard, Web, Comics }
+private enum class OverlayPage { None, Messages, Forum, Leaderboard, Web, Comics, Detail }
 
 /** 变形动画要配对用的 key：源（按钮/卡片）和目标（整页）必须一致。 */
 private val OverlayPage.sharedKey: String
@@ -58,6 +58,8 @@ private val OverlayPage.sharedKey: String
         // 网页整页的 key 跟着具体磁贴走，这里只是兜底。
         OverlayPage.Web -> "webPage"
         OverlayPage.Comics -> "comicsPage"
+        // 详情页的 key 跟着点的那一本走，这里只是兜底。
+        OverlayPage.Detail -> "comicDetail"
         OverlayPage.None -> "mainShell"
     }
 
@@ -99,6 +101,12 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
         )
     }
     val comicListState = rememberLazyListState()
+    // 本子详情：点哪本记它 id / 标题，变形 key 按 id 生成，和列表里那一行对得上。
+    var detailComicId by rememberSaveable { mutableStateOf("") }
+    var detailTitle by rememberSaveable { mutableStateOf("") }
+    // 从哪儿点进详情，退出去就回哪儿（列表页 / 首页 / 排行榜）。
+    var detailReturnOrdinal by rememberSaveable { mutableStateOf(OverlayPage.None.ordinal) }
+    val detailKey = "comic-$detailComicId"
     val overlay = OverlayPage.entries.getOrElse(overlayOrdinal) { OverlayPage.None }
     // 网页视图等整页变形放完再挂（平台视图不参与容器变形）。
     var webMounted by remember { mutableStateOf(false) }
@@ -160,7 +168,8 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
             OverlayPage.Messages -> messageListState.scrollToItem(0)
             OverlayPage.Forum -> forumListState.scrollToItem(0)
             OverlayPage.Comics -> comicListState.scrollToItem(0)
-            OverlayPage.None, OverlayPage.Leaderboard, OverlayPage.Web -> Unit
+            OverlayPage.None, OverlayPage.Leaderboard, OverlayPage.Web,
+            OverlayPage.Detail -> Unit
         }
     }
 
@@ -169,7 +178,9 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
 
     // 整页开着的时候，系统返回先退回上一屏，而不是直接退出 App。
     BackHandlerCompat(enabled = overlay != OverlayPage.None) {
-        overlayOrdinal = OverlayPage.None.ordinal
+        // 详情页退回它被点开的地方（列表页 / 排行榜），别的整页直接回主界面。
+        overlayOrdinal =
+            if (overlay == OverlayPage.Detail) detailReturnOrdinal else OverlayPage.None.ordinal
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -224,6 +235,12 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         onOpenMessages = {
                                             overlayOrdinal = OverlayPage.Messages.ordinal
                                         },
+                                        onOpenComic = { comic ->
+                                            detailComicId = comic.id
+                                            detailTitle = comic.title
+                                            detailReturnOrdinal = OverlayPage.None.ordinal
+                                            overlayOrdinal = OverlayPage.Detail.ordinal
+                                        },
                                     )
 
                                     HomeTab.Category -> CategoriesContent(
@@ -274,6 +291,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                     val pageKey = when (page) {
                         OverlayPage.Web -> webKey
                         OverlayPage.Comics -> comicKey
+                        OverlayPage.Detail -> detailKey
                         else -> page.sharedKey
                     }
                     val pageBounds = with(shared) {
@@ -300,6 +318,12 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
 
                                 OverlayPage.Leaderboard -> LeaderboardContent(
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                    onOpenComic = { comic ->
+                                        detailComicId = comic.id
+                                        detailTitle = comic.title
+                                        detailReturnOrdinal = OverlayPage.Leaderboard.ordinal
+                                        overlayOrdinal = OverlayPage.Detail.ordinal
+                                    },
                                 )
 
                                 OverlayPage.Web -> WebPageContent(
@@ -315,7 +339,25 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                     listState = comicListState,
                                     sort = comicSort,
                                     onSortChange = { comicSort = it },
+                                    // 每一行各自挂一个变形源，点开就从那一行长成整屏。
+                                    comicRowModifier = { comic ->
+                                        with(shared) {
+                                            overlayBounds("comic-${comic.id}", contentScope)
+                                        }
+                                    },
+                                    onOpenComic = { comic ->
+                                        detailComicId = comic.id
+                                        detailTitle = comic.title
+                                        detailReturnOrdinal = OverlayPage.Comics.ordinal
+                                        overlayOrdinal = OverlayPage.Detail.ordinal
+                                    },
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                )
+
+                                OverlayPage.Detail -> ComicDetailContent(
+                                    comicId = detailComicId,
+                                    seedTitle = detailTitle,
+                                    onBack = { overlayOrdinal = detailReturnOrdinal },
                                 )
 
                                 OverlayPage.None -> Unit

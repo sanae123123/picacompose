@@ -455,52 +455,6 @@ fun ListFooter(
     }
 }
 
-/**
- * 点一张封面但详情页还没做：先把标题、作者、分类亮出来，别让点击显得没反应。
- *
- * 首页合集和排行榜共用。
- */
-@Composable
-fun ComicTeaserDialog(comic: ComicSummary, onDismiss: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val pop = rememberDialogPop(onDismiss)
-    AlertDialog(
-        onDismissRequest = pop::dismiss,
-        modifier = pop.modifier,
-        title = { Text(comic.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-        text = {
-            Column {
-                val author = comic.author
-                if (!author.isNullOrBlank()) {
-                    Text(
-                        text = author,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
-                val cats = comic.categories
-                if (cats.isNotEmpty()) {
-                    Text(
-                        text = cats.joinToString(" · "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
-                Text(
-                    text = "详情页还没做，先看看封面。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.onSurfaceVariant,
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = pop::dismiss) { Text("好") }
-        },
-    )
-}
-
 /** 空状态提示。 */
 @Composable
 fun EmptyBlock(text: String) {
