@@ -146,6 +146,9 @@ val url = pica.imageUrl(pages.pages.docs.first().media)
 - `time` 用本地时钟；客户端会从响应头 `Server-Time` 自动算偏移量并持续校正，所以手机时间不准也能用。
 - POST 的 `Content-Type` 必须是 `application/json; charset=UTF-8`（大写）。写成小写 `utf-8`
   或没有 charset，服务端会返回 400/1023 "too many requests"，登录会被误判成限流——这是踩过的坑。
+- 图片地址是 `fileServer` + `path` 两段拼的，但 `fileServer` 有两种：裸域名（`storage1`/`storage-b`，
+  真实文件在 `/static/` 下）和已经带静态目录的（`diwodiwo.xyz/static`、`file.bidobido.xyz/images`）。
+  拼的时候按「有没有目录」区分，见 `PicaImage.url()`；无脑补 `/static/` 会让后一类全 404。
 - 响应统一是 `{ code, message, data }` 信封，`PicaClient` 负责解信封，失败抛 `PicaException`。
 - 所有 JSON 模型都用 `ignoreUnknownKeys` + 默认值，服务端加字段不会炸。
 

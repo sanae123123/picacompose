@@ -8,14 +8,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
+import com.picacompose.picaapi.PicaImage
 import com.picacompose.picaapi.model.Thumbnail
 
-/** 接口里的缩略图地址 = fileServer + path。 */
-fun Thumbnail?.url(): String? {
-    val base = this?.fileServer?.takeIf { it.isNotBlank() } ?: return null
-    val path = this.path?.takeIf { it.isNotBlank() } ?: return null
-    return if (path.startsWith("http")) path else base.trimEnd('/') + "/" + path.trimStart('/')
-}
+/** 接口里的缩略图地址，拼接规则见 [PicaImage.url]。 */
+fun Thumbnail?.url(imageServer: String? = null): String? = PicaImage.url(this, imageServer)
 
 /** 网络图片：加载中/失败都留一块底色，不会塌成 0 高。 */
 @Composable

@@ -6,25 +6,36 @@ import com.picacompose.picaapi.model.Thumbnail
 import com.picacompose.picaapi.model.UserProfile
 
 /**
- * 拼装图片绝对地址，逻辑与官方客户端 `utils.g.b()` 一致：
- * 1. loremPixel 占位图原样返回；
- * 2. 配置了 imageServer 就用它；
- * 3. 否则 `fileServer/static/path`。
+ * 拼装图片绝对地址。
+ *
+ * 接口里的 `thumb` 是 `{ fileServer, path }` 两段，但 `fileServer` 有两种形态：
+ * - 裸域名（`https://storage1.picacomic.com`、`https://storage-b.picacomic.com`），
+ *   真实文件在 `/static/` 下，官方客户端的 `utils.g.b()` 就是补这一层；
+ * - 已经带静态目录（`https://diwodiwo.xyz/static`、`https://file.bidobido.xyz/images`），
+ *   再补一次 `/static/` 会变成 `/static/static/xxx.jpg`，必然 404。
+ *
+ * 所以按 `fileServer` 有没有路径来拼，两种都能出图。
  */
 object PicaImage {
 
     fun url(thumbnail: Thumbnail?, imageServer: String? = null): String? {
-        val fileServer = thumbnail?.fileServer ?: return null
-        if (fileServer.equals("http://lorempixel.com", ignoreCase = true)) {
-            return fileServer + (thumbnail.path ?: "")
+        val fileServer = thumbnail?.fileServer?.takeIf { it.isNotBlank() } ?: return null
+        val path = thumbnail.path?.takeIf { it.isNotBlank() } ?: return null
+        // lorempixel 时代的占位图是拼好的绝对地址，原样返回。
+        if (fileServer.equals("http://lorempixel.com", ignoreCase = true) || path.startsWith("http")) {
+            return path
         }
-        val path = thumbnail.path ?: return null
-        return if (!imageServer.isNullOrBlank()) {
-            imageServer + path
-        } else {
-            "$fileServer/static/$path"
+        if (!imageServer.isNullOrBlank()) {
+            return imageServer.trimEnd('/') + "/" + path.trimStart('/')
         }
+        val base = fileServer.trimEnd('/')
+        val relative = path.trimStart('/')
+        return if (hasDirectory(base)) "$base/$relative" else "$base/static/$relative"
     }
+
+    /** `https://host/xxx` 这种带目录的 fileServer 视为已经指向静态根。 */
+    private fun hasDirectory(baseUrl: String): Boolean =
+        baseUrl.substringAfter("://", "").contains('/')
 
     fun pageUrl(page: ComicPage?, imageServer: String? = null): String? = url(page?.media, imageServer)
 
