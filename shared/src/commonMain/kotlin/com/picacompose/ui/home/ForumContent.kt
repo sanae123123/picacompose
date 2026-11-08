@@ -1,5 +1,7 @@
 package com.picacompose.ui.home
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -7,11 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -21,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.Comment
@@ -45,6 +51,7 @@ fun ForumContent(
     val scope = rememberCoroutineScope()
     // 要回复谁：非空就弹回复面板。
     var replyTarget by remember { mutableStateOf<CommentReplyTarget?>(null) }
+    var showJump by remember { mutableStateOf(false) }
 
     CommentAutoRefresh(pager)
     CommentLoadMore(listState, pager)
@@ -53,6 +60,7 @@ fun ForumContent(
         PageScaffold(
             state = listState,
             modifier = Modifier.weight(1f),
+            onRefresh = { pager.reloadFirstPage() },
             header = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
@@ -63,7 +71,20 @@ fun ForumContent(
                         )
                     }
                     Spacer(Modifier.width(6.dp))
-                    PageHeader(title = "嗶咔留言版", subtitle = "全站的留言都在这儿，跟评论区同一套。")
+                    Box(Modifier.weight(1f)) {
+                        PageHeader(title = "嗶咔留言版", subtitle = "全站的留言都在这儿，跟评论区同一套。")
+                    }
+                    // 工具栏右上角：评论翻到几页之后，直接输页码跳。
+                    Text(
+                        text = "跳页",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.primary,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { showJump = true }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
                 }
             },
         ) {
@@ -81,6 +102,15 @@ fun ForumContent(
                 pica.comments.post(FORUM_COMIC_ID, content)
                 pager.refresh()
             },
+        )
+    }
+
+    if (showJump) {
+        CommentJumpDialog(
+            pager = pager,
+            onDismiss = { showJump = false },
+            // 跳完回到顶部，那一页从第一条开始看。
+            onJumped = { scope.launch { listState.scrollToItem(0) } },
         )
     }
 

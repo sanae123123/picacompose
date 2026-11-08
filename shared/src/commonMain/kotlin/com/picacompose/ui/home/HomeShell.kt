@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.BackHandlerCompat
+import com.picacompose.data.NoticeUnread
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.overlayBounds
@@ -92,6 +93,12 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     // 首页那条流也提上来：打开消息页再退回来时，不重拉推荐、不跳回顶部。
     val homeListState = rememberLazyListState()
     val homeFeed = rememberHomeFeedState()
+    // 首页「消息」卡的小红点：接口没有已读字段，靠最新一条通知的 id 比对。
+    val noticeUnread = remember { NoticeUnread() }
+    LaunchedEffect(overlay) {
+        // 从消息页退回来时再看一眼，有新消息照样亮。
+        if (overlay == OverlayPage.None) noticeUnread.refresh()
+    }
     // 放这里让页面切走再回来时保留已加载的分页和滚动位置。
     val gamePager = remember {
         Pager(
@@ -153,6 +160,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         profile = profile,
                                         listState = homeListState,
                                         feed = homeFeed,
+                                        messagesUnread = noticeUnread.hasUnread,
                                         messagesCardModifier = messagesSource,
                                         onOpenMessages = {
                                             overlayOrdinal = OverlayPage.Messages.ordinal
@@ -193,6 +201,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                     pager = messagePager,
                                     listState = messageListState,
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                    onNewestLoaded = noticeUnread::markSeen,
                                 )
 
                                 OverlayPage.Forum -> ForumContent(

@@ -83,6 +83,25 @@ class Pager<T>(
         loading = false
     }
 
+    /**
+     * 直接跳到第 [page] 页：把现有内容换成那一页，后面接着往 [page] + 1 续。
+     *
+     * 评论区的「跳页」用它；页码越界或正在拉的时候就当没点。
+     */
+    suspend fun jumpTo(page: Int) {
+        if (loading || page < 1) return
+        loading = true
+        error = null
+        runCatching { load(page) }
+            .onSuccess { paged ->
+                items = merged(paged.docs)
+                loadedPage = page
+                lastPage = paged.pages.coerceAtLeast(page)
+            }
+            .onFailure { error = it.message ?: "那一页没拉到" }
+        loading = false
+    }
+
     /** 整个列表从头再来（下拉刷新 / 切线路后）。 */
     suspend fun refresh() {
         if (loading) return

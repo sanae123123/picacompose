@@ -24,12 +24,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -54,6 +58,7 @@ import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.UserProfileDialog
+import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.UserTitleBadge
 import com.picacompose.ui.components.url
 import kotlinx.coroutines.delay
@@ -116,6 +121,91 @@ data class CommentReplyTarget(
     val root: Comment,
     val mentionName: String? = null,
 )
+
+/**
+ * 跳页弹窗：输入页码直接翻到那一页。
+ *
+ * 评论很多时不靠一页页往下续，知道大概在哪页就直接过去。
+ */
+@Composable
+fun CommentJumpDialog(
+    pager: Pager<Comment>,
+    onDismiss: () -> Unit,
+    onJumped: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val pop = rememberDialogPop(onDismiss)
+    val scope = rememberCoroutineScope()
+    var text by remember { mutableStateOf(pager.loadedPage.coerceAtLeast(1).toString()) }
+    var jumping by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val page = text.trim().toIntOrNull()
+    val valid = page != null && page >= 1 && (pager.lastPage == 0 || page <= pager.lastPage)
+
+    AlertDialog(
+        onDismissRequest = pop::dismiss,
+        modifier = pop.modifier,
+        title = { Text(text = "跳到第几页", style = MaterialTheme.typography.titleMedium) },
+        text = {
+            Column {
+                val now = pager.loadedPage.coerceAtLeast(1)
+                Text(
+                    text = if (pager.lastPage > 0) "现在第 $now 页，共 ${pager.lastPage} 页" else "现在第 $now 页",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = text,
+                    // 只收数字，免得输入法带出别的字符。
+                    onValueChange = { input ->
+                        text = input.filter { it.isDigit() }.take(5)
+                        error = null
+                    },
+                    singleLine = true,
+                    isError = error != null,
+                    placeholder = { Text("页码") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                error?.let {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.error,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = valid && !jumping,
+                onClick = {
+                    val target = page ?: return@TextButton
+                    scope.launch {
+                        jumping = true
+                        error = null
+                        pager.jumpTo(target)
+                        val failure = pager.error
+                        if (failure != null) {
+                            error = failure
+                        } else {
+                            onJumped()
+                            onDismiss()
+                        }
+                        jumping = false
+                    }
+                },
+            ) {
+                Text(if (jumping) "跳转中" else "跳转")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = pop::dismiss) { Text("取消") }
+        },
+    )
+}
 
 /**
  * 回复弹窗：从底部升起来，带被回复内容的小卡片。

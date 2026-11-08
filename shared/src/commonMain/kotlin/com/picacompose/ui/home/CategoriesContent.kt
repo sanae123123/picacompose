@@ -53,13 +53,16 @@ fun CategoriesContent(
     // 还没接的入口点一下给个说明，别让磁贴看起来像坏的。
     var comingSoon by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(reload) {
+    // 首屏和下拉刷新走同一段拉取逻辑。
+    suspend fun loadCategories() {
         categories = null
         error = null
         runCatching { pica.meta.categories() }
             .onSuccess { categories = it }
             .onFailure { error = it.message ?: "分类没拉到" }
     }
+
+    LaunchedEffect(reload) { loadCategories() }
 
     // 官方的「點擊救嗶咔」磁贴是轮播的广告图，这里取第一批广告的封面。
     LaunchedEffect(Unit) {
@@ -69,6 +72,7 @@ fun CategoriesContent(
 
     PageScaffold(
         header = { PageHeader(title = "分类", subtitle = "站里的题材都在这里。") },
+        onRefresh = { loadCategories() },
     ) {
         item {
             SectionTitle("熱門分類")

@@ -34,9 +34,11 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -49,6 +51,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +60,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 
@@ -273,6 +277,41 @@ private fun listContentPadding(base: PaddingValues, hasHeader: Boolean): Padding
 }
 
 /**
+ * 给懒列表套一层下拉刷新：往下拽到头再拉，就调 [onRefresh] 把内容重新拉一遍。
+ *
+ * [onRefresh] 是挂起函数，转圈一直转到它真的干完；传 null 就什么都不套。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PullRefresh(
+    onRefresh: (suspend () -> Unit)?,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    if (onRefresh == null) {
+        Box(modifier) { content() }
+        return
+    }
+    val scope = rememberCoroutineScope()
+    var refreshing by remember { mutableStateOf(false) }
+    PullToRefreshBox(
+        isRefreshing = refreshing,
+        onRefresh = {
+            if (!refreshing) {
+                scope.launch {
+                    refreshing = true
+                    runCatching { onRefresh() }
+                    refreshing = false
+                }
+            }
+        },
+        modifier = modifier,
+    ) {
+        content()
+    }
+}
+
+/**
  * 整页容器：顶部一根固定标题栏 + 下面 LazyColumn，滚出屏幕的条目不再参与组合。
  *
  * 各页把内容拆成 `item { }` / `items(...)` 放进去；标题用 [header] 传，别塞进列表当第一项。
@@ -283,6 +322,7 @@ fun PageScaffold(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 22.dp, vertical = 26.dp),
     header: (@Composable () -> Unit)? = null,
+    onRefresh: (suspend () -> Unit)? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val headerState = rememberHeaderCollapse(state)
@@ -303,12 +343,17 @@ fun PageScaffold(
                 .nestedScroll(headerState.connection),
             contentAlignment = Alignment.TopCenter,
         ) {
-            LazyColumn(
-                state = state,
-                contentPadding = listContentPadding(contentPadding, header != null),
+            PullRefresh(
+                onRefresh = onRefresh,
                 modifier = Modifier.widthIn(max = 460.dp).fillMaxSize(),
-                content = content,
-            )
+            ) {
+                LazyColumn(
+                    state = state,
+                    contentPadding = listContentPadding(contentPadding, header != null),
+                    modifier = Modifier.fillMaxSize(),
+                    content = content,
+                )
+            }
         }
     }
 }
@@ -324,6 +369,7 @@ fun StaggeredPageScaffold(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 22.dp, vertical = 26.dp),
     header: (@Composable () -> Unit)? = null,
+    onRefresh: (suspend () -> Unit)? = null,
     content: LazyStaggeredGridScope.() -> Unit,
 ) {
     val headerState = rememberHeaderCollapse(state)
@@ -344,15 +390,20 @@ fun StaggeredPageScaffold(
                 .nestedScroll(headerState.connection),
             contentAlignment = Alignment.TopCenter,
         ) {
-            LazyVerticalStaggeredGrid(
-                columns = StaggeredGridCells.Fixed(2),
-                state = state,
-                contentPadding = listContentPadding(contentPadding, header != null),
-                verticalItemSpacing = 12.dp,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            PullRefresh(
+                onRefresh = onRefresh,
                 modifier = Modifier.widthIn(max = 460.dp).fillMaxSize(),
-                content = content,
-            )
+            ) {
+                LazyVerticalStaggeredGrid(
+                    columns = StaggeredGridCells.Fixed(2),
+                    state = state,
+                    contentPadding = listContentPadding(contentPadding, header != null),
+                    verticalItemSpacing = 12.dp,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    content = content,
+                )
+            }
         }
     }
 }

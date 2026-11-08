@@ -64,6 +64,12 @@ class HomeFeedState {
         reload++
     }
 
+    /** 下拉刷新：先清掉旧的，让 [load] 真去拉一次。 */
+    internal suspend fun refresh() {
+        collections = null
+        load()
+    }
+
     internal suspend fun load() {
         // 已经拉到了就不动，免得每次回到首页都闪一下 loading。
         if (collections != null) return
@@ -82,6 +88,7 @@ fun rememberHomeFeedState(): HomeFeedState = remember { HomeFeedState() }
 fun HomeContent(
     profile: UserProfile,
     onOpenMessages: () -> Unit,
+    messagesUnread: Boolean = false,
     messagesCardModifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
     feed: HomeFeedState = rememberHomeFeedState(),
@@ -103,6 +110,7 @@ fun HomeContent(
                 subtitle = "今天的本子，先看推荐。",
             )
         },
+        onRefresh = { feed.refresh() },
     ) {
         item {
             PicaCard {
@@ -195,6 +203,7 @@ fun HomeContent(
                     icon = PicaIcon.Mail,
                     title = "消息",
                     subtitle = "回复和通知",
+                    badge = messagesUnread,
                     onClick = onOpenMessages,
                     // 点下去这张卡会长成消息页，bound 的 key 和消息页那边对上。
                     modifier = Modifier.weight(1f).then(messagesCardModifier),
@@ -324,6 +333,7 @@ private fun QuickCard(
     subtitle: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    badge: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     Surface(
@@ -337,13 +347,24 @@ private fun QuickCard(
                 .clickable(onClick = onClick)
                 .padding(16.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .background(colors.secondaryContainer, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                PicaGlyph(icon, Modifier.size(18.dp), colors.onSecondaryContainer)
+            Box(Modifier.size(34.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .background(colors.secondaryContainer, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    PicaGlyph(icon, Modifier.size(18.dp), colors.onSecondaryContainer)
+                }
+                // 有新消息：图标右上角点个红点。
+                if (badge) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(9.dp)
+                            .background(colors.error, CircleShape),
+                    )
+                }
             }
             Spacer(Modifier.height(10.dp))
             Text(

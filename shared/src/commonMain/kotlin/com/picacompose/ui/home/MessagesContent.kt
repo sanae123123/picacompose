@@ -56,12 +56,19 @@ fun MessagesContent(
     listState: LazyListState = rememberLazyListState(),
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onNewestLoaded: (String) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     var viewing by remember { mutableStateOf<NotificationDoc?>(null) }
 
     LaunchedEffect(pager) {
         if (pager.items.isEmpty()) pager.loadNext()
+    }
+
+    // 拉到第一页就把最新那条记成已看，首页的红点跟着灭。
+    val newestId = pager.items.firstOrNull()?.id
+    LaunchedEffect(newestId) {
+        if (!newestId.isNullOrBlank()) onNewestLoaded(newestId)
     }
 
     // 滚到离底部还剩几行的时候续页；pager.loading 挡住重复请求。
@@ -81,6 +88,7 @@ fun MessagesContent(
     PageScaffold(
         state = listState,
         modifier = modifier,
+        onRefresh = { pager.reloadFirstPage() },
         header = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
