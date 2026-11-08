@@ -10,6 +10,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.UserProfile
+import com.picacompose.ui.components.BackHandlerCompat
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
 
@@ -34,24 +36,45 @@ import com.picacompose.ui.components.PicaGlyph
 fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     var current by rememberSaveable { mutableStateOf(HomeTab.Home.name) }
     val tab = HomeTab.entries.firstOrNull { it.name == current } ?: HomeTab.Home
+    // 消息是主页里的一层，没有独立的底部入口；退出去回到首页。
+    var showMessages by rememberSaveable { mutableStateOf(false) }
+    val messagePager = remember { Pager { page -> pica.users.notifications(page = page) } }
+    val messageListState = rememberLazyListState()
     // 放这里让页面切走再回来时保留已加载的分页和滚动位置。
     val gamePager = remember { Pager { page -> pica.games.list(page = page) } }
     val gameListState = rememberLazyStaggeredGridState()
+
+    // 消息页是主页里的一层，系统返回先退回首页，而不是直接退出 App。
+    BackHandlerCompat(enabled = showMessages) { showMessages = false }
 
     Box(Modifier.fillMaxSize()) {
         PicaBackdrop()
         Scaffold(
             containerColor = Color.Transparent,
             bottomBar = {
-                PicaNavigationBar(selected = tab, onSelect = { current = it.name })
+                PicaNavigationBar(
+                    selected = tab,
+                    onSelect = {
+                        showMessages = false
+                        current = it.name
+                    },
+                )
             },
         ) { inner ->
             Box(Modifier.fillMaxSize().padding(inner)) {
                 when (tab) {
-                    HomeTab.Home -> HomeContent(
-                        profile = profile,
-                        onOpenGame = { current = HomeTab.Game.name },
-                    )
+                    HomeTab.Home -> if (showMessages) {
+                        MessagesContent(
+                            pager = messagePager,
+                            listState = messageListState,
+                            onBack = { showMessages = false },
+                        )
+                    } else {
+                        HomeContent(
+                            profile = profile,
+                            onOpenMessages = { showMessages = true },
+                        )
+                    }
 
                     HomeTab.Category -> CategoriesContent()
                     HomeTab.Game -> GamesContent(pager = gamePager, listState = gameListState)

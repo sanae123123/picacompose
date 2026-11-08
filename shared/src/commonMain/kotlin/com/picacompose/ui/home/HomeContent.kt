@@ -50,7 +50,7 @@ import com.picacompose.ui.components.url
 @Composable
 fun HomeContent(
     profile: UserProfile,
-    onOpenGame: () -> Unit,
+    onOpenMessages: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     var collections by remember { mutableStateOf<List<CollectionGroup>?>(null) }
@@ -164,10 +164,10 @@ fun HomeContent(
                     modifier = Modifier.weight(1f),
                 )
                 QuickCard(
-                    icon = PicaIcon.Gamepad,
-                    title = "游戏",
-                    subtitle = "站里的小游戏",
-                    onClick = onOpenGame,
+                    icon = PicaIcon.Mail,
+                    title = "消息",
+                    subtitle = "回复和通知",
+                    onClick = onOpenMessages,
                     modifier = Modifier.weight(1f),
                 )
             }

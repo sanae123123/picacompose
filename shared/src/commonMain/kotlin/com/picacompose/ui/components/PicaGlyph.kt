@@ -2,6 +2,8 @@ package com.picacompose.ui.components
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Email
@@ -41,10 +43,11 @@ import androidx.compose.ui.unit.dp
  *
  * 默认用 outlined，底部导航选中时换 filled —— Material You 里就是这么区分的。
  */
-enum class PicaIcon { Mail, Lock, Person, Eye, EyeOff, ArrowRight, Logout, Home, Grid, Gamepad, Gear, CheckIn, Notice }
+enum class PicaIcon { Mail, Back, Lock, Person, Eye, EyeOff, ArrowRight, Logout, Home, Grid, Gamepad, Gear, CheckIn, Notice }
 
 private fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
     PicaIcon.Mail -> if (filled) Icons.Rounded.RoundedEmail else Icons.Outlined.Email
+    PicaIcon.Back -> if (filled) Icons.AutoMirrored.Rounded.ArrowBack else Icons.AutoMirrored.Outlined.ArrowBack
     PicaIcon.Lock -> if (filled) Icons.Rounded.RoundedLock else Icons.Outlined.Lock
     PicaIcon.Person -> if (filled) Icons.Rounded.RoundedPerson else Icons.Outlined.Person
     PicaIcon.Eye -> if (filled) Icons.Rounded.RoundedVisibility else Icons.Outlined.Visibility
