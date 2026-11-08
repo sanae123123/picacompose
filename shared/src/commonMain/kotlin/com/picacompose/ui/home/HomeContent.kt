@@ -37,7 +37,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.picacompose.data.AnnouncementStore
 import com.picacompose.data.pica
+import com.picacompose.picaapi.model.Announcement
 import com.picacompose.picaapi.model.CollectionGroup
 import com.picacompose.picaapi.model.ComicSummary
 import com.picacompose.picaapi.model.UserProfile
@@ -45,6 +47,9 @@ import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.url
+
+// 公告弹窗每次冷启动只自动弹一次，官方也是这个行为。
+private var noticeAutoShown = false
 
 /** 主页：资料卡 + 本子妹推荐 + 快捷入口。 */
 @Composable
@@ -59,6 +64,22 @@ fun HomeContent(
     // 点封面先给个说法，详情页还没做。
     var tapped by remember { mutableStateOf<ComicSummary?>(null) }
     var showAnnouncements by remember { mutableStateOf(false) }
+    var announcements by remember { mutableStateOf<List<Announcement>?>(null) }
+
+    // 进来先看看有没有没点过「不再顯示」的公告，有就弹出来。
+    LaunchedEffect(Unit) {
+        if (noticeAutoShown) return@LaunchedEffect
+        noticeAutoShown = true
+        val store = AnnouncementStore()
+        runCatching { pica.meta.announcements(page = 1).docs }
+            .onSuccess { docs ->
+                val fresh = docs.filterNot { it.id in store.dismissedIds() }
+                if (fresh.isNotEmpty()) {
+                    announcements = fresh
+                    showAnnouncements = true
+                }
+            }
+    }
 
     LaunchedEffect(reload) {
         collections = null
@@ -160,7 +181,10 @@ fun HomeContent(
                     icon = PicaIcon.Notice,
                     title = "公告",
                     subtitle = "站里的通知",
-                    onClick = { showAnnouncements = true },
+                    onClick = {
+                        announcements = null
+                        showAnnouncements = true
+                    },
                     modifier = Modifier.weight(1f),
                 )
                 QuickCard(
@@ -175,7 +199,10 @@ fun HomeContent(
     }
 
     if (showAnnouncements) {
-        AnnouncementsDialog(onDismiss = { showAnnouncements = false })
+        AnnouncementsDialog(
+            onDismiss = { showAnnouncements = false },
+            initial = announcements,
+        )
     }
 
     tapped?.let { comic ->
