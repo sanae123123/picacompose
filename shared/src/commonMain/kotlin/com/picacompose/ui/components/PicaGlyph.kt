@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Logout
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.rounded.ArrowForward as RoundedArrowForward
 import androidx.compose.material.icons.rounded.Category as RoundedCategory
 import androidx.compose.material.icons.rounded.Email as RoundedEmail
+import androidx.compose.material.icons.rounded.EventAvailable as RoundedEventAvailable
 import androidx.compose.material.icons.rounded.Home as RoundedHome
 import androidx.compose.material.icons.rounded.Lock as RoundedLock
 import androidx.compose.material.icons.rounded.Logout as RoundedLogout
@@ -37,7 +39,7 @@ import androidx.compose.ui.unit.dp
  *
  * 默认用 outlined，底部导航选中时换 filled —— Material You 里就是这么区分的。
  */
-enum class PicaIcon { Mail, Lock, Person, Eye, EyeOff, ArrowRight, Logout, Home, Grid, Gamepad, Gear }
+enum class PicaIcon { Mail, Lock, Person, Eye, EyeOff, ArrowRight, Logout, Home, Grid, Gamepad, Gear, CheckIn }
 
 private fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
     PicaIcon.Mail -> if (filled) Icons.Rounded.RoundedEmail else Icons.Outlined.Email
@@ -51,6 +53,7 @@ private fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
     PicaIcon.Grid -> if (filled) Icons.Rounded.RoundedCategory else Icons.Outlined.Category
     PicaIcon.Gamepad -> if (filled) Icons.Rounded.RoundedSportsEsports else Icons.Outlined.SportsEsports
     PicaIcon.Gear -> if (filled) Icons.Rounded.RoundedSettings else Icons.Outlined.Settings
+    PicaIcon.CheckIn -> if (filled) Icons.Rounded.RoundedEventAvailable else Icons.Outlined.EventAvailable
 }
 
 @Composable

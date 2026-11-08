@@ -5,11 +5,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -46,39 +47,87 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
         }
         item {
             PicaCard {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = colors.primaryContainer,
-                    modifier = Modifier.size(72.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxWidth()) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = colors.primaryContainer,
+                            modifier = Modifier.size(72.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = profile.name.take(1).ifBlank { "P" },
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = colors.onPrimaryContainer,
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
                         Text(
-                            text = profile.name.take(1).ifBlank { "P" },
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = colors.onPrimaryContainer,
+                            text = profile.name.ifBlank { "已登录" },
+                            style = MaterialTheme.typography.titleMedium,
+                            color = colors.onSurface,
                         )
+                        val title = profile.title
+                        if (!title.isNullOrBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    // 头像卡的右上角，只留一个图标；签过了就不出现。
+                    if (!checkedIn) {
+                        FilledTonalIconButton(
+                            onClick = {
+                                scope.launch {
+                                    punching = true
+                                    punchError = null
+                                    try {
+                                        pica.users.punchIn()
+                                        checkedIn = true
+                                    } catch (e: Exception) {
+                                        // 可能是「今天已经签过了」而本地状态过期，问一次服务器再决定。
+                                        val fresh = runCatching { pica.users.profile() }.getOrNull()
+                                        if (fresh?.isPunched == true) {
+                                            checkedIn = true
+                                        } else {
+                                            punchError = e.message ?: "签到失败，稍后再试"
+                                        }
+                                    } finally {
+                                        punching = false
+                                    }
+                                }
+                            },
+                            enabled = !punching,
+                            modifier = Modifier.align(Alignment.TopEnd).size(44.dp),
+                        ) {
+                            if (punching) {
+                                CircularProgressIndicator(
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            } else {
+                                PicaGlyph(PicaIcon.CheckIn, Modifier.size(22.dp))
+                            }
+                        }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = profile.name.ifBlank { "已登录" },
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.onSurface,
-                )
-                val title = profile.title
-                if (!title.isNullOrBlank()) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
             }
+            val error = punchError
+            if (error != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.error,
+                    modifier = Modifier.padding(horizontal = 6.dp),
+                )
             }
             Spacer(Modifier.height(14.dp))
         }
@@ -90,59 +139,6 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
                 DetailRow(PicaIcon.Gear, "今日签到", if (checkedIn) "已签到" else "未签到")
             }
             Spacer(Modifier.height(14.dp))
-        }
-        if (!checkedIn) {
-            item {
-                Column(Modifier.fillMaxWidth()) {
-                    FilledTonalButton(
-                        onClick = {
-                            scope.launch {
-                                punching = true
-                                punchError = null
-                                try {
-                                    pica.users.punchIn()
-                                    checkedIn = true
-                                } catch (e: Exception) {
-                                    // 可能是「今天已经签过了」而本地状态过期，问一次服务器再决定。
-                                    val fresh = runCatching { pica.users.profile() }.getOrNull()
-                                    if (fresh?.isPunched == true) {
-                                        checkedIn = true
-                                    } else {
-                                        punchError = e.message ?: "签到失败，稍后再试"
-                                    }
-                                } finally {
-                                    punching = false
-                                }
-                            }
-                        },
-                        enabled = !punching,
-                        shape = CircleShape,
-                        modifier = Modifier.height(52.dp).fillMaxWidth(),
-                    ) {
-                        if (punching) {
-                            CircularProgressIndicator(
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(Modifier.width(10.dp))
-                        }
-                        Text(
-                            text = if (punching) "签到中…" else "签到",
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                    }
-                    val error = punchError
-                    if (error != null) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = error,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.error,
-                        )
-                    }
-                }
-                Spacer(Modifier.height(14.dp))
-            }
         }
         item {
             OutlinedButton(
