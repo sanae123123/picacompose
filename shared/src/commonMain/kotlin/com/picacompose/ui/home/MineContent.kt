@@ -1,7 +1,9 @@
 package com.picacompose.ui.home
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -93,16 +95,17 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
                             }
                         }
                         Spacer(Modifier.height(12.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(3.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Text(
                                 text = profile.name.ifBlank { "已登录" },
                                 style = MaterialTheme.typography.titleMedium,
                                 color = colors.onSurface,
                             )
-                            if (!profile.title.isNullOrBlank()) {
-                                Spacer(Modifier.width(6.dp))
-                                UserTitleBadge(profile.title)
-                            }
+                            UserTitleBadge(profile.title)
                         }
                         if (slogan.isNotEmpty()) {
                             Spacer(Modifier.height(12.dp))

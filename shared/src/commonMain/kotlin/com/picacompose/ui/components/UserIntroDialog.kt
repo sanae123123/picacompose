@@ -1,7 +1,9 @@
 package com.picacompose.ui.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.picacompose.data.pica
@@ -78,18 +79,17 @@ fun UserIntroDialog(
                     Spacer(Modifier.height(12.dp))
                 }
                 if (name.isNotBlank() || !title.isNullOrBlank()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                        itemVerticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
                             text = name,
                             style = MaterialTheme.typography.titleSmall,
                             color = colors.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
                         )
-                        if (!title.isNullOrBlank()) {
-                            Spacer(Modifier.width(6.dp))
-                            UserTitleBadge(title)
-                        }
+                        UserTitleBadge(title)
                     }
                 }
                 if (!detail.isNullOrBlank()) {

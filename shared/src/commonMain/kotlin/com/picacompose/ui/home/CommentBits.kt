@@ -7,7 +7,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -241,26 +243,25 @@ fun CommentRow(
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = comment.user?.name.orEmpty().ifBlank { "绅士" },
-                            style = MaterialTheme.typography.titleSmall,
-                            color = colors.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        if (!comment.user?.title.isNullOrBlank()) {
-                            Spacer(Modifier.width(6.dp))
+                    Row(verticalAlignment = Alignment.Top) {
+                        // 名字放不下就折行，称号跟着掉到下一行，不截成省略号。
+                        FlowRow(
+                            modifier = Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(3.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = comment.user?.name.orEmpty().ifBlank { "绅士" },
+                                style = MaterialTheme.typography.titleSmall,
+                                color = colors.onSurface,
+                            )
                             UserTitleBadge(comment.user?.title)
+                            if (comment.isTop) InfoChip("置顶")
                         }
-                        if (comment.isTop) {
-                            Spacer(Modifier.width(8.dp))
-                            InfoChip("置顶")
-                        }
-                        Spacer(Modifier.weight(1f))
                         val time = relativeTime(comment.createdAt)
                         if (time.isNotBlank()) {
+                            Spacer(Modifier.width(8.dp))
                             Text(
                                 text = time,
                                 style = MaterialTheme.typography.labelSmall,
@@ -409,22 +410,23 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
         }
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = comment.user?.name.orEmpty().ifBlank { "绅士" },
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colors.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                if (!comment.user?.title.isNullOrBlank()) {
-                    Spacer(Modifier.width(6.dp))
+            Row(verticalAlignment = Alignment.Top) {
+                FlowRow(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = comment.user?.name.orEmpty().ifBlank { "绅士" },
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.onSurface,
+                    )
                     UserTitleBadge(comment.user?.title)
                 }
-                Spacer(Modifier.weight(1f))
                 val time = relativeTime(comment.createdAt)
                 if (time.isNotBlank()) {
+                    Spacer(Modifier.width(8.dp))
                     Text(
                         text = time,
                         style = MaterialTheme.typography.labelSmall,
