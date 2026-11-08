@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridScope
@@ -38,13 +39,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -177,72 +182,62 @@ fun FailedBlock(message: String, onRetry: () -> Unit) {
 }
 
 /**
- * 顶栏的显示状态：往下滚收起来，往上滚或者回到顶部再露出来。
+ * 顶栏的收起状态：手指往上推（内容往后翻）收起来，往下拉再露出来，回到顶部一定露出来。
  *
- * 就是常见 App 的那套逻辑：滚动方向决定顶栏去留，回到顶部一定露出来。
- * 横向翻页、二级页自己那套滚动不管，只看当前页的主列表。
+ * 用嵌套滚动拿手指位移，不看列表滚到哪一屏，所以顶栏自身高度变化不会反过来影响判定。
+ * 收起距离按顶栏实测高度来定：只有滚过自己的高度才收，这样收起后列表还剩得下滚动余量，
+ * 不会因为可视区变大把滚动位置挤回去。内容本来就不够滚的页面，顶栏就一直摆着。
  */
-@Composable
-fun rememberHeaderVisible(state: LazyListState): State<Boolean> =
-    rememberHeaderVisible(
-        key = state,
-        position = { state.firstVisibleItemIndex to state.firstVisibleItemScrollOffset },
-    )
+@Stable
+private class HeaderCollapseState(private val scrollState: ScrollableState) : State<Boolean> {
 
-/** 瀑布流版的 [rememberHeaderVisible]。 */
-@Composable
-fun rememberHeaderVisible(state: LazyStaggeredGridState): State<Boolean> =
-    rememberHeaderVisible(
-        key = state,
-        position = { state.firstVisibleItemIndex to state.firstVisibleItemScrollOffset },
-    )
+    /** 收起顶栏需要先滚过这么多像素，等顶栏量出高度后由容器填进来。 */
+    var hideAfterPx: Float = Float.MAX_VALUE
 
-@Composable
-private fun rememberHeaderVisible(
-    key: Any,
-    position: () -> Pair<Int, Int>,
-): State<Boolean> {
-    val visible = remember(key) { mutableStateOf(true) }
-    val threshold = with(LocalDensity.current) { 10.dp.toPx() }
-    LaunchedEffect(key) {
-        var lastIndex = position().first
-        var lastOffset = position().second
-        var downAccum = 0f
-        snapshotFlow(position).collect { (index, offset) ->
-            // 过了条目边界就算转方向；同一屏里就比偏移量。
-            val delta = when {
-                index > lastIndex -> 1f
-                index < lastIndex -> -1f
-                else -> (offset - lastOffset).toFloat()
-            }
-            lastIndex = index
-            lastOffset = offset
-            val atTop = index == 0 && offset <= 2
+    private var shown by mutableStateOf(true)
+    private var accumulatedDown = 0f
+
+    override val value: Boolean get() = shown
+
+    val connection: NestedScrollConnection = object : NestedScrollConnection {
+        override fun onPreScroll(available: Offset, @Suppress("UNUSED_PARAMETER") source: NestedScrollSource): Offset {
+            val dy = available.y
             when {
-                atTop -> {
-                    downAccum = 0f
-                    visible.value = true
+                // 手指往上推 = 列表往后翻，过一段距离再收起。
+                dy < 0f -> {
+                    if (!scrollState.canScrollBackward) {
+                        accumulatedDown = 0f
+                        shown = true
+                    } else if (scrollState.canScrollForward) {
+                        accumulatedDown += -dy
+                        if (shown && accumulatedDown >= hideAfterPx) shown = false
+                    }
                 }
-                delta > 0f -> {
-                    downAccum += delta
-                    if (downAccum >= threshold) visible.value = false
-                }
-                delta < 0f -> {
-                    downAccum = 0f
-                    visible.value = true
+                // 手指往下拉 = 往回翻，立刻露出来。
+                dy > 0f -> {
+                    accumulatedDown = 0f
+                    if (!shown && dy > 2f) shown = true
                 }
             }
+            return Offset.Zero
         }
     }
-    return visible
 }
+
+@Composable
+private fun rememberHeaderCollapse(state: ScrollableState): HeaderCollapseState =
+    remember(state) { HeaderCollapseState(state) }
 
 /**
  * 固定的页面顶栏：挂在列表外面，所以不会跟着内容滚走；
- * 往下滚收起、往上滚展开（见 [rememberHeaderVisible]）。
+ * 往下滚收起、往上滚展开（见 [HeaderCollapseState]）。
  */
 @Composable
-private fun PageHeaderSlot(header: (@Composable () -> Unit)?, visible: Boolean) {
+private fun PageHeaderSlot(
+    header: (@Composable () -> Unit)?,
+    visible: Boolean,
+    onHeightChanged: (Int) -> Unit,
+) {
     if (header == null) return
     AnimatedVisibility(
         visible = visible,
@@ -255,7 +250,8 @@ private fun PageHeaderSlot(header: (@Composable () -> Unit)?, visible: Boolean) 
                     .widthIn(max = 460.dp)
                     .fillMaxWidth()
                     .padding(horizontal = 22.dp)
-                    .padding(top = 26.dp, bottom = 2.dp),
+                    .padding(top = 26.dp, bottom = 2.dp)
+                    .onSizeChanged { size -> onHeightChanged(size.height) },
             ) {
                 header()
             }
@@ -289,10 +285,24 @@ fun PageScaffold(
     header: (@Composable () -> Unit)? = null,
     content: LazyListScope.() -> Unit,
 ) {
-    val headerVisible by rememberHeaderVisible(state)
+    val headerState = rememberHeaderCollapse(state)
+    val margin = with(LocalDensity.current) { 8.dp.roundToPx() }
+    var headerHeightPx by remember(headerState) { mutableStateOf(0) }
+    headerState.hideAfterPx =
+        if (header == null) Float.MAX_VALUE else (headerHeightPx + margin).toFloat()
     Column(modifier.fillMaxSize()) {
-        PageHeaderSlot(header = header, visible = headerVisible)
-        Box(Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        PageHeaderSlot(
+            header = header,
+            visible = headerState.value,
+            onHeightChanged = { height -> if (height > headerHeightPx) headerHeightPx = height },
+        )
+        Box(
+            Modifier
+                .weight(1f)
+                .fillMaxSize()
+                .nestedScroll(headerState.connection),
+            contentAlignment = Alignment.TopCenter,
+        ) {
             LazyColumn(
                 state = state,
                 contentPadding = listContentPadding(contentPadding, header != null),
@@ -316,10 +326,24 @@ fun StaggeredPageScaffold(
     header: (@Composable () -> Unit)? = null,
     content: LazyStaggeredGridScope.() -> Unit,
 ) {
-    val headerVisible by rememberHeaderVisible(state)
+    val headerState = rememberHeaderCollapse(state)
+    val margin = with(LocalDensity.current) { 8.dp.roundToPx() }
+    var headerHeightPx by remember(headerState) { mutableStateOf(0) }
+    headerState.hideAfterPx =
+        if (header == null) Float.MAX_VALUE else (headerHeightPx + margin).toFloat()
     Column(modifier.fillMaxSize()) {
-        PageHeaderSlot(header = header, visible = headerVisible)
-        Box(Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        PageHeaderSlot(
+            header = header,
+            visible = headerState.value,
+            onHeightChanged = { height -> if (height > headerHeightPx) headerHeightPx = height },
+        )
+        Box(
+            Modifier
+                .weight(1f)
+                .fillMaxSize()
+                .nestedScroll(headerState.connection),
+            contentAlignment = Alignment.TopCenter,
+        ) {
             LazyVerticalStaggeredGrid(
                 columns = StaggeredGridCells.Fixed(2),
                 state = state,
