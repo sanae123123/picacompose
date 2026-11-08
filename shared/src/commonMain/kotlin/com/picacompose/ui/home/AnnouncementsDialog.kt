@@ -49,27 +49,22 @@ private val urlPattern = Regex("""https?://[^\s"'<>，。、）】]+""")
 /**
  * 公告弹窗，仿官方那块公告板：顶图 + 标题 + 正文，底下「不再顯示 / 確定」。
  *
- * [initial] 有值时直接用（首页已经预热过），省一次请求。
+ * 只有用户自己点「公告」才打开，不会自己冒出来。
  */
 @Composable
-fun AnnouncementsDialog(
-    onDismiss: () -> Unit,
-    initial: List<Announcement>? = null,
-) {
+fun AnnouncementsDialog(onDismiss: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val store = remember { AnnouncementStore() }
-    var announcements by remember { mutableStateOf(initial) }
+    var announcements by remember { mutableStateOf<List<Announcement>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var index by remember { mutableStateOf(0) }
     // 点公告顶图放大看。
     var viewing by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        if (announcements == null) {
-            runCatching { pica.meta.announcements(page = 1).docs }
-                .onSuccess { docs -> announcements = docs.filterNot { it.id in store.dismissedIds() } }
-                .onFailure { error = it.message ?: "公告没拉到" }
-        }
+        runCatching { pica.meta.announcements(page = 1).docs }
+            .onSuccess { docs -> announcements = docs.filterNot { it.id in store.dismissedIds() } }
+            .onFailure { error = it.message ?: "公告没拉到" }
     }
 
     Dialog(onDismissRequest = onDismiss) {
