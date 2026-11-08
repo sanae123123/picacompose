@@ -3,6 +3,7 @@ package com.picacompose.ui.home
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -192,6 +194,7 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
             PicaCard {
                 DetailRow(PicaIcon.Person, "邮箱", profile.email ?: "未填")
                 DetailRow(PicaIcon.Grid, "等级 / 经验", "Lv.${profile.level} · ${profile.exp}")
+                LevelProgress(level = profile.level, exp = profile.exp)
                 DetailRow(PicaIcon.Home, "注册时间", profile.createdAt?.take(10) ?: "不知道")
                 DetailRow(PicaIcon.Gear, "今日签到", if (checkedIn) "已签到" else "未签到")
             }
@@ -255,5 +258,48 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
 
     if (showAvatar && avatarUrl != null) {
         PicaImageViewer(url = avatarUrl, onDismiss = { showAvatar = false })
+    }
+}
+
+/**
+ * 等级 L 的起算经验。
+ *
+ * 官方没给公式，这是拿骑士榜上 50 个用户的 level / exp 对出来的：`100 * L * (L-1)`，
+ * 即 Lv2=200、Lv3=600、Lv4=1200……所有样本都落在 `[threshold(L), threshold(L+1))` 里。
+ */
+private fun levelStartExp(level: Int): Int = 100 * level * (level - 1)
+
+/** 到下一等级的进度条。 */
+@Composable
+private fun LevelProgress(level: Int, exp: Int) {
+    val colors = MaterialTheme.colorScheme
+    val start = levelStartExp(level)
+    val next = levelStartExp(level + 1)
+    val span = (next - start).coerceAtLeast(1)
+    val fraction = ((exp - start).toFloat() / span).coerceIn(0f, 1f)
+    val remaining = (next - exp).coerceAtLeast(0)
+
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 8.dp)) {
+        LinearProgressIndicator(
+            progress = { fraction },
+            modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+            color = colors.primary,
+            trackColor = colors.surfaceVariant,
+            drawStopIndicator = {},
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "$exp / $next",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = "还差 $remaining 到 Lv.${level + 1}",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+            )
+        }
     }
 }
