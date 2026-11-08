@@ -19,11 +19,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,9 +44,49 @@ import com.picacompose.ui.components.url
  * 小程式 / 留言版 / 最新更新 / 隨機本子；除「點擊救嗶咔」用广告图外，其余是官方资源包
  * 里那套 cat_*.jpg，直接打进 App（见 composeResources/drawable）。
  */
+@Stable
+class CategoriesState {
+    var categories by mutableStateOf<List<Category>?>(null)
+        private set
+    var error by mutableStateOf<String?>(null)
+        private set
+    /** 「點擊救嗶咔」磁贴的广告封面。 */
+    var adCover by mutableStateOf<String?>(null)
+        private set
+    private var started = false
+
+    /** 首屏和下拉刷新走同一段拉取逻辑。 */
+    suspend fun load() {
+        categories = null
+        error = null
+        runCatching { pica.meta.categories() }
+            .onSuccess { categories = it }
+            .onFailure { error = it.message ?: "分类没拉到" }
+    }
+
+    /** 只在第一次进来时拉，来回切页面 / 开关整页都不重拉，免得退回来时先空一下。 */
+    suspend fun ensureLoaded() {
+        if (started) return
+        started = true
+        load()
+    }
+
+    private var adStarted = false
+
+    suspend fun ensureAdCover() {
+        if (adStarted) return
+        adStarted = true
+        adCover = runCatching { pica.meta.banners().firstOrNull()?.thumb.url() }.getOrNull()
+    }
+}
+
+@Composable
+fun rememberCategoriesState(): CategoriesState = remember { CategoriesState() }
+
 @Composable
 fun CategoriesContent(
-    state: LazyListState = rememberLazyListState(),
+    listState: LazyListState = rememberLazyListState(),
+    state: CategoriesState = rememberCategoriesState(),
     onOpenForum: () -> Unit = {},
     onOpenGames: () -> Unit = {},
     onOpenLeaderboard: () -> Unit = {},
@@ -53,35 +96,21 @@ fun CategoriesContent(
     webTileModifier: @Composable (String) -> Modifier = { Modifier },
     onOpenWeb: (Category) -> Unit = {},
 ) {
-    var reload by remember { mutableStateOf(0) }
-    var categories by remember { mutableStateOf<List<Category>?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     var selected by remember { mutableStateOf<String?>(null) }
-    var adCover by remember { mutableStateOf<String?>(null) }
     // 还没接的入口点一下给个说明，别让磁贴看起来像坏的。
     var comingSoon by remember { mutableStateOf<String?>(null) }
 
-    // 首屏和下拉刷新走同一段拉取逻辑。
-    suspend fun loadCategories() {
-        categories = null
-        error = null
-        runCatching { pica.meta.categories() }
-            .onSuccess { categories = it }
-            .onFailure { error = it.message ?: "分类没拉到" }
-    }
-
-    LaunchedEffect(reload) { loadCategories() }
+    // 数据放在外层（[CategoriesState]），整页开开关关、栏与栏之间来回切都不重拉。
+    LaunchedEffect(state) { state.ensureLoaded() }
 
     // 官方的「點擊救嗶咔」磁贴是轮播的广告图，这里取第一批广告的封面。
-    LaunchedEffect(Unit) {
-        runCatching { pica.meta.banners().firstOrNull()?.thumb.url() }
-            .onSuccess { adCover = it }
-    }
+    LaunchedEffect(state) { state.ensureAdCover() }
 
     PageScaffold(
-        state = state,
+        state = listState,
         header = { PageHeader(title = "分类") },
-        onRefresh = { loadCategories() },
+        onRefresh = { state.load() },
     ) {
         item {
             SectionTitle("熱門分類")
@@ -95,7 +124,7 @@ fun CategoriesContent(
                     onClick = onOpenLeaderboard,
                 ),
                 HotTile("遊戲推薦", art = "game", onClick = onOpenGames),
-                HotTile("點擊救嗶咔", url = adCover) { comingSoon = "點擊救嗶咔" },
+                HotTile("點擊救嗶咔", url = state.adCover) { comingSoon = "點擊救嗶咔" },
                 HotTile("嗶咔小程式", art = "love_pica") { comingSoon = "嗶咔小程式" },
                 HotTile("嗶咔留言版", art = "forum", modifier = forumTileModifier, onClick = onOpenForum),
                 HotTile("最新更新", art = "latest") { comingSoon = "最新更新" },
@@ -118,9 +147,9 @@ fun CategoriesContent(
             SectionTitle("全部分類")
             Spacer(Modifier.height(12.dp))
         }
-        val list = categories
+        val list = state.categories
         when {
-            error != null -> item { FailedBlock(error.orEmpty()) { reload++ } }
+            state.error != null -> item { FailedBlock(state.error.orEmpty()) { scope.launch { state.load() } } }
             list == null -> item { LoadingBlock("正在拉分类…") }
             list.isEmpty() -> item { EmptyBlock("接口没返回分类") }
             else -> {

@@ -117,6 +117,8 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     val gameListState = rememberLazyStaggeredGridState()
     // 分类页的列表位置也提上来，换页时好把它拨回顶部。
     val categoryListState = rememberLazyListState()
+    // 分类数据同样提上来：开关整页时页面会被重建，退回来不该重新拉一遍。
+    val categoriesState = rememberCategoriesState()
 
     // 换了一页就从头看：底部栏切到哪一栏，那一栏的列表滚回顶部。
     LaunchedEffect(tab) {
@@ -200,7 +202,8 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                     )
 
                                     HomeTab.Category -> CategoriesContent(
-                                        state = categoryListState,
+                                        listState = categoryListState,
+                                        state = categoriesState,
                                         forumTileModifier = forumSource,
                                         leaderboardTileModifier = leaderboardSource,
                                         // isWeb 的分类磁贴各自挂一个变形源，点开时从它身上长成整屏。
