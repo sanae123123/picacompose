@@ -156,7 +156,7 @@ private fun MessageRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                val time = shortTime(message.createdAt)
+                val time = relativeTime(message.createdAt)
                 if (time.isNotBlank()) {
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -237,7 +237,7 @@ private fun MessageDialog(
                     style = MaterialTheme.typography.titleMedium,
                     color = colors.onSurface,
                 )
-                val time = shortTime(message.createdAt)
+                val time = relativeTime(message.createdAt)
                 if (time.isNotBlank()) {
                     Spacer(Modifier.height(6.dp))
                     Text(
@@ -265,10 +265,3 @@ private fun MessageDialog(
     }
 }
 
-/** ISO 时间截成 `MM/dd HH:mm`；只为显示，不引入日期库。 */
-internal fun shortTime(iso: String?): String {
-    if (iso.isNullOrBlank() || iso.length < 16) return ""
-    val date = iso.substring(5, 10).replace('-', '/')
-    val time = iso.substring(11, 16)
-    return "$date $time"
-}

@@ -39,9 +39,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.Comment
+import com.picacompose.picaapi.model.UserBasic
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaImage
+import com.picacompose.ui.components.UserProfileDialog
 import com.picacompose.ui.components.url
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -57,7 +59,10 @@ const val FORUM_COMIC_ID = "5822a6e3ad7ede654696e482"
 /** 按漫画 id 建一个评论分页器；留言板传 [FORUM_COMIC_ID]。 */
 @Composable
 fun rememberCommentPager(comicId: String): Pager<Comment> = remember(comicId) {
-    Pager { page -> pica.comments.list(comicId, page).comments }
+    Pager(
+        load = { page -> pica.comments.list(comicId, page).comments },
+        itemKey = { it.id },
+    )
 }
 
 /**
@@ -110,7 +115,7 @@ fun LazyListScope.commentItems(
             }
         }
     }
-    items(pager.items, key = { it.id }) { comment ->
+    items(pager.items.distinctBy { it.id }, key = { it.id }) { comment ->
         CommentRow(comment = comment, onReply = onReply?.let { reply -> { reply(comment) } })
     }
     if (pager.items.isNotEmpty()) {
@@ -190,8 +195,12 @@ fun CommentRow(
     val colors = MaterialTheme.colorScheme
     val avatar = comment.user?.avatar.url()
     var expanded by remember(comment.id) { mutableStateOf(false) }
+    var introUser by remember(comment.id) { mutableStateOf<UserBasic?>(null) }
     val replyPager = remember(comment.id) {
-        Pager<Comment> { page -> pica.comments.children(comment.id, page) }
+        Pager(
+            load = { page -> pica.comments.children(comment.id, page) },
+            itemKey = { it.id },
+        )
     }
     val hasReplies = comment.childsCount > 0
 
@@ -206,19 +215,27 @@ fun CommentRow(
                     .fillMaxWidth()
                     .then(if (hasReplies) Modifier.clickable { expanded = !expanded } else Modifier),
             ) {
+                val user = comment.user
                 if (avatar != null) {
                     PicaImage(
                         url = avatar,
-                        contentDescription = comment.user?.name,
+                        contentDescription = user?.name,
                         modifier = Modifier
                             .size(38.dp)
-                            .clip(RoundedCornerShape(19.dp)),
+                            .clip(RoundedCornerShape(19.dp))
+                            .then(
+                                if (user != null) Modifier.clickable { introUser = user } else Modifier,
+                            ),
                     )
                 } else {
                     Surface(
                         shape = RoundedCornerShape(19.dp),
                         color = colors.surfaceVariant,
-                        modifier = Modifier.size(38.dp),
+                        modifier = Modifier
+                            .size(38.dp)
+                            .then(
+                                if (user != null) Modifier.clickable { introUser = user } else Modifier,
+                            ),
                     ) {}
                 }
                 Spacer(Modifier.width(12.dp))
@@ -237,7 +254,7 @@ fun CommentRow(
                             InfoChip("置顶")
                         }
                         Spacer(Modifier.weight(1f))
-                        val time = shortTime(comment.createdAt)
+                        val time = relativeTime(comment.createdAt)
                         if (time.isNotBlank()) {
                             Text(
                                 text = time,
@@ -284,6 +301,14 @@ fun CommentRow(
                         }
                     }
                 }
+            }
+            introUser?.let { user ->
+                UserProfileDialog(
+                    userId = user.id,
+                    seedName = user.name,
+                    seedAvatarUrl = user.avatar.url(),
+                    onDismiss = { introUser = null },
+                )
             }
             AnimatedVisibility(
                 visible = expanded,
@@ -353,6 +378,8 @@ private fun CommentReplies(
 private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
     val colors = MaterialTheme.colorScheme
     val avatar = comment.user?.avatar.url()
+    val user = comment.user
+    var introUser by remember(comment.id) { mutableStateOf<UserBasic?>(null) }
 
     Row(modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
         if (avatar != null) {
@@ -361,13 +388,16 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
                 contentDescription = comment.user?.name,
                 modifier = Modifier
                     .size(26.dp)
-                    .clip(RoundedCornerShape(13.dp)),
+                    .clip(RoundedCornerShape(13.dp))
+                    .then(if (user != null) Modifier.clickable { introUser = user } else Modifier),
             )
         } else {
             Surface(
                 shape = RoundedCornerShape(13.dp),
                 color = colors.surfaceVariant,
-                modifier = Modifier.size(26.dp),
+                modifier = Modifier
+                    .size(26.dp)
+                    .then(if (user != null) Modifier.clickable { introUser = user } else Modifier),
             ) {}
         }
         Spacer(Modifier.width(10.dp))
@@ -382,7 +412,7 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 Spacer(Modifier.weight(1f))
-                val time = shortTime(comment.createdAt)
+                val time = relativeTime(comment.createdAt)
                 if (time.isNotBlank()) {
                     Text(
                         text = time,
@@ -414,6 +444,15 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
                 }
             }
         }
+    }
+
+    introUser?.let { user ->
+        UserProfileDialog(
+            userId = user.id,
+            seedName = user.name,
+            seedAvatarUrl = user.avatar.url(),
+            onDismiss = { introUser = null },
+        )
     }
 }
 

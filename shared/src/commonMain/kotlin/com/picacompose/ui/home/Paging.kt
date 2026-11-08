@@ -17,6 +17,13 @@ import com.picacompose.picaapi.model.Paged
 @Stable
 class Pager<T>(
     private val load: suspend (page: Int) -> Paged<T>,
+    /**
+     * 用来去重的键（一般是 `id`）。
+     *
+     * 服务端分页在列表有新增时会错位，同一项可能出现在两页里；带上这个就不会
+     * 让同一个 key 塞进 LazyColumn，那条路是会直接崩的。传 null 就原样拼接。
+     */
+    private val itemKey: ((T) -> String)? = null,
 ) {
     var items by mutableStateOf<List<T>>(emptyList())
         private set
@@ -39,12 +46,19 @@ class Pager<T>(
         error = null
         runCatching { load(loadedPage + 1) }
             .onSuccess { paged ->
-                items = items + paged.docs
+                items = merged(items + paged.docs)
                 loadedPage = paged.page.takeIf { it > 0 } ?: (loadedPage + 1)
                 lastPage = paged.pages.coerceAtLeast(loadedPage)
             }
             .onFailure { error = it.message ?: "列表没拉到" }
         loading = false
+    }
+
+    /** 按 [itemKey] 去重，保留先出现的那条；没配 key 就原样返回。 */
+    private fun merged(list: List<T>): List<T> {
+        val key = itemKey ?: return list
+        val seen = HashSet<String>(list.size)
+        return list.filter { seen.add(key(it)) }
     }
 
     /** 续页失败后的重试：清掉错误再拉同一页。 */
@@ -61,7 +75,7 @@ class Pager<T>(
         error = null
         runCatching { load(1) }
             .onSuccess { paged ->
-                items = paged.docs
+                items = merged(paged.docs)
                 loadedPage = 1
                 lastPage = paged.pages.coerceAtLeast(1)
             }

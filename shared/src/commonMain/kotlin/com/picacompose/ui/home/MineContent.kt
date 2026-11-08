@@ -8,15 +8,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -42,9 +38,8 @@ import coil3.compose.AsyncImage
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.PicaGlyph
-import com.picacompose.ui.components.rememberDialogPop
+import com.picacompose.ui.components.UserIntroDialog
 import com.picacompose.ui.components.PicaIcon
-import com.picacompose.ui.components.PicaImageViewer
 import com.picacompose.ui.components.url
 import kotlinx.coroutines.launch
 
@@ -63,7 +58,6 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
     // 简介两行放不下才给「展开」，点开是能滚的弹窗。
     var sloganOverflows by remember(slogan) { mutableStateOf(false) }
     var showSlogan by remember(slogan) { mutableStateOf(false) }
-    var showAvatar by remember(avatarUrl) { mutableStateOf(false) }
 
     PageScaffold(
         header = { PageHeader(title = "我的", subtitle = "当前登录的账号。") },
@@ -213,52 +207,12 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
     }
 
     if (showSlogan) {
-        val pop = rememberDialogPop(onDismiss = { showSlogan = false })
-        AlertDialog(
-            onDismissRequest = pop::dismiss,
-            modifier = pop.modifier,
-            title = {
-                Text(
-                    text = "简介",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            },
-            text = {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .heightIn(max = 400.dp)
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    // 头像跟着简介一起滚；点开是全屏看图。
-                    if (avatarUrl != null) {
-                        AsyncImage(
-                            model = avatarUrl,
-                            contentDescription = "头像",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(88.dp)
-                                .clip(CircleShape)
-                                .clickable { showAvatar = true },
-                        )
-                        Spacer(Modifier.height(14.dp))
-                    }
-                    Text(
-                        text = slogan,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = pop::dismiss) { Text("关闭") }
-            },
+        UserIntroDialog(
+            name = profile.name,
+            avatarUrl = avatarUrl,
+            slogan = slogan,
+            onDismiss = { showSlogan = false },
         )
-    }
-
-    if (showAvatar && avatarUrl != null) {
-        PicaImageViewer(url = avatarUrl, onDismiss = { showAvatar = false })
     }
 }
 

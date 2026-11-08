@@ -79,7 +79,12 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     var overlayOrdinal by rememberSaveable { mutableStateOf(OverlayPage.None.ordinal) }
     val overlay = OverlayPage.entries.getOrElse(overlayOrdinal) { OverlayPage.None }
     // 消息是主页里的一层，没有独立的底部入口；退出去回到首页。
-    val messagePager = remember { Pager { page -> pica.users.notifications(page = page) } }
+    val messagePager = remember {
+        Pager(
+            load = { page -> pica.users.notifications(page = page) },
+            itemKey = { it.id },
+        )
+    }
     val messageListState = rememberLazyListState()
     // 留言板挂在分类页里，同样提上来：退出去再进来不重拉第一页。
     val forumPager = rememberCommentPager(FORUM_COMIC_ID)
@@ -88,7 +93,12 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     val homeListState = rememberLazyListState()
     val homeFeed = rememberHomeFeedState()
     // 放这里让页面切走再回来时保留已加载的分页和滚动位置。
-    val gamePager = remember { Pager { page -> pica.games.list(page = page) } }
+    val gamePager = remember {
+        Pager(
+            load = { page -> pica.games.list(page = page) },
+            itemKey = { it.id },
+        )
+    }
     val gameListState = rememberLazyStaggeredGridState()
 
     // 各栏的滚动位置在滑走再回来时也能接上（懒列表的状态本身是可保存的）。

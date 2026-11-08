@@ -116,6 +116,9 @@ class PicaClient(
     /** 当前已知的服务器时间偏移（秒）。 */
     val serverTimeOffsetSeconds: Long get() = timeOffset.value
 
+    /** 服务端此刻的时间戳（秒）：本机时间 + 和服务器对出来的偏移。 */
+    fun serverNowEpochSeconds(): Long = nowEpochSeconds() + timeOffset.value
+
     internal fun signedTime(): String = (nowEpochSeconds() + timeOffset.value).toString()
 
     /** 拼出带 query 的完整 URL；返回的字符串同时用于签名，避免编码方式不一致。 */
