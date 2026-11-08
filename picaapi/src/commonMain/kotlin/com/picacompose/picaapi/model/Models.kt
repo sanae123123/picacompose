@@ -248,7 +248,10 @@ data class CommentRequest(val content: String)
 data class CollectionsData(val collections: List<CollectionGroup> = emptyList())
 
 @Serializable
-data class CollectionGroup(val comics: List<ComicSummary> = emptyList())
+data class CollectionGroup(
+    val title: String? = null,
+    val comics: List<ComicSummary> = emptyList(),
+)
 
 /** `GET comics/knight-leaderboard`：骑士榜（贡献者）。 */
 @Serializable
