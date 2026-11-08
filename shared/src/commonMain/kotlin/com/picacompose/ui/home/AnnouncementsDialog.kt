@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -35,11 +36,11 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import coil3.compose.AsyncImage
 import com.picacompose.data.AnnouncementStore
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.Announcement
-import com.picacompose.ui.components.PicaImage
-import androidx.compose.ui.layout.ContentScale.Companion.Crop
+import androidx.compose.ui.layout.ContentScale
 import com.picacompose.ui.components.PicaImageViewer
 import com.picacompose.ui.components.url
 
@@ -108,55 +109,49 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
                 else -> {
                     val current = list.getOrNull(index.coerceIn(0, list.lastIndex))
                     Column {
-                        val thumb = current?.thumb.url()
-                        if (thumb != null) {
-                            PicaImage(
-                                url = thumb,
-                                contentDescription = current?.title,
-                                contentScale = Crop,
-                                alignment = Alignment.TopCenter,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(2.8f)
-                                    .clickable { viewing = thumb },
-                            )
-                        }
-                        Column(Modifier.padding(start = 22.dp, end = 22.dp, top = 18.dp)) {
-                            Text(
-                                text = current?.title.orEmpty(),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = colors.onSurface,
-                            )
-                            Spacer(Modifier.height(10.dp))
-                            Column(
-                                modifier = Modifier
-                                    .heightIn(max = 360.dp)
-                                    .verticalScroll(rememberScrollState()),
-                            ) {
+                        // 首图和标题跟着正文一起滚，所以图不用再裁成一条横幅。
+                        Column(
+                            modifier = Modifier
+                                .heightIn(max = 520.dp)
+                                .verticalScroll(rememberScrollState()),
+                        ) {
+                            val thumb = current?.thumb.url()
+                            if (thumb != null) {
+                                AnnouncementBanner(url = thumb, onClick = { viewing = thumb })
+                            }
+                            Column(Modifier.padding(start = 22.dp, end = 22.dp, top = 16.dp)) {
+                                Text(
+                                    text = current?.title.orEmpty(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = colors.onSurface,
+                                )
+                                Spacer(Modifier.height(10.dp))
                                 Text(
                                     text = linkify(current?.content.orEmpty().trim(), colors.primary),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colors.onSurfaceVariant,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
+                                Spacer(Modifier.height(12.dp))
                             }
-                            Spacer(Modifier.height(10.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End,
-                            ) {
-                                TextButton(
-                                    onClick = {
-                                        current?.let { store.dismiss(it.id) }
-                                        if (index < list.lastIndex) index++ else onDismiss()
-                                    },
-                                ) { Text("不再顯示") }
-                                TextButton(
-                                    onClick = {
-                                        if (index < list.lastIndex) index++ else onDismiss()
-                                    },
-                                ) { Text("確定") }
-                            }
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(end = 12.dp),
+                            horizontalArrangement = Arrangement.End,
+                        ) {
+                            TextButton(
+                                onClick = {
+                                    current?.let { store.dismiss(it.id) }
+                                    if (index < list.lastIndex) index++ else onDismiss()
+                                },
+                            ) { Text("不再顯示") }
+                            TextButton(
+                                onClick = {
+                                    if (index < list.lastIndex) index++ else onDismiss()
+                                },
+                            ) { Text("確定") }
                         }
                     }
                 }
@@ -167,6 +162,28 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
     viewing?.let { url ->
         PicaImageViewer(url = url, onDismiss = { viewing = null })
     }
+}
+
+/** 公告首图：按原图比例铺满宽度，不裁切，点了看大图。 */
+@Composable
+private fun AnnouncementBanner(url: String, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    var aspect by remember(url) { mutableStateOf(0f) }
+    AsyncImage(
+        model = url,
+        contentDescription = null,
+        contentScale = ContentScale.FillWidth,
+        alignment = Alignment.TopCenter,
+        onSuccess = { state ->
+            val size = state.painter.intrinsicSize
+            if (size.width > 0f && size.height > 0f) aspect = size.width / size.height
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (aspect > 0f) Modifier.aspectRatio(aspect) else Modifier.height(200.dp))
+            .background(colors.surfaceVariant)
+            .clickable(onClick = onClick),
+    )
 }
 
 /** 把正文里的 URL 换成可点的链接，点了交给系统浏览器。 */
