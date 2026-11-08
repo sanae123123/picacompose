@@ -63,6 +63,10 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     var showMessages by rememberSaveable { mutableStateOf(false) }
     val messagePager = remember { Pager { page -> pica.users.notifications(page = page) } }
     val messageListState = rememberLazyListState()
+    // 留言板挂在分类页里，同样提上来：退出去再进来不重拉第一页。
+    var showForum by rememberSaveable { mutableStateOf(false) }
+    val forumPager = remember { Pager { page -> pica.comments.list(FORUM_COMIC_ID, page).comments } }
+    val forumListState = rememberLazyListState()
     // 首页那条流也提上来：打开消息页再退回来时，不重拉推荐、不跳回顶部。
     val homeListState = rememberLazyListState()
     val homeFeed = rememberHomeFeedState()
@@ -73,8 +77,10 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     // 各栏的滚动位置在滑走再回来时也能接上（懒列表的状态本身是可保存的）。
     val tabStates = rememberSaveableStateHolder()
 
-    // 消息页是主页里的一层，系统返回先退回首页，而不是直接退出 App。
-    BackHandlerCompat(enabled = showMessages) { showMessages = false }
+    // 消息页、留言板都是栏里的一层，系统返回先退回上一屏，而不是直接退出 App。
+    BackHandlerCompat(enabled = showMessages || showForum) {
+        if (showForum) showForum = false else showMessages = false
+    }
 
     Box(Modifier.fillMaxSize()) {
         PicaBackdrop()
@@ -85,6 +91,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                     selected = tab,
                     onSelect = {
                         showMessages = false
+                        showForum = false
                         scope.launch { pagerState.animateScrollToPage(it.ordinal) }
                     },
                 )
@@ -93,8 +100,8 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize().padding(inner),
-                // 消息页盖在主页那一栏上，这时候别让横滑把整页翻走。
-                userScrollEnabled = !showMessages,
+                // 消息页 / 留言板盖在所在栏上，这时候别让横滑把整页翻走。
+                userScrollEnabled = !showMessages && !showForum,
                 key = { tabs[it].name },
             ) { page ->
                 tabStates.SaveableStateProvider(tabs[page].name) {
@@ -135,7 +142,23 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                         }
                     }
 
-                    HomeTab.Category -> CategoriesContent()
+                    HomeTab.Category -> AnimatedContent(
+                        targetState = showForum,
+                        transitionSpec = {
+                            fadeIn(tween(200)) togetherWith fadeOut(tween(120))
+                        },
+                        label = "forumPage",
+                    ) { forumOpen ->
+                        if (forumOpen) {
+                            ForumContent(
+                                pager = forumPager,
+                                listState = forumListState,
+                                onBack = { showForum = false },
+                            )
+                        } else {
+                            CategoriesContent(onOpenForum = { showForum = true })
+                        }
+                    }
                     HomeTab.Game -> GamesContent(pager = gamePager, listState = gameListState)
                     HomeTab.Mine -> MineContent(profile = profile, onSignOut = onSignOut)
                     HomeTab.Settings -> SettingsContent(onSignOut = onSignOut)

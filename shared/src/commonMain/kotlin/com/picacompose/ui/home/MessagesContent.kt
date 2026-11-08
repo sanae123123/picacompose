@@ -264,7 +264,7 @@ private fun MessageDialog(
 }
 
 /** ISO 时间截成 `MM/dd HH:mm`；只为显示，不引入日期库。 */
-private fun shortTime(iso: String?): String {
+internal fun shortTime(iso: String?): String {
     if (iso.isNullOrBlank() || iso.length < 16) return ""
     val date = iso.substring(5, 10).replace('-', '/')
     val time = iso.substring(11, 16)
