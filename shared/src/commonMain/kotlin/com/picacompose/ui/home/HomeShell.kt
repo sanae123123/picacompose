@@ -47,7 +47,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** 从按钮长出来的整屏页面。 */
-private enum class OverlayPage { None, Messages, Forum, Leaderboard, Web }
+private enum class OverlayPage { None, Messages, Forum, Leaderboard, Web, Comics }
 
 /** 变形动画要配对用的 key：源（按钮/卡片）和目标（整页）必须一致。 */
 private val OverlayPage.sharedKey: String
@@ -57,6 +57,7 @@ private val OverlayPage.sharedKey: String
         OverlayPage.Leaderboard -> "leaderboardTile"
         // 网页整页的 key 跟着具体磁贴走，这里只是兜底。
         OverlayPage.Web -> "webPage"
+        OverlayPage.Comics -> "comicsPage"
         OverlayPage.None -> "mainShell"
     }
 
@@ -87,6 +88,16 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     var webKey by rememberSaveable { mutableStateOf("webPage") }
     var webTitle by rememberSaveable { mutableStateOf("") }
     var webUrl by rememberSaveable { mutableStateOf("") }
+    // 本子列表：哪个分类、变形 key、以及它自己的分页和滚动位置。
+    var comicTitle by rememberSaveable { mutableStateOf("") }
+    var comicKey by rememberSaveable { mutableStateOf("comicsPage") }
+    val comicPager = remember(comicTitle) {
+        Pager(
+            load = { page -> pica.comics.list(page = page, category = comicTitle) },
+            itemKey = { it.id },
+        )
+    }
+    val comicListState = rememberLazyListState()
     val overlay = OverlayPage.entries.getOrElse(overlayOrdinal) { OverlayPage.None }
     // 网页视图等整页变形放完再挂（平台视图不参与容器变形）。
     var webMounted by remember { mutableStateOf(false) }
@@ -147,6 +158,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
         when (overlay) {
             OverlayPage.Messages -> messageListState.scrollToItem(0)
             OverlayPage.Forum -> forumListState.scrollToItem(0)
+            OverlayPage.Comics -> comicListState.scrollToItem(0)
             OverlayPage.None, OverlayPage.Leaderboard, OverlayPage.Web -> Unit
         }
     }
@@ -219,16 +231,21 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         forumTileModifier = forumSource,
                                         leaderboardTileModifier = leaderboardSource,
                                         // isWeb 的分类磁贴各自挂一个变形源，点开时从它身上长成整屏。
-                                        webTileModifier = { key ->
+                                        categoryTileModifier = { category ->
                                             with(shared) {
-                                                overlayBounds(key, contentScope)
+                                                overlayBounds(categoryTileKey(category), contentScope)
                                             }
                                         },
                                         onOpenWeb = { category ->
-                                            webKey = categoryWebKey(category)
+                                            webKey = categoryTileKey(category)
                                             webTitle = category.title
                                             webUrl = category.link.orEmpty()
                                             overlayOrdinal = OverlayPage.Web.ordinal
+                                        },
+                                        onOpenCategory = { category ->
+                                            comicTitle = category.title
+                                            comicKey = categoryTileKey(category)
+                                            overlayOrdinal = OverlayPage.Comics.ordinal
                                         },
                                         onOpenLeaderboard = {
                                             overlayOrdinal = OverlayPage.Leaderboard.ordinal
@@ -253,7 +270,11 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                     }
                 } else {
                     // 整页本体：从按钮那一块变形到整屏，所以它自带底色、盖住底部栏。
-                    val pageKey = if (page == OverlayPage.Web) webKey else page.sharedKey
+                    val pageKey = when (page) {
+                        OverlayPage.Web -> webKey
+                        OverlayPage.Comics -> comicKey
+                        else -> page.sharedKey
+                    }
                     val pageBounds = with(shared) {
                         overlayBounds(pageKey, contentScope)
                     }
@@ -284,6 +305,13 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                     title = webTitle,
                                     url = webUrl,
                                     showWebView = webMounted,
+                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                )
+
+                                OverlayPage.Comics -> ComicListContent(
+                                    title = comicTitle,
+                                    pager = comicPager,
+                                    listState = comicListState,
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
                                 )
 

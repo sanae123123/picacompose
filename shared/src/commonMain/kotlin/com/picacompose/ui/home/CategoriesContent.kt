@@ -50,7 +50,7 @@ import com.picacompose.ui.components.url
  * 注意别用「分类 id」硬拼：服务端下发的网页分区有的干脆没有 `_id`，
  * 拼出来全是同一个 key，几个磁贴会共用一份变形状态，动画就变成一起挤到一处。
  */
-internal fun categoryWebKey(category: Category): String {
+internal fun categoryTileKey(category: Category): String {
     val unique = category.id.ifBlank { category.title }
     return "categoryWeb-$unique"
 }
@@ -103,13 +103,13 @@ fun CategoriesContent(
     onOpenLeaderboard: () -> Unit = {},
     forumTileModifier: Modifier = Modifier,
     leaderboardTileModifier: Modifier = Modifier,
-    // isWeb 的分类磁贴：外层给每块挂变形源，点开由外层打开整页浏览器。
-    // 参数是 [categoryWebKey] 算出来的 key，源和目标必须用同一个。
-    webTileModifier: @Composable (String) -> Modifier = { Modifier },
+    // 分类磁贴：外层给每块挂变形源（不管是开浏览器还是开本子列表），
+    // 源和目标都用 [categoryTileKey] 算出来的 key。
+    categoryTileModifier: @Composable (Category) -> Modifier = { Modifier },
     onOpenWeb: (Category) -> Unit = {},
+    onOpenCategory: (Category) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
-    var selected by remember { mutableStateOf<String?>(null) }
     // 还没接的入口点一下给个说明，别让磁贴看起来像坏的。
     var comingSoon by remember { mutableStateOf<String?>(null) }
 
@@ -174,37 +174,20 @@ fun CategoriesContent(
                         rows[index].forEach { category ->
                             CategoryCard(
                                 category = category,
-                                selected = category.title == selected,
                                 onClick = {
                                     val link = category.link
                                     if (category.isWeb && !link.isNullOrBlank()) {
                                         onOpenWeb(category)
                                     } else {
-                                        selected = category.title
+                                        onOpenCategory(category)
                                     }
                                 },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .then(
-                                        if (category.isWeb && !category.link.isNullOrBlank()) {
-                                            webTileModifier(categoryWebKey(category))
-                                        } else {
-                                            Modifier
-                                        },
-                                    ),
+                                    .then(categoryTileModifier(category)),
                             )
                         }
                         if (rows[index].size == 1) Spacer(Modifier.weight(1f))
-                    }
-                }
-                selected?.let { title ->
-                    item {
-                        Text(
-                            text = "选中的是「$title」，漫画列表下一步接上。",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
                     }
                 }
             }
@@ -287,15 +270,14 @@ private fun HotTileCard(
 @Composable
 private fun CategoryCard(
     category: Category,
-    selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     Surface(
         shape = MaterialTheme.shapes.large,
-        color = if (selected) colors.primaryContainer else colors.surface,
-        tonalElevation = if (selected) 0.dp else 1.dp,
+        color = colors.surface,
+        tonalElevation = 1.dp,
         modifier = modifier,
     ) {
         Column(modifier = Modifier.clickable(onClick = onClick)) {
@@ -310,7 +292,7 @@ private fun CategoryCard(
                 Text(
                     text = category.title,
                     style = MaterialTheme.typography.titleSmall,
-                    color = if (selected) colors.onPrimaryContainer else colors.onSurface,
+                    color = colors.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -320,11 +302,7 @@ private fun CategoryCard(
                     Text(
                         text = description,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (selected) {
-                            colors.onPrimaryContainer.copy(alpha = 0.8f)
-                        } else {
-                            colors.onSurfaceVariant
-                        },
+                        color = colors.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

@@ -383,7 +383,7 @@ private fun KnightRankRow(
 }
 
 /** 数字太大就折成「1.2萬」「3.4億」，榜单里好读。 */
-private fun compactCount(value: Int): String {
+internal fun compactCount(value: Int): String {
     if (value < 10_000) return value.toString()
     return if (value >= 100_000_000) {
         "${value / 100_000_000}.${(value % 100_000_000) / 10_000_000}億"

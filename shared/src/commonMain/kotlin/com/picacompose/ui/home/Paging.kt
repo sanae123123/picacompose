@@ -36,6 +36,10 @@ class Pager<T>(
     var lastPage by mutableStateOf(0)
         private set
 
+    /** 服务端给的总条数（`total`），列表头显示「共 N 本」用。 */
+    var total by mutableStateOf(0)
+        private set
+
     /** 还有下一页可拉（第一页没拉过算 true）。 */
     val hasMore: Boolean get() = loadedPage == 0 || loadedPage < lastPage
 
@@ -49,6 +53,7 @@ class Pager<T>(
                 items = merged(items + paged.docs)
                 loadedPage = paged.page.takeIf { it > 0 } ?: (loadedPage + 1)
                 lastPage = paged.pages.coerceAtLeast(loadedPage)
+                total = paged.total
             }
             .onFailure { error = it.message ?: "列表没拉到" }
         loading = false
