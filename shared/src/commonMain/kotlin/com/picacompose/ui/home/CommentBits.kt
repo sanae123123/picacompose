@@ -33,6 +33,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.Comment
+import com.picacompose.ui.components.PicaGlyph
+import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.url
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -105,7 +107,61 @@ fun LazyListScope.commentItems(
     }
 }
 
-/** 一条评论：头像 + 昵称 + 时间 + 正文 + 赞/回复数。 */
+/** 点赞按钮：拇指 + 数量，点一下切赞/取消，自己吞掉点击不惊动外层。 */
+@Composable
+private fun LikeButton(comment: Comment, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    val scope = rememberCoroutineScope()
+    var liked by remember(comment.id) { mutableStateOf(comment.isLiked) }
+    var likes by remember(comment.id) { mutableStateOf(comment.likesCount) }
+    var busy by remember(comment.id) { mutableStateOf(false) }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(enabled = !busy) {
+                val target = !liked
+                liked = target
+                likes = (likes + if (target) 1 else -1).coerceAtLeast(0)
+                busy = true
+                scope.launch {
+                    runCatching { pica.comments.like(comment.id) }
+                        .onSuccess { action ->
+                            if (action == "like" || action == "unlike") {
+                                liked = action == "like"
+                                likes = comment.likesCount + if (liked) 1 else 0
+                            }
+                        }
+                        .onFailure {
+                            liked = !target
+                            likes = comment.likesCount
+                        }
+                    busy = false
+                }
+            }
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+    ) {
+        PicaGlyph(
+            icon = PicaIcon.Like,
+            modifier = Modifier.size(15.dp),
+            tint = if (liked) colors.primary else colors.onSurfaceVariant,
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = if (likes > 0) likes.toString() else "赞",
+            style = MaterialTheme.typography.labelSmall,
+            color = if (liked) colors.primary else colors.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * 一条评论：头像 + 昵称 + 时间 + 正文 + 点赞/回复。
+ *
+ * 有楼中楼时，点正文那一块就地展开，收起再点一次；
+ * 楼中楼按需拉 `comments/{id}/childrens`，不预加载。
+ */
 @Composable
 fun CommentRow(
     comment: Comment,
@@ -113,76 +169,86 @@ fun CommentRow(
 ) {
     val colors = MaterialTheme.colorScheme
     val avatar = comment.user?.avatar.url()
+    var expanded by remember(comment.id) { mutableStateOf(false) }
+    val replyPager = remember(comment.id) {
+        Pager<Comment> { page -> pica.comments.children(comment.id, page) }
+    }
+    val hasReplies = comment.childsCount > 0
+
+    LaunchedEffect(expanded, replyPager) {
+        if (expanded && replyPager.items.isEmpty() && replyPager.error == null) replyPager.loadNext()
+    }
+
     PicaCard(modifier = Modifier.padding(bottom = 10.dp)) {
-        Row {
-            if (avatar != null) {
-                PicaImage(
-                    url = avatar,
-                    contentDescription = comment.user?.name,
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(19.dp)),
-                )
-            } else {
-                Surface(
-                    shape = RoundedCornerShape(19.dp),
-                    color = colors.surfaceVariant,
-                    modifier = Modifier.size(38.dp),
-                ) {}
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = comment.user?.name.orEmpty().ifBlank { "绅士" },
-                        style = MaterialTheme.typography.titleSmall,
-                        color = colors.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(if (hasReplies) Modifier.clickable { expanded = !expanded } else Modifier),
+            ) {
+                if (avatar != null) {
+                    PicaImage(
+                        url = avatar,
+                        contentDescription = comment.user?.name,
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(19.dp)),
                     )
-                    if (comment.isTop) {
-                        Spacer(Modifier.width(8.dp))
-                        InfoChip("置顶")
-                    }
-                    Spacer(Modifier.weight(1f))
-                    val time = shortTime(comment.createdAt)
-                    if (time.isNotBlank()) {
-                        Text(
-                            text = time,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.onSurfaceVariant,
-                        )
-                    }
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(19.dp),
+                        color = colors.surfaceVariant,
+                        modifier = Modifier.size(38.dp),
+                    ) {}
                 }
-                if (comment.content.isNotBlank()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = comment.content,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceVariant,
-                        maxLines = 12,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                val liked = comment.likesCount
-                val replies = comment.childsCount
-                if (liked > 0 || replies > 0 || onReply != null) {
-                    Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (liked > 0) {
+                        Text(
+                            text = comment.user?.name.orEmpty().ifBlank { "绅士" },
+                            style = MaterialTheme.typography.titleSmall,
+                            color = colors.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (comment.isTop) {
+                            Spacer(Modifier.width(8.dp))
+                            InfoChip("置顶")
+                        }
+                        Spacer(Modifier.weight(1f))
+                        val time = shortTime(comment.createdAt)
+                        if (time.isNotBlank()) {
                             Text(
-                                text = "赞 $liked",
+                                text = time,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = colors.onSurfaceVariant,
                             )
                         }
-                        if (liked > 0 && replies > 0) Spacer(Modifier.width(12.dp))
-                        if (replies > 0) {
+                    }
+                    if (comment.content.isNotBlank()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = comment.content,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.onSurfaceVariant,
+                            maxLines = 12,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        LikeButton(comment)
+                        if (hasReplies) {
+                            Spacer(Modifier.width(10.dp))
                             Text(
-                                text = "回复 $replies",
+                                text = if (expanded) "收起回复" else "${comment.childsCount} 条回复",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = colors.onSurfaceVariant,
+                                color = if (expanded) colors.primary else colors.onSurfaceVariant,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { expanded = !expanded }
+                                    .padding(horizontal = 6.dp, vertical = 3.dp),
                             )
                         }
                         if (onReply != null) {
@@ -197,6 +263,130 @@ fun CommentRow(
                             )
                         }
                     }
+                }
+            }
+            if (expanded) {
+                CommentReplies(
+                    pager = replyPager,
+                    onReply = onReply,
+                    modifier = Modifier.padding(start = 50.dp, top = 12.dp),
+                )
+            }
+        }
+    }
+}
+
+/** 楼中楼列表：加载中 / 拉失败重试 / 一条条排列 / 还有下一页时给个「更多回复」。 */
+@Composable
+private fun CommentReplies(
+    pager: Pager<Comment>,
+    onReply: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    val scope = rememberCoroutineScope()
+    val error = pager.error
+
+    Column(modifier.fillMaxWidth()) {
+        if (pager.items.isEmpty()) {
+            when {
+                error != null -> Text(
+                    text = "回复没拉到，点一下重试",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.error,
+                    modifier = Modifier
+                        .clickable { scope.launch { pager.retry() } }
+                        .padding(vertical = 4.dp),
+                )
+                pager.loading -> Text(
+                    text = "正在展开…",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 4.dp),
+                )
+                else -> Unit
+            }
+        } else {
+            pager.items.forEach { child ->
+                ReplyRow(comment = child, onReply = onReply)
+            }
+            if (pager.hasMore) {
+                Text(
+                    text = if (pager.loading) "正在拉…" else "更多回复",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.primary,
+                    modifier = Modifier
+                        .clickable { if (!pager.loading) scope.launch { pager.loadNext() } }
+                        .padding(vertical = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+/** 楼中楼里的一条：小头像 + 昵称 + 正文 + 点赞。 */
+@Composable
+private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
+    val colors = MaterialTheme.colorScheme
+    val avatar = comment.user?.avatar.url()
+
+    Row(modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+        if (avatar != null) {
+            PicaImage(
+                url = avatar,
+                contentDescription = comment.user?.name,
+                modifier = Modifier
+                    .size(26.dp)
+                    .clip(RoundedCornerShape(13.dp)),
+            )
+        } else {
+            Surface(
+                shape = RoundedCornerShape(13.dp),
+                color = colors.surfaceVariant,
+                modifier = Modifier.size(26.dp),
+            ) {}
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = comment.user?.name.orEmpty().ifBlank { "绅士" },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Spacer(Modifier.weight(1f))
+                val time = shortTime(comment.createdAt)
+                if (time.isNotBlank()) {
+                    Text(
+                        text = time,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+            }
+            if (comment.content.isNotBlank()) {
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = comment.content,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LikeButton(comment, modifier = Modifier.padding(start = 0.dp))
+                if (onReply != null) {
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = "回复",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.primary,
+                        modifier = Modifier
+                            .clickable(onClick = onReply)
+                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                    )
                 }
             }
         }
