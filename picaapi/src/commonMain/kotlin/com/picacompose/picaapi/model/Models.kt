@@ -111,6 +111,8 @@ data class Category(
     val title: String = "",
     val description: String? = null,
     val thumb: Thumbnail? = null,
+    /** 服务端下发的网页分类：点开要在内置浏览器里开 [link]，不是漫画列表。 */
+    val isWeb: Boolean = false,
     val link: String? = null,
 )
 
