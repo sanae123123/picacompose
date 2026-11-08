@@ -88,7 +88,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     }
     val messageListState = rememberLazyListState()
     // 留言板挂在分类页里，同样提上来：退出去再进来不重拉第一页。
-    val forumPager = rememberCommentPager(FORUM_COMIC_ID)
+    val forumFeed = rememberCommentFeed(FORUM_COMIC_ID)
     val forumListState = rememberLazyListState()
     // 首页那条流也提上来：打开消息页再退回来时，不重拉推荐、不跳回顶部。
     val homeListState = rememberLazyListState()
@@ -205,9 +205,10 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                 )
 
                                 OverlayPage.Forum -> ForumContent(
-                                    pager = forumPager,
+                                    pager = forumFeed.pager,
                                     listState = forumListState,
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                    topComments = forumFeed.topComments,
                                 )
 
                                 OverlayPage.None -> Unit

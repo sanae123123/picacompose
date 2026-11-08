@@ -6,6 +6,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -73,14 +76,31 @@ import kotlinx.coroutines.launch
  */
 const val FORUM_COMIC_ID = "5822a6e3ad7ede654696e482"
 
-/** 按漫画 id 建一个评论分页器；留言板传 [FORUM_COMIC_ID]。 */
-@Composable
-fun rememberCommentPager(comicId: String): Pager<Comment> = remember(comicId) {
-    Pager(
-        load = { page -> pica.comments.list(comicId, page).comments },
+/**
+ * 评论区状态：分页列表 + 置顶评论。
+ *
+ * 接口把置顶评论单独放在 `topComments` 里，不混在 `comments.docs` 里，所以两套都留着；
+ * 置顶的每次拉第一页时更新，翻到第几页它们都还在最上面。
+ */
+@Stable
+class CommentFeed(comicId: String) {
+    var topComments by mutableStateOf<List<Comment>>(emptyList())
+        private set
+
+    val pager: Pager<Comment> = Pager(
+        load = { page ->
+            val data = pica.comments.list(comicId, page)
+            // 置顶跟着第一页走，翻页不重复拉。
+            if (page == 1) topComments = data.topComments
+            data.comments
+        },
         itemKey = { it.id },
     )
 }
+
+/** 按漫画 id 建一份评论区状态；留言板传 [FORUM_COMIC_ID]。 */
+@Composable
+fun rememberCommentFeed(comicId: String): CommentFeed = remember(comicId) { CommentFeed(comicId) }
 
 /**
  * 进评论区时拉数据：第一次进来拉第一页，之后再进来重拉一遍并替换内容。
@@ -346,10 +366,32 @@ fun LazyListScope.commentItems(
     pager: Pager<Comment>,
     onRetry: () -> Unit,
     onReply: ((CommentReplyTarget) -> Unit)? = null,
+    topComments: List<Comment> = emptyList(),
     loadingText: String = "正在拉评论…",
     emptyText: String = "还没有评论",
 ) {
-    if (pager.items.isEmpty()) {
+    // 置顶单独一份，普通列表里要是也出现同一个 id 就剔掉，免得 LazyColumn 撞 key。
+    val pinned = topComments.distinctBy { it.id }
+    val pinnedIds = pinned.mapTo(HashSet(pinned.size)) { it.id }
+    val rows = pager.items.filterNot { it.id in pinnedIds }.distinctBy { it.id }
+
+    if (pinned.isNotEmpty()) {
+        items(pinned, key = { "pinned-${it.id}" }) { comment ->
+            CommentRow(comment = comment, onReply = onReply, pinned = true)
+        }
+        // 置顶和普通评论之间拉一条淡分隔线，视觉上分开。
+        item(key = "comment-pinned-divider") {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp, bottom = 14.dp)
+                    .height(1.dp)
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.14f)),
+            )
+        }
+    }
+
+    if (rows.isEmpty() && pinned.isEmpty()) {
         item {
             when {
                 pager.error != null -> FailedBlock(pager.error.orEmpty(), onRetry)
@@ -358,7 +400,7 @@ fun LazyListScope.commentItems(
             }
         }
     }
-    items(pager.items.distinctBy { it.id }, key = { it.id }) { comment ->
+    items(rows, key = { it.id }) { comment ->
         CommentRow(comment = comment, onReply = onReply)
     }
     if (pager.items.isNotEmpty()) {
@@ -434,6 +476,7 @@ private fun LikeButton(comment: Comment, modifier: Modifier = Modifier) {
 fun CommentRow(
     comment: Comment,
     onReply: ((CommentReplyTarget) -> Unit)? = null,
+    pinned: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val avatar = comment.user?.avatar.url()
@@ -458,7 +501,22 @@ fun CommentRow(
         seenReplies = comment.childsCount
     }
 
-    PicaCard(modifier = Modifier.padding(bottom = 10.dp)) {
+    PicaCard(
+        modifier = Modifier
+            .padding(bottom = 10.dp)
+            .then(
+                // 置顶那条描一圈主题色，扫一眼就知道是钉在最上面的。
+                if (pinned) {
+                    Modifier.border(
+                        width = 1.dp,
+                        color = colors.primary.copy(alpha = 0.35f),
+                        shape = MaterialTheme.shapes.extraLarge,
+                    )
+                } else {
+                    Modifier
+                },
+            ),
+    ) {
         Column {
             Row(
                 modifier = Modifier

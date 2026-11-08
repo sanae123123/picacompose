@@ -46,6 +46,7 @@ fun ForumContent(
     listState: LazyListState = rememberLazyListState(),
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    topComments: List<Comment> = emptyList(),
 ) {
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -92,6 +93,7 @@ fun ForumContent(
                 pager = pager,
                 onRetry = { scope.launch { pager.retry() } },
                 onReply = { replyTarget = it },
+                topComments = topComments,
                 loadingText = "正在拉留言…",
                 emptyText = "还没有人留言",
             )
