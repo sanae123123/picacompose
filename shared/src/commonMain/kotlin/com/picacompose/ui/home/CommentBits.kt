@@ -8,11 +8,15 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,8 +41,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.Comment
 import com.picacompose.picaapi.model.UserBasic
@@ -48,6 +56,7 @@ import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.UserProfileDialog
 import com.picacompose.ui.components.UserTitleBadge
 import com.picacompose.ui.components.url
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
@@ -98,6 +107,147 @@ fun CommentLoadMore(listState: LazyListState, pager: Pager<*>) {
 }
 
 /**
+ * 要回复谁。
+ *
+ * [root] 是楼中楼挂靠的那条主评论（楼里回复也挂同一层）；[mentionName] 不为空时
+ * 输入框先填好「@某人 」，让对方知道在回谁。
+ */
+data class CommentReplyTarget(
+    val root: Comment,
+    val mentionName: String? = null,
+)
+
+/**
+ * 回复弹窗：从底部升起来，带被回复内容的小卡片。
+ *
+ * 键盘顶上来时整块跟着上移（`imePadding`），不会把输入框压在键盘下面。
+ */
+@Composable
+fun CommentReplyDialog(
+    target: CommentReplyTarget,
+    onDismiss: () -> Unit,
+    onReplied: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val scope = rememberCoroutineScope()
+    val focus = remember { FocusRequester() }
+    var draft by remember(target) {
+        mutableStateOf(target.mentionName?.takeIf { it.isNotBlank() }?.let { "@$it " } ?: "")
+    }
+    var sending by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    // 弹出来就把键盘叫起来，省得再点一下输入框。
+    LaunchedEffect(target) {
+        delay(120)
+        focus.requestFocus()
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+            Surface(
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+                color = colors.surface,
+                tonalElevation = 3.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .imePadding(),
+            ) {
+                Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "回复 ${target.root.user?.name.orEmpty().ifBlank { "这位绅士" }}",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = colors.onSurface,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            text = "取消",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colors.onSurfaceVariant,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable(onClick = onDismiss)
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                        )
+                    }
+                    if (target.root.content.isNotBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = colors.surfaceVariant.copy(alpha = 0.6f),
+                        ) {
+                            Text(
+                                text = target.root.content,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = {
+                            draft = it
+                            error = null
+                        },
+                        placeholder = { Text("回一句…") },
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        shape = RoundedCornerShape(14.dp),
+                        maxLines = 5,
+                        modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                    )
+                    error?.let {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.error,
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        Button(
+                            enabled = draft.isNotBlank() && !sending,
+                            shape = RoundedCornerShape(18.dp),
+                            onClick = {
+                                val content = draft.trim()
+                                if (content.isEmpty()) return@Button
+                                scope.launch {
+                                    sending = true
+                                    error = null
+                                    runCatching { pica.comments.reply(target.root.id, content) }
+                                        .onSuccess {
+                                            onReplied()
+                                            onDismiss()
+                                        }
+                                        .onFailure { error = it.message ?: "没发出去" }
+                                    sending = false
+                                }
+                            },
+                        ) {
+                            Text(if (sending) "发送中" else "发送")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * 评论区正文：加载态 / 列表 / 续页脚注整块塞进调用方的懒列表。
  *
  * 留言板和漫画详情页都调它，各自只负责自己的页头。
@@ -105,7 +255,7 @@ fun CommentLoadMore(listState: LazyListState, pager: Pager<*>) {
 fun LazyListScope.commentItems(
     pager: Pager<Comment>,
     onRetry: () -> Unit,
-    onReply: ((Comment) -> Unit)? = null,
+    onReply: ((CommentReplyTarget) -> Unit)? = null,
     loadingText: String = "正在拉评论…",
     emptyText: String = "还没有评论",
 ) {
@@ -119,7 +269,7 @@ fun LazyListScope.commentItems(
         }
     }
     items(pager.items.distinctBy { it.id }, key = { it.id }) { comment ->
-        CommentRow(comment = comment, onReply = onReply?.let { reply -> { reply(comment) } })
+        CommentRow(comment = comment, onReply = onReply)
     }
     if (pager.items.isNotEmpty()) {
         item {
@@ -193,7 +343,7 @@ private fun LikeButton(comment: Comment, modifier: Modifier = Modifier) {
 @Composable
 fun CommentRow(
     comment: Comment,
-    onReply: (() -> Unit)? = null,
+    onReply: ((CommentReplyTarget) -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val avatar = comment.user?.avatar.url()
@@ -209,6 +359,13 @@ fun CommentRow(
 
     LaunchedEffect(expanded, replyPager) {
         if (expanded && replyPager.items.isEmpty() && replyPager.error == null) replyPager.loadNext()
+    }
+
+    // 回复数变多了（多半是刚回完），展开着就把楼中楼重拉一遍，新回复立刻能看到。
+    var seenReplies by remember(comment.id) { mutableStateOf(comment.childsCount) }
+    LaunchedEffect(comment.childsCount) {
+        if (comment.childsCount > seenReplies && expanded) replyPager.reloadFirstPage()
+        seenReplies = comment.childsCount
     }
 
     PicaCard(modifier = Modifier.padding(bottom = 10.dp)) {
@@ -301,7 +458,7 @@ fun CommentRow(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = colors.primary,
                                 modifier = Modifier
-                                    .clickable(onClick = onReply)
+                                    .clickable { onReply(CommentReplyTarget(comment)) }
                                     .padding(horizontal = 4.dp, vertical = 2.dp),
                             )
                         }
@@ -325,6 +482,7 @@ fun CommentRow(
             ) {
                 CommentReplies(
                     pager = replyPager,
+                    root = comment,
                     onReply = onReply,
                     modifier = Modifier.padding(start = 50.dp, top = 12.dp),
                 )
@@ -337,7 +495,8 @@ fun CommentRow(
 @Composable
 private fun CommentReplies(
     pager: Pager<Comment>,
-    onReply: (() -> Unit)?,
+    root: Comment,
+    onReply: ((CommentReplyTarget) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -365,7 +524,13 @@ private fun CommentReplies(
             }
         } else {
             pager.items.forEach { child ->
-                ReplyRow(comment = child, onReply = onReply)
+                // 楼里的回复也挂在主评论下面，只是输入框里先写上「@谁」。
+                ReplyRow(
+                    comment = child,
+                    onReply = onReply?.let { reply ->
+                        { reply(CommentReplyTarget(root, mentionName = child.user?.name)) }
+                    },
+                )
             }
             if (pager.hasMore) {
                 Text(

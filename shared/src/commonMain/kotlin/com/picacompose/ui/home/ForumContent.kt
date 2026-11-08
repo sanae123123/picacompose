@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
@@ -12,6 +13,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -38,11 +43,13 @@ fun ForumContent(
 ) {
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
+    // 要回复谁：非空就弹回复面板。
+    var replyTarget by remember { mutableStateOf<CommentReplyTarget?>(null) }
 
     CommentAutoRefresh(pager)
     CommentLoadMore(listState, pager)
 
-    Column(modifier.fillMaxSize()) {
+    Column(modifier.fillMaxSize().imePadding()) {
         PageScaffold(
             state = listState,
             modifier = Modifier.weight(1f),
@@ -63,6 +70,7 @@ fun ForumContent(
             commentItems(
                 pager = pager,
                 onRetry = { scope.launch { pager.retry() } },
+                onReply = { replyTarget = it },
                 loadingText = "正在拉留言…",
                 emptyText = "还没有人留言",
             )
@@ -73,6 +81,14 @@ fun ForumContent(
                 pica.comments.post(FORUM_COMIC_ID, content)
                 pager.refresh()
             },
+        )
+    }
+
+    replyTarget?.let { target ->
+        CommentReplyDialog(
+            target = target,
+            onDismiss = { replyTarget = null },
+            onReplied = { scope.launch { pager.reloadFirstPage() } },
         )
     }
 }
