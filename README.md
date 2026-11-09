@@ -4,6 +4,13 @@
 
 Compose Multiplatform 跨平台项目 —— 一份 Kotlin 代码，同时跑在 **Android / iOS / Desktop** 上。
 
+## 下载
+
+[![Release](https://img.shields.io/github/v/release/sanae123123/picacompose)](https://github.com/sanae123123/picacompose/releases)
+
+Android 安装包在 [Releases](https://github.com/sanae123123/picacompose/releases) 里，下 `picacompose-*.apk` 侧载就行
+（minSdk 24，Android 7.0 起；包用的是 debug 签名，方便和日常调试包互相覆盖安装）。
+
 ## 技术栈
 
 | 组件 | 版本 |

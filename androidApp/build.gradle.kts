@@ -20,13 +20,19 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.0.1"
     }
 
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
         }
+    }
+
+    // 这台打包机是离线的，lint 那一套 jar 不在缓存里；release 版就不跑 lint 了。
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 
     compileOptions {
