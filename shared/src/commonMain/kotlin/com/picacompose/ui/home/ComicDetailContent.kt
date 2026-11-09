@@ -278,12 +278,27 @@ fun ComicDetailContent(
                 }
             }
 
-            val savedProgress = state.progress
-            if (loaded != null && savedProgress != null) {
+            if (loaded != null) {
                 item(key = "detail-resume") {
+                    val savedProgress = state.progress
                     ResumeCard(
                         progress = savedProgress,
-                        onResume = { onResume(savedProgress.order, savedProgress.page) },
+                        onResume = {
+                            if (savedProgress != null) {
+                                onResume(savedProgress.order, savedProgress.page)
+                            } else {
+                                // 还没读过：从第一話开始。章節没拉下来就先拉一页再开，
+                                // 免得猜个序号结果是空的。
+                                scope.launch {
+                                    val pager = state.episodePager
+                                    if (pager.items.isEmpty()) pager.loadNext()
+                                    // 章節是倒序给的，第一話在最后一页里。
+                                    if (pager.lastPage > 1) pager.jumpTo(pager.lastPage)
+                                    pager.items.minOfOrNull { it.order }
+                                        ?.let { onResume(it, 0) }
+                                }
+                            }
+                        },
                     )
                 }
             }
@@ -372,10 +387,10 @@ fun ComicDetailContent(
     }
 }
 
-/** 「繼續閱讀」：记住上次读到第幾話第几页，点一下接着看。 */
+/** 「繼續閱讀」：记住上次读到第幾話第几页，点一下接着看；没读过就从第一話开始。 */
 @Composable
 private fun ResumeCard(
-    progress: ReadingProgress,
+    progress: ReadingProgress?,
     onResume: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -390,22 +405,26 @@ private fun ResumeCard(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = "繼續閱讀",
+                    text = if (progress == null) "開始閱讀" else "繼續閱讀",
                     style = MaterialTheme.typography.labelLarge,
                     color = colors.onSecondaryContainer,
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = buildString {
-                        append("上次讀到 第 ${progress.order} 話")
-                        if (progress.page > 0) append(" · 第 ${progress.page + 1} 頁")
+                    text = if (progress == null) {
+                        "從第一話開始看"
+                    } else {
+                        buildString {
+                            append("上次讀到 第 ${progress.order} 話")
+                            if (progress.page > 0) append(" · 第 ${progress.page + 1} 頁")
+                        }
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onSecondaryContainer.copy(alpha = 0.8f),
                 )
             }
             Text(
-                text = "接着看",
+                text = if (progress == null) "開始" else "接着看",
                 style = MaterialTheme.typography.labelLarge,
                 color = colors.onSecondaryContainer,
             )
