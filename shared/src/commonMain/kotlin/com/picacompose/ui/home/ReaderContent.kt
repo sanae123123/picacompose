@@ -47,7 +47,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.size.Size
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.Episode
 import com.picacompose.ui.components.PicaGlyph
@@ -55,6 +59,9 @@ import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.url
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+
+/** 提前把后面几张图抓下来，手指划过去时是现成的。 */
+private const val PRELOAD_AHEAD = 4
 
 /**
  * 阅读器：整屏黑底，图片一张挨一张竖着排，滚到底自动续页。
@@ -82,9 +89,32 @@ fun ReaderDialog(
     val listState = remember(order) { LazyListState() }
     var chrome by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
+    val platformContext = LocalPlatformContext.current
 
     LaunchedEffect(pager) {
         if (pager.items.isEmpty()) pager.loadNext()
+    }
+
+    // 预先抓下面几张（连下一批也有）：图片请求都按原尺寸走，命中同一份内存缓存。
+    LaunchedEffect(listState, pager, platformContext) {
+        val loader = SingletonImageLoader.get(platformContext)
+        snapshotFlow {
+            listState.firstVisibleItemIndex to pager.items.size
+        }
+            .distinctUntilChanged()
+            .collect { (index, size) ->
+                if (size == 0) return@collect
+                val until = (index + PRELOAD_AHEAD).coerceAtMost(size - 1)
+                for (i in index + 1..until) {
+                    val url = pager.items[i].media.url() ?: continue
+                    loader.enqueue(
+                        ImageRequest.Builder(platformContext)
+                            .data(url)
+                            .size(Size.ORIGINAL)
+                            .build(),
+                    )
+                }
+            }
     }
 
     // 离底部还剩两张就续页。
@@ -127,8 +157,15 @@ fun ReaderDialog(
                     items(pager.items, key = { it.id }) { page ->
                         val url = page.media.url()
                         if (url != null) {
+                            // 和上面预抓用同一套请求参数，缓存才对得上。
+                            val request = remember(url) {
+                                ImageRequest.Builder(platformContext)
+                                    .data(url)
+                                    .size(Size.ORIGINAL)
+                                    .build()
+                            }
                             AsyncImage(
-                                model = url,
+                                model = request,
                                 contentDescription = null,
                                 contentScale = ContentScale.FillWidth,
                                 modifier = Modifier.fillMaxWidth(),
