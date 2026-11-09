@@ -215,9 +215,9 @@ private enum class ComicSort(val label: String, val value: String?) {
     MostViewed("最多瀏覽", "vd"),
 }
 
-/** 单列里的一条：左边封面，右边标题 / 作者 / 数据，够一屏塞五六条。 */
+/** 单列里的一条：左边封面，右边标题 / 作者 / 数据，够一屏塞五六条。随机页也用它。 */
 @Composable
-private fun ComicListRow(
+internal fun ComicListRow(
     comic: ComicSummary,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

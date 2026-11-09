@@ -47,7 +47,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** 从按钮长出来的整屏页面。 */
-private enum class OverlayPage { None, Messages, Forum, Leaderboard, Web, Comics, Detail }
+private enum class OverlayPage { None, Messages, Forum, Leaderboard, Web, Comics, Detail, Random }
 
 /** 变形动画要配对用的 key：源（按钮/卡片）和目标（整页）必须一致。 */
 private val OverlayPage.sharedKey: String
@@ -60,6 +60,7 @@ private val OverlayPage.sharedKey: String
         OverlayPage.Comics -> "comicsPage"
         // 详情页的 key 跟着点的那一本走，这里只是兜底。
         OverlayPage.Detail -> "comicDetail"
+        OverlayPage.Random -> "randomTile"
         OverlayPage.None -> "mainShell"
     }
 
@@ -90,13 +91,21 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     var webKey by rememberSaveable { mutableStateOf("webPage") }
     var webTitle by rememberSaveable { mutableStateOf("") }
     var webUrl by rememberSaveable { mutableStateOf("") }
-    // 本子列表：哪个分类、变形 key、以及它自己的分页和滚动位置。
+    // 本子列表：查询用的分类名（「最新更新」是空的）、显示用的标题、变形 key，
+    // 以及它自己的分页和滚动位置。
     var comicTitle by rememberSaveable { mutableStateOf("") }
+    var comicLabel by rememberSaveable { mutableStateOf("") }
     var comicKey by rememberSaveable { mutableStateOf("comicsPage") }
     var comicSort by rememberSaveable { mutableStateOf<String?>(null) }
     val comicPager = remember(comicTitle, comicSort) {
         Pager(
-            load = { page -> pica.comics.list(page = page, category = comicTitle, sort = comicSort) },
+            load = { page ->
+                pica.comics.list(
+                    page = page,
+                    category = comicTitle.ifBlank { null },
+                    sort = comicSort,
+                )
+            },
             itemKey = { it.id },
         )
     }
@@ -173,7 +182,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
             OverlayPage.Forum -> forumListState.scrollToItem(0)
             OverlayPage.Comics -> if (!fromDetail) comicListState.scrollToItem(0)
             OverlayPage.None, OverlayPage.Leaderboard, OverlayPage.Web,
-            OverlayPage.Detail -> Unit
+            OverlayPage.Detail, OverlayPage.Random -> Unit
         }
     }
 
@@ -252,6 +261,12 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         state = categoriesState,
                                         forumTileModifier = forumSource,
                                         leaderboardTileModifier = leaderboardSource,
+                                        latestTileModifier = with(shared) {
+                                            overlayBounds("latestTile", contentScope)
+                                        },
+                                        randomTileModifier = with(shared) {
+                                            overlayBounds(OverlayPage.Random.sharedKey, contentScope)
+                                        },
                                         // isWeb 的分类磁贴各自挂一个变形源，点开时从它身上长成整屏。
                                         categoryTileModifier = { category ->
                                             with(shared) {
@@ -266,8 +281,20 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         },
                                         onOpenCategory = { category ->
                                             comicTitle = category.title
+                                            comicLabel = category.title
+                                            comicSort = null
                                             comicKey = categoryTileKey(category)
                                             overlayOrdinal = OverlayPage.Comics.ordinal
+                                        },
+                                        onOpenLatest = {
+                                            comicTitle = ""
+                                            comicLabel = "最新更新"
+                                            comicSort = "dd"
+                                            comicKey = "latestTile"
+                                            overlayOrdinal = OverlayPage.Comics.ordinal
+                                        },
+                                        onOpenRandom = {
+                                            overlayOrdinal = OverlayPage.Random.ordinal
                                         },
                                         onOpenLeaderboard = {
                                             overlayOrdinal = OverlayPage.Leaderboard.ordinal
@@ -338,7 +365,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                 )
 
                                 OverlayPage.Comics -> ComicListContent(
-                                    title = comicTitle,
+                                    title = comicLabel,
                                     pager = comicPager,
                                     listState = comicListState,
                                     sort = comicSort,
@@ -356,6 +383,21 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         overlayOrdinal = OverlayPage.Detail.ordinal
                                     },
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                )
+
+                                OverlayPage.Random -> RandomComicsContent(
+                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                    comicRowModifier = { comic ->
+                                        with(shared) {
+                                            overlayBounds("comic-${comic.id}", contentScope)
+                                        }
+                                    },
+                                    onOpenComic = { comic ->
+                                        detailComicId = comic.id
+                                        detailTitle = comic.title
+                                        detailReturnOrdinal = OverlayPage.Random.ordinal
+                                        overlayOrdinal = OverlayPage.Detail.ordinal
+                                    },
                                 )
 
                                 OverlayPage.Detail -> ComicDetailContent(

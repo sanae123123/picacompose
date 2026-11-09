@@ -103,11 +103,17 @@ fun CategoriesContent(
     onOpenLeaderboard: () -> Unit = {},
     forumTileModifier: Modifier = Modifier,
     leaderboardTileModifier: Modifier = Modifier,
+    latestTileModifier: Modifier = Modifier,
+    randomTileModifier: Modifier = Modifier,
     // 分类磁贴：外层给每块挂变形源（不管是开浏览器还是开本子列表），
     // 源和目标都用 [categoryTileKey] 算出来的 key。
     categoryTileModifier: @Composable (Category) -> Modifier = { Modifier },
     onOpenWeb: (Category) -> Unit = {},
     onOpenCategory: (Category) -> Unit = {},
+    /** 最新更新：官方是同一个列表 Fragment，只是不带分类、固定 s=dd。 */
+    onOpenLatest: () -> Unit = {},
+    /** 隨機本子：走 `GET comics/random`，一次一批，无分页。 */
+    onOpenRandom: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     // 还没接的入口点一下给个说明，别让磁贴看起来像坏的。
@@ -139,8 +145,18 @@ fun CategoriesContent(
                 HotTile("點擊救嗶咔", url = state.adCover) { comingSoon = "點擊救嗶咔" },
                 HotTile("嗶咔小程式", art = "love_pica") { comingSoon = "嗶咔小程式" },
                 HotTile("嗶咔留言版", art = "forum", modifier = forumTileModifier, onClick = onOpenForum),
-                HotTile("最新更新", art = "latest") { comingSoon = "最新更新" },
-                HotTile("隨機本子", art = "random") { comingSoon = "隨機本子" },
+                HotTile(
+                    label = "最新更新",
+                    art = "latest",
+                    modifier = latestTileModifier,
+                    onClick = onOpenLatest,
+                ),
+                HotTile(
+                    label = "隨機本子",
+                    art = "random",
+                    modifier = randomTileModifier,
+                    onClick = onOpenRandom,
+                ),
             )
             hotTiles.chunked(3).forEach { row ->
                 Row(
