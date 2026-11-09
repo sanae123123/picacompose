@@ -3,6 +3,7 @@ package com.picacompose.ui.components
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,6 +20,10 @@ import androidx.compose.ui.Modifier
 class WebViewController {
     /** 当前页面能不能后退（第一页就是 false）。 */
     var canGoBack by mutableStateOf(false)
+        internal set
+
+    /** 当前页面的加载进度 0f..1f，由平台那一侧回填，加载完是 1f。 */
+    var progress by mutableFloatStateOf(0f)
         internal set
 
     internal var reloadTick by mutableIntStateOf(0)

@@ -3,7 +3,10 @@ package com.picacompose.ui.components
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Message
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -32,6 +35,8 @@ actual fun PlatformWebView(
             WebView(context).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
+                // 让 target=_blank / window.open 走到 onCreateWindow，好在外面接下。
+                settings.setSupportMultipleWindows(true)
                 // http/https 留在容器里；别的 scheme（intent://、market://、tg:// 之类）
                 // 交给本机上装了对应 App 的去处理，没人接就安静地吞掉，别让网页跳错误页。
                 webViewClient = object : WebViewClient() {
@@ -40,9 +45,50 @@ actual fun PlatformWebView(
                         request: WebResourceRequest,
                     ): Boolean = view.openExternalIfNeeded(request.url.toString())
 
+                    override fun onPageStarted(view: WebView, pageUrl: String?, favicon: Bitmap?) {
+                        super.onPageStarted(view, pageUrl, favicon)
+                        controller.progress = 0f
+                    }
+
                     override fun onPageFinished(view: WebView, pageUrl: String?) {
                         super.onPageFinished(view, pageUrl)
+                        controller.progress = 1f
                         controller.canGoBack = view.canGoBack()
+                    }
+                }
+                webChromeClient = object : WebChromeClient() {
+                    override fun onProgressChanged(view: WebView, newProgress: Int) {
+                        super.onProgressChanged(view, newProgress)
+                        controller.progress = newProgress / 100f
+                    }
+
+                    // 新标签打开：拿个空壳 WebView 接住地址，交给系统默认浏览器；
+                    // 不是用户点出来的（自动弹窗）就别管，免得广告页乱开浏览器。
+                    override fun onCreateWindow(
+                        view: WebView,
+                        isDialog: Boolean,
+                        isUserGesture: Boolean,
+                        resultMsg: Message,
+                    ): Boolean {
+                        if (!isUserGesture) return false
+                        val probe = WebView(view.context).apply {
+                            webViewClient = object : WebViewClient() {
+                                override fun shouldOverrideUrlLoading(
+                                    probeView: WebView,
+                                    request: WebResourceRequest,
+                                ): Boolean {
+                                    val scheme = request.url.scheme?.lowercase()
+                                    if (scheme == "http" || scheme == "https") {
+                                        probeView.context.openInBrowser(request.url.toString())
+                                    }
+                                    probeView.post { probeView.destroy() }
+                                    return true
+                                }
+                            }
+                        }
+                        (resultMsg.obj as? WebView.WebViewTransport)?.webView = probe
+                        resultMsg.sendToTarget()
+                        return true
                     }
                 }
             }.also { webView = it }

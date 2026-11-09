@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -17,6 +18,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -130,6 +132,17 @@ fun WebPageContent(
                         },
                     )
                 }
+            }
+        }
+        // 顶栏下面那条加载进度：高度一直占着，出现 / 消失时网页不会上下跳。
+        Box(Modifier.fillMaxWidth().height(2.dp)) {
+            if (controller.progress > 0.01f && controller.progress < 1f) {
+                LinearProgressIndicator(
+                    progress = { controller.progress },
+                    modifier = Modifier.fillMaxSize(),
+                    color = colors.primary,
+                    trackColor = colors.primary.copy(alpha = 0.12f),
+                )
             }
         }
         Box(
