@@ -3,6 +3,7 @@ package com.picacompose.ui.home
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -80,6 +81,7 @@ private val OverlayPage.sharedKey: String
 @Composable
 fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     val scope = rememberCoroutineScope()
+    val darkTheme = isSystemInDarkTheme()
     val tabs = HomeTab.entries
     var savedIndex by rememberSaveable { mutableStateOf(0) }
     val pagerState = rememberPagerState(initialPage = savedIndex, pageCount = { tabs.size })
@@ -96,8 +98,6 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     var webUrl by rememberSaveable { mutableStateOf("") }
     // 嗶咔的開屏廣告：分类页那几块磁贴点开弹一次。
     var splashAdOpen by rememberSaveable { mutableStateOf(false) }
-    // 「支持嗶咔」：原版是内嵌网页弹层。
-    var supportOpen by rememberSaveable { mutableStateOf(false) }
     // 本子列表：查询用的分类名（「最新更新」是空的）、显示用的标题、变形 key，
     // 以及它自己的分页和滚动位置。
     var comicTitle by rememberSaveable { mutableStateOf("") }
@@ -136,11 +136,11 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     // 阅读器从第几页开始（上次读到哪儿）。
     var readerPage by rememberSaveable { mutableIntStateOf(0) }
     val overlay = OverlayPage.entries.getOrElse(overlayOrdinal) { OverlayPage.None }
-    // 网页视图等整页变形放完再挂（平台视图不参与容器变形）。
+    // 网页视图等整页变形放完再挂（平台视图不参与容器变形）。挂上之后由页面自己淡进来。
     var webMounted by remember { mutableStateOf(false) }
     LaunchedEffect(overlay) {
         if (overlay == OverlayPage.Web) {
-            delay(480)
+            delay(360)
             webMounted = true
         } else {
             // 返回时先卸掉，缩回磁贴的那段也交给页面本身。
@@ -288,6 +288,9 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         state = categoriesState,
                                         forumTileModifier = forumSource,
                                         leaderboardTileModifier = leaderboardSource,
+                                        supportTileModifier = with(shared) {
+                                            overlayBounds("supportTile", contentScope)
+                                        },
                                         latestTileModifier = with(shared) {
                                             overlayBounds("latestTile", contentScope)
                                         },
@@ -329,7 +332,17 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         onOpenForum = {
                                             overlayOrdinal = OverlayPage.Forum.ordinal
                                         },
-                                        onOpenSupport = { supportOpen = true },
+                                        // 「支持嗶咔」也走统一的内置浏览器，key 用它自己那块磁贴，
+                                        // 点下去从磁贴长成整屏，不再另开一层弹窗。
+                                        onOpenSupport = {
+                                            webKey = "supportTile"
+                                            webTitle = "支持嗶咔"
+                                            webUrl = supportPicaUrl(
+                                                adsBase = categoriesState.adsBase,
+                                                dark = darkTheme,
+                                            )
+                                            overlayOrdinal = OverlayPage.Web.ordinal
+                                        },
                                         onOpenSplashAd = { splashAdOpen = true },
                                         onOpenGames = {
                                             overlayOrdinal = OverlayPage.None.ordinal
@@ -505,9 +518,6 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                     }
                 }
             }
-        }
-        if (supportOpen) {
-            SupportPicaDialog(onDismiss = { supportOpen = false })
         }
         if (splashAdOpen) {
             SplashAdDialog(

@@ -52,6 +52,20 @@ internal fun categoryTileKey(category: Category): String {
     return "categoryWeb-$unique"
 }
 
+/**
+ * 广告页域名的兜底值。
+ *
+ * 原版客户端里写死的是 `http://pica-juicy.picacomic.com`（`KEY_AD_URL_BASE` 的默认值），
+ * 但开屏时会用 waka init 下发的值覆盖掉 —— 那个写死的域名现在 404 了，实际在用的是这个。
+ */
+internal const val FALLBACK_ADS_BASE = "https://pica-ad-api.diwodiwo.xyz"
+
+/** 「支持嗶咔」打开的地址：`KEY_AD_URL_BASE + /android/font`，深色主题带 `?color=black`。 */
+internal fun supportPicaUrl(adsBase: String?, dark: Boolean): String {
+    val base = adsBase?.trimEnd('/')?.takeIf { it.startsWith("http") } ?: FALLBACK_ADS_BASE
+    return "$base/android/font" + if (dark) "?color=black" else ""
+}
+
 @Stable
 class CategoriesState {
     var categories by mutableStateOf<List<Category>?>(null)
@@ -60,6 +74,9 @@ class CategoriesState {
         private set
     /** 「點擊救嗶咔」磁贴的广告封面。 */
     var adCover by mutableStateOf<String?>(null)
+        private set
+    /** 「支持嗶咔」内嵌页的域名：官方开屏时从 waka init 拿到，这里跟着广告封面一起问一次。 */
+    var adsBase by mutableStateOf<String?>(null)
         private set
     private var started = false
 
@@ -85,6 +102,8 @@ class CategoriesState {
         if (adStarted) return
         adStarted = true
         adCover = runCatching { pica.meta.banners().firstOrNull()?.thumb.url() }.getOrNull()
+        // 广告域名跟封面一起问：开「支持嗶咔」时就不用现等。
+        adsBase = runCatching { pica.meta.adsBaseUrl() }.getOrNull()
     }
 }
 
@@ -100,6 +119,7 @@ fun CategoriesContent(
     onOpenLeaderboard: () -> Unit = {},
     forumTileModifier: Modifier = Modifier,
     leaderboardTileModifier: Modifier = Modifier,
+    supportTileModifier: Modifier = Modifier,
     latestTileModifier: Modifier = Modifier,
     randomTileModifier: Modifier = Modifier,
     // 分类磁贴：外层给每块挂变形源（不管是开浏览器还是开本子列表），
@@ -111,7 +131,7 @@ fun CategoriesContent(
     onOpenLatest: () -> Unit = {},
     /** 隨機本子：走 `GET comics/random`，一次一批，无分页。 */
     onOpenRandom: () -> Unit = {},
-    /** 支持嗶咔：原版是弹一层内嵌网页（PopupWebview 加载 /android/font）。 */
+    /** 支持嗶咔：原版是整屏内嵌网页（`/android/font`），这里走同一个内置浏览器。 */
     onOpenSupport: () -> Unit = {},
     /** 點擊救嗶咔 / 嗶咔小程式：弹嗶咔的開屏廣告。 */
     onOpenSplashAd: () -> Unit = {},
@@ -132,7 +152,12 @@ fun CategoriesContent(
             SectionTitle("熱門分類")
             Spacer(Modifier.height(12.dp))
             val hotTiles = listOf(
-                HotTile("支持嗶咔", art = "support", onClick = onOpenSupport),
+                HotTile(
+                    label = "支持嗶咔",
+                    art = "support",
+                    modifier = supportTileModifier,
+                    onClick = onOpenSupport,
+                ),
                 HotTile(
                     label = "嗶咔排行榜",
                     art = "leaderboard",

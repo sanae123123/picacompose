@@ -1,5 +1,7 @@
 package com.picacompose.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +20,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,6 +57,11 @@ fun WebPageContent(
     var menuOpen by remember { mutableStateOf(false) }
     var pageUrl by remember(url) { mutableStateOf(url) }
     var pageTitle by remember(url) { mutableStateOf<String?>(null) }
+    // 网页视图是平台视图，挂上那一刻只能整屏硬切；淡进来才接得上容器变形。
+    val webAlpha = remember { Animatable(if (showWebView) 1f else 0f) }
+    LaunchedEffect(showWebView) {
+        if (showWebView) webAlpha.animateTo(1f, tween(durationMillis = 220)) else webAlpha.snapTo(0f)
+    }
 
     Column(modifier.fillMaxSize()) {
         Row(
@@ -125,7 +134,12 @@ fun WebPageContent(
                 }
             }
         }
-        Box(Modifier.weight(1f).fillMaxWidth()) {
+        Box(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .graphicsLayer { alpha = webAlpha.value },
+        ) {
             if (showWebView) {
                 // key 一变就重建网页视图（比如地址变了），等于重新加载。
                 key(url) {
