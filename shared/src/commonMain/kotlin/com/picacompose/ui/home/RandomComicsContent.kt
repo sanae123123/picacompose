@@ -30,7 +30,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,6 +49,7 @@ import com.picacompose.picaapi.model.ComicSummary
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** 推到底之后还要再推多少才换一批。 */
 private val BOTTOM_PULL_THRESHOLD = 88.dp
@@ -78,12 +78,26 @@ fun RandomComicsContent(
     var comics by remember { mutableStateOf<List<ComicSummary>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
-    var tick by remember { mutableIntStateOf(0) }
     // 换一批的整段过程：滑回顶部 + 等新一批回来。
     var refreshing by remember { mutableStateOf(false) }
     // 底部推上来的距离，只用来画那个小圈。
     var pullPx by remember { mutableFloatStateOf(0f) }
     val thresholdPx = with(LocalDensity.current) { BOTTOM_PULL_THRESHOLD.toPx() }
+
+    // 抽一批新的。直接干活，不靠 tick 转手，免得中间哪一步卡住就一直转圈。
+    suspend fun reload() {
+        loading = true
+        error = null
+        runCatching { pica.comics.random() }
+            .onSuccess { comics = it }
+            .onFailure { error = it.message ?: "随机本子没拉到" }
+        loading = false
+        // 换完从第一本看起（上滑那段的动画可能被手势打断）。
+        if (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0) {
+            listState.requestScrollToItem(0)
+        }
+        refreshing = false
+    }
 
     fun requestRefresh() {
         if (refreshing) return
@@ -91,20 +105,14 @@ fun RandomComicsContent(
         pullPx = 0f
         scope.launch {
             // 先自动滑回顶部——这一段本身就是动画，换完再从顶上往下看。
-            listState.animateScrollToItem(0)
-            tick++
+            // 手指还没松时这段动画会被新的手势掐掉（滚动由互斥锁管着），
+            // 所以卡时间兜一下，掐掉了也照样接着换。
+            withTimeoutOrNull(900) { listState.animateScrollToItem(0) }
+            reload()
         }
     }
 
-    LaunchedEffect(tick) {
-        loading = true
-        error = null
-        runCatching { pica.comics.random() }
-            .onSuccess { comics = it }
-            .onFailure { error = it.message ?: "随机本子没拉到" }
-        loading = false
-        refreshing = false
-    }
+    LaunchedEffect(Unit) { reload() }
 
     // 到底了还继续往上推：记下推了多远，够一个门槛就换一批。
     // 推的时候把这段位移吃掉，免得列表再抖一下。
@@ -136,7 +144,7 @@ fun RandomComicsContent(
     Box(modifier.fillMaxSize().nestedScroll(bottomPull)) {
         PageScaffold(
             state = listState,
-            onRefresh = { tick++ },
+            onRefresh = { reload() },
             header = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
