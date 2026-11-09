@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
@@ -31,8 +32,14 @@ actual fun PlatformWebView(
             WebView(context).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
-                // 站内跳转都留在容器里，别把外部浏览器叫出来。
+                // http/https 留在容器里；别的 scheme（intent://、market://、tg:// 之类）
+                // 交给本机上装了对应 App 的去处理，没人接就安静地吞掉，别让网页跳错误页。
                 webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(
+                        view: WebView,
+                        request: WebResourceRequest,
+                    ): Boolean = view.openExternalIfNeeded(request.url.toString())
+
                     override fun onPageFinished(view: WebView, pageUrl: String?) {
                         super.onPageFinished(view, pageUrl)
                         controller.canGoBack = view.canGoBack()
@@ -69,4 +76,38 @@ private fun Context.openInBrowser(url: String) {
             },
         )
     }
+}
+
+/**
+ * 网页里点到非 http(s) 的链接时，看看本机有没有 App 能接。
+ *
+ * 返回值就是 `shouldOverrideUrlLoading` 的返回值：true 表示这次跳转我们处理掉了，
+ * 网页不用自己去加载（否则 WebView 会显示个「网页无法打开」）。
+ *
+ * - http / https：false，留在内置浏览器里。
+ * - `intent://`：按 Intent URI 解析，有对应的就打开；没有则退回它自带的
+ *   `browser_fallback_url`（如果有），再不行就什么都不做。
+ * - 其它 scheme：试着用系统 VIEW 打开，没有 App 接就安静地忽略 —— 不弹错误、不崩。
+ */
+private fun WebView.openExternalIfNeeded(url: String): Boolean {
+    val scheme = runCatching { Uri.parse(url).scheme?.lowercase() }.getOrNull()
+    if (scheme == null || scheme == "http" || scheme == "https") return false
+
+    val context = context
+    if (scheme == "intent") {
+        val intent = runCatching { Intent.parseUri(url, Intent.URI_INTENT_SCHEME) }
+            .getOrNull() ?: return true
+        val fallback = intent.getStringExtra("browser_fallback_url")
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val opened = runCatching { context.startActivity(intent) }.isSuccess
+        if (!opened && !fallback.isNullOrBlank()) loadUrl(fallback)
+        return true
+    }
+
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.packageManager.resolveActivity(intent, 0)?.let {
+        runCatching { context.startActivity(intent) }
+    }
+    return true
 }

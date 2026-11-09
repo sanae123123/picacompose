@@ -30,8 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -143,19 +141,12 @@ fun WebPageContent(
             if (showWebView) {
                 // key 一变就重建网页视图（比如地址变了），等于重新加载。
                 key(url) {
+                    // 别在网页视图上再套手势拦截：平台视图要自己吃触摸事件，
+                    // 底下拦一层会把滚动一起吃掉（之前就是滚不动）。
                     PlatformWebView(
                         url = url,
                         controller = controller,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            // 网页视图盖在上面时，别让手势漏到下面那一层。
-                            .pointerInput(Unit) {
-                                awaitPointerEventScope {
-                                    while (true) {
-                                        awaitPointerEvent(PointerEventPass.Main).changes.forEach { it.consume() }
-                                    }
-                                }
-                            },
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             }
