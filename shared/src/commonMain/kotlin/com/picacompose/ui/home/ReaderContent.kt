@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,12 +26,14 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,8 +50,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.size.Size
@@ -157,19 +162,7 @@ fun ReaderDialog(
                     items(pager.items, key = { it.id }) { page ->
                         val url = page.media.url()
                         if (url != null) {
-                            // 和上面预抓用同一套请求参数，缓存才对得上。
-                            val request = remember(url) {
-                                ImageRequest.Builder(platformContext)
-                                    .data(url)
-                                    .size(Size.ORIGINAL)
-                                    .build()
-                            }
-                            AsyncImage(
-                                model = request,
-                                contentDescription = null,
-                                contentScale = ContentScale.FillWidth,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                            ReaderPage(url = url, platformContext = platformContext)
                         }
                     }
                     if (pager.items.isEmpty()) {
@@ -257,6 +250,89 @@ fun ReaderDialog(
                         nextOrder?.let { order = it }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * 一页图：还没来时占一块 3:4 的转圈，图片落地后按真实尺寸重新测量。
+ *
+ * 不这样的话，未加载的项高度是 0，往下划时看不出还剩多少、也容易一划就跳过去。
+ */
+@Composable
+private fun ReaderPage(
+    url: String,
+    platformContext: PlatformContext,
+) {
+    var state by remember(url) {
+        mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty)
+    }
+    var retryTick by remember(url) { mutableIntStateOf(0) }
+    // 和预抓用同一套请求参数，缓存才对得上。
+    val request = remember(url) {
+        ImageRequest.Builder(platformContext)
+            .data(url)
+            .size(Size.ORIGINAL)
+            .build()
+    }
+    val failed = state is AsyncImagePainter.State.Error
+
+    Box(Modifier.fillMaxWidth()) {
+        if (state is AsyncImagePainter.State.Empty ||
+            state is AsyncImagePainter.State.Loading ||
+            failed
+        ) {
+            Box(
+                modifier = Modifier.fillMaxWidth().aspectRatio(3f / 4f),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (failed) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(
+                            text = "这张没加载出来",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.8f),
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White.copy(alpha = 0.16f),
+                            // 先把状态拨回「还没加载」，否则下面那段不会重新挂图片。
+                            modifier = Modifier.clickable {
+                                state = AsyncImagePainter.State.Empty
+                                retryTick++
+                            },
+                        ) {
+                            Text(
+                                text = "点一下重试",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            )
+                        }
+                    }
+                } else {
+                    CircularProgressIndicator(
+                        color = Color.White.copy(alpha = 0.85f),
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
+            }
+        }
+        // 失败时把它撤掉，省得一直挂着一个看不见的请求；重试时换个 key 重新来一遍。
+        if (!failed) {
+            key(retryTick) {
+                AsyncImage(
+                    model = request,
+                    contentDescription = null,
+                    contentScale = ContentScale.FillWidth,
+                    onState = { state = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }
