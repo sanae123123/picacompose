@@ -129,6 +129,8 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     // 阅读器：从章節那一行撑开成整屏，读的是哪一話也记下来。
     var readerOrder by rememberSaveable { mutableIntStateOf(0) }
     var readerKey by rememberSaveable { mutableStateOf("episode") }
+    // 阅读器从第几页开始（上次读到哪儿）。
+    var readerPage by rememberSaveable { mutableIntStateOf(0) }
     val overlay = OverlayPage.entries.getOrElse(overlayOrdinal) { OverlayPage.None }
     // 网页视图等整页变形放完再挂（平台视图不参与容器变形）。
     var webMounted by remember { mutableStateOf(false) }
@@ -453,7 +455,21 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         },
                                         onOpenEpisode = { episode, key ->
                                             readerOrder = episode.order
+                                            // 点的正是上次读的那一話就接着看，别从头再来。
+                                            val saved = state.progress
+                                            readerPage = if (saved != null && saved.order == episode.order) {
+                                                saved.page
+                                            } else {
+                                                0
+                                            }
                                             readerKey = key
+                                            overlayOrdinal = OverlayPage.Reader.ordinal
+                                        },
+                                        // 「繼續閱讀」：没有对应的章節行，直接用兜底的 key，纯淡入。
+                                        onResume = { order, page ->
+                                            readerOrder = order
+                                            readerPage = page
+                                            readerKey = "episode"
                                             overlayOrdinal = OverlayPage.Reader.ordinal
                                         },
                                     )
@@ -466,8 +482,13 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                             ?: detailTitle,
                                         episodes = state.episodePager.items,
                                         startOrder = readerOrder,
+                                        startPage = readerPage,
                                         onDismiss = {
                                             overlayOrdinal = OverlayPage.Detail.ordinal
+                                        },
+                                        // 读到哪一页就记到本子上，详情页那张「繼續閱讀」跟着变。
+                                        onProgress = { order, page, pages ->
+                                            state.recordProgress(order, page, pages)
                                         },
                                     )
                                 }

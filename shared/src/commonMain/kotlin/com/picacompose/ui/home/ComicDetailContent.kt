@@ -35,7 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.picacompose.data.ReadingProgress
 import com.picacompose.data.pica
+import com.picacompose.data.readingProgressStore
 import com.picacompose.picaapi.model.ComicDetail
 import com.picacompose.picaapi.model.Episode
 import com.picacompose.ui.components.PicaGlyph
@@ -84,6 +86,25 @@ class ComicDetailState(comicId: String) {
     )
     val commentFeed: CommentFeed = CommentFeed(comicId)
 
+    // 读到哪儿了：从本机存储里捞出来，读完一章实时更新。
+    private val progressStore = readingProgressStore
+    var progress by mutableStateOf(progressStore.load(comicId))
+        private set
+
+    /** 阅读器报进度时记一下：第幾話、第几页。 */
+    fun recordProgress(order: Int, page: Int, pages: Int) {
+        if (order <= 0) return
+        val next = ReadingProgress(
+            comicId = comicId,
+            order = order,
+            page = page.coerceAtLeast(0),
+            pages = pages,
+            title = detail?.title ?: progress?.title,
+        )
+        progress = next
+        progressStore.save(next)
+    }
+
     private var started = false
 
     suspend fun ensureLoaded() {
@@ -130,6 +151,8 @@ fun ComicDetailContent(
     /** 章節行的变形源 key，点开时从那一行撑开成阅读器。 */
     episodeRowModifier: @Composable (String) -> Modifier = { Modifier },
     onOpenEpisode: (Episode, String) -> Unit = { _, _ -> },
+    /** 「繼續閱讀」：上次读到第幾話、第几页。 */
+    onResume: (order: Int, page: Int) -> Unit = { _, _ -> },
 ) {
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -255,6 +278,16 @@ fun ComicDetailContent(
                 }
             }
 
+            val savedProgress = state.progress
+            if (loaded != null && savedProgress != null) {
+                item(key = "detail-resume") {
+                    ResumeCard(
+                        progress = savedProgress,
+                        onResume = { onResume(savedProgress.order, savedProgress.page) },
+                    )
+                }
+            }
+
             item(key = "detail-tabs") {
                 PillTabs(
                     labels = DetailTab.entries.map { it.label },
@@ -284,6 +317,7 @@ fun ComicDetailContent(
                         val key = "episode-${episode.order}"
                         EpisodeRow(
                             episode = episode,
+                            resumed = state.progress?.order == episode.order,
                             modifier = episodeRowModifier(key),
                             onClick = { onOpenEpisode(episode, key) },
                         )
@@ -335,6 +369,52 @@ fun ComicDetailContent(
             onDismiss = { replyTarget = null },
             onReplied = { scope.launch { state.commentFeed.pager.reloadFirstPage() } },
         )
+    }
+}
+
+/** 「繼續閱讀」：记住上次读到第幾話第几页，点一下接着看。 */
+@Composable
+private fun ResumeCard(
+    progress: ReadingProgress,
+    onResume: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = colors.secondaryContainer,
+        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp).clickable(onClick = onResume),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = "繼續閱讀",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colors.onSecondaryContainer,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = buildString {
+                        append("上次讀到 第 ${progress.order} 話")
+                        if (progress.page > 0) append(" · 第 ${progress.page + 1} 頁")
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSecondaryContainer.copy(alpha = 0.8f),
+                )
+            }
+            Text(
+                text = "接着看",
+                style = MaterialTheme.typography.labelLarge,
+                color = colors.onSecondaryContainer,
+            )
+            PicaGlyph(
+                icon = PicaIcon.ArrowRight,
+                modifier = Modifier.padding(start = 4.dp).size(16.dp),
+                tint = colors.onSecondaryContainer,
+            )
+        }
     }
 }
 
@@ -479,6 +559,7 @@ private fun EpisodeRow(
     episode: Episode,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    resumed: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     Surface(
@@ -508,8 +589,16 @@ private fun EpisodeRow(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
+            if (resumed) {
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "讀到這裡",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.primary,
+                )
+            }
             val date = episode.updatedAt?.take(10).orEmpty()
-            if (date.isNotBlank()) {
+            if (date.isNotBlank() && !resumed) {
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = date,

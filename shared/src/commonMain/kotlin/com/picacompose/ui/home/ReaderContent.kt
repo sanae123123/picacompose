@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -81,6 +82,10 @@ fun ReaderContent(
     startOrder: Int,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    /** 上次读到的那一页（换一話就从头看）。 */
+    startPage: Int = 0,
+    /** 读到哪里就报一下，外面存起来。 */
+    onProgress: (order: Int, page: Int, pages: Int) -> Unit = { _, _, _ -> },
 ) {
     var order by remember(startOrder) { mutableIntStateOf(startOrder) }
     val pager = remember(comicId, order) {
@@ -89,14 +94,32 @@ fun ReaderContent(
             itemKey = { it.id },
         )
     }
-    // 换一話就从头看。
+    // 换一話就从头看；同一話重新进来时滚回上次那一页。
     val listState = remember(order) { LazyListState() }
     var chrome by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     val platformContext = LocalPlatformContext.current
 
+    // 只有刚进来那次才恢复进度；同一话里换上下话就从头看。
+    var resuming by remember { mutableStateOf(startPage > 0) }
+
     LaunchedEffect(pager) {
-        if (pager.items.isEmpty()) pager.loadNext()
+        if (pager.items.isEmpty()) {
+            val resumeTo = if (resuming && order == startOrder) startPage else 0
+            if (resumeTo > 0) {
+                // 接着上次读的那一話：先把前面几页补齐，再滚到那一页。
+                var guard = 0
+                while (pager.items.size <= resumeTo && pager.hasMore && guard < 40) {
+                    pager.loadNext()
+                    guard++
+                }
+                if (pager.items.size > resumeTo) listState.scrollToItem(resumeTo)
+            } else {
+                pager.loadNext()
+            }
+        }
+        // 恢复完再放开写进度，别刚进来就把上次的位置冲成第 1 页。
+        resuming = false
     }
 
     // 预先抓下面几张（连下一批也有）：图片请求都按原尺寸走，命中同一份内存缓存。
@@ -119,6 +142,29 @@ fun ReaderContent(
                     )
                 }
             }
+    }
+
+    // 读到哪一页了：滚停的时候往上报一次，别每一帧都落盘。
+    val lastPage = remember { mutableIntStateOf(startPage) }
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .distinctUntilChanged()
+            .collect { lastPage.intValue = it }
+    }
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress }
+            .distinctUntilChanged()
+            .collect { scrolling ->
+                if (!scrolling && !resuming) {
+                    onProgress(order, lastPage.intValue, pager.total ?: pager.items.size)
+                }
+            }
+    }
+    // 退出阅读器时也记一笔，免得刚划两下就退出去没存上。
+    DisposableEffect(Unit) {
+        onDispose {
+            if (!resuming) onProgress(order, lastPage.intValue, pager.total ?: pager.items.size)
+        }
     }
 
     // 离底部还剩两张就续页。

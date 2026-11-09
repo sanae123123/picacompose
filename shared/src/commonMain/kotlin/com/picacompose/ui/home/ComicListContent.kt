@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,8 +35,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.picacompose.data.readingProgressStore
 import com.picacompose.picaapi.model.ComicSummary
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
@@ -237,14 +240,32 @@ internal fun ComicListRow(
                 .padding(10.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            PicaImage(
-                url = comic.thumb.url(),
-                contentDescription = comic.title,
-                modifier = Modifier
-                    .width(96.dp)
-                    .aspectRatio(3f / 4f)
-                    .clip(RoundedCornerShape(10.dp)),
-            )
+            val progress = remember(comic.id) { readingProgressStore.load(comic.id) }
+            Box(
+                modifier = Modifier.width(96.dp).aspectRatio(3f / 4f),
+            ) {
+                PicaImage(
+                    url = comic.thumb.url(),
+                    contentDescription = comic.title,
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
+                )
+                // 读过就标一下读到第幾話，一眼知道这本翻到哪儿了。
+                if (progress != null && progress.order > 0) {
+                    Text(
+                        text = "看到第 ${progress.order} 話",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(3.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.Black.copy(alpha = 0.62f))
+                            .padding(horizontal = 5.dp, vertical = 2.dp),
+                    )
+                }
+            }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
