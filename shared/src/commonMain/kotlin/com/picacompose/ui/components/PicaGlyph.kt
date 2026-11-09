@@ -7,6 +7,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Sort
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.rounded.ArrowForward as RoundedArrowForward
 import androidx.compose.material.icons.rounded.Category as RoundedCategory
 import androidx.compose.material.icons.rounded.Check as RoundedCheck
+import androidx.compose.material.icons.rounded.Close as RoundedClose
 import androidx.compose.material.icons.rounded.Email as RoundedEmail
 import androidx.compose.material.icons.rounded.Menu as RoundedMenu
 import androidx.compose.material.icons.rounded.Sort as RoundedSort
@@ -55,7 +57,7 @@ import androidx.compose.ui.unit.dp
  */
 enum class PicaIcon {
     Mail, Back, Lock, Person, Eye, EyeOff, ArrowRight, Logout, Home, Grid, Gamepad, Gear, CheckIn, Notice, Like,
-    Menu, Check, Sort, Star,
+    Menu, Check, Sort, Star, Close,
 }
 
 private fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
@@ -78,6 +80,7 @@ private fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
     PicaIcon.Check -> if (filled) Icons.Rounded.RoundedCheck else Icons.Outlined.Check
     PicaIcon.Sort -> if (filled) Icons.Rounded.RoundedSort else Icons.Outlined.Sort
     PicaIcon.Star -> if (filled) Icons.Rounded.RoundedStar else Icons.Outlined.Star
+    PicaIcon.Close -> if (filled) Icons.Rounded.RoundedClose else Icons.Outlined.Close
 }
 
 @Composable

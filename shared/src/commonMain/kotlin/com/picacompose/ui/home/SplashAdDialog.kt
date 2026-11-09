@@ -61,7 +61,10 @@ fun SplashAdDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
         Box(Modifier.fillMaxSize().background(Color.Black)) {
             val current = ad

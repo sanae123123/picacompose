@@ -96,6 +96,8 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     var webUrl by rememberSaveable { mutableStateOf("") }
     // 嗶咔的開屏廣告：分类页那几块磁贴点开弹一次。
     var splashAdOpen by rememberSaveable { mutableStateOf(false) }
+    // 「支持嗶咔」：原版是内嵌网页弹层。
+    var supportOpen by rememberSaveable { mutableStateOf(false) }
     // 本子列表：查询用的分类名（「最新更新」是空的）、显示用的标题、变形 key，
     // 以及它自己的分页和滚动位置。
     var comicTitle by rememberSaveable { mutableStateOf("") }
@@ -327,6 +329,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         onOpenForum = {
                                             overlayOrdinal = OverlayPage.Forum.ordinal
                                         },
+                                        onOpenSupport = { supportOpen = true },
                                         onOpenSplashAd = { splashAdOpen = true },
                                         onOpenGames = {
                                             overlayOrdinal = OverlayPage.None.ordinal
@@ -502,6 +505,9 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                     }
                 }
             }
+        }
+        if (supportOpen) {
+            SupportPicaDialog(onDismiss = { supportOpen = false })
         }
         if (splashAdOpen) {
             SplashAdDialog(

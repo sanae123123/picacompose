@@ -111,7 +111,9 @@ fun CategoriesContent(
     onOpenLatest: () -> Unit = {},
     /** 隨機本子：走 `GET comics/random`，一次一批，无分页。 */
     onOpenRandom: () -> Unit = {},
-    /** 支持嗶咔 / 點擊救嗶咔 / 嗶咔小程式：都弹同一次嗶咔開屏廣告。 */
+    /** 支持嗶咔：原版是弹一层内嵌网页（PopupWebview 加载 /android/font）。 */
+    onOpenSupport: () -> Unit = {},
+    /** 點擊救嗶咔 / 嗶咔小程式：弹嗶咔的開屏廣告。 */
     onOpenSplashAd: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
@@ -130,7 +132,7 @@ fun CategoriesContent(
             SectionTitle("熱門分類")
             Spacer(Modifier.height(12.dp))
             val hotTiles = listOf(
-                HotTile("支持嗶咔", art = "support", onClick = onOpenSplashAd),
+                HotTile("支持嗶咔", art = "support", onClick = onOpenSupport),
                 HotTile(
                     label = "嗶咔排行榜",
                     art = "leaderboard",
