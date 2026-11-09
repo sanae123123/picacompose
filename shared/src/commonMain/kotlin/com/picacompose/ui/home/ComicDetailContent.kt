@@ -16,12 +16,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -112,7 +110,8 @@ fun ComicDetailContent(
 
     var replyTarget by remember { mutableStateOf<CommentReplyTarget?>(null) }
     var showJump by remember { mutableStateOf(false) }
-    var comingSoon by remember { mutableStateOf<Episode?>(null) }
+    // 在读哪一話：非空就开阅读器。
+    var reading by remember { mutableStateOf<Episode?>(null) }
 
     // 章節第一次进来看第一页；切走再切回来不重拉。
     LaunchedEffect(episodePager, tab) {
@@ -244,7 +243,7 @@ fun ComicDetailContent(
                     }
                     items(count = chapters.size, key = { chapters[it].id }) { index ->
                         val episode = chapters[index]
-                        EpisodeRow(episode = episode, onClick = { comingSoon = episode })
+                        EpisodeRow(episode = episode, onClick = { reading = episode })
                     }
                     if (chapters.isNotEmpty()) {
                         item(key = "chapter-footer") {
@@ -295,15 +294,13 @@ fun ComicDetailContent(
         )
     }
 
-    // 阅读器还没做：先说明白，别让人以为点了没反应。
-    comingSoon?.let { episode ->
-        AlertDialog(
-            onDismissRequest = { comingSoon = null },
-            title = { Text(episode.title.ifBlank { "第 ${episode.order} 話" }) },
-            text = { Text("閱讀器还没做，下一步接这个。") },
-            confirmButton = {
-                TextButton(onClick = { comingSoon = null }) { Text("知道了") }
-            },
+    reading?.let { episode ->
+        ReaderDialog(
+            comicId = comicId,
+            comicTitle = detail?.title ?: seedTitle.orEmpty().ifBlank { "本子" },
+            episodes = episodePager.items,
+            startOrder = episode.order,
+            onDismiss = { reading = null },
         )
     }
 }
