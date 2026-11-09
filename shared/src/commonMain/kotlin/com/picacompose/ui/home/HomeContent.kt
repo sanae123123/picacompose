@@ -92,8 +92,10 @@ fun HomeContent(
     messagesCardModifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
     feed: HomeFeedState = rememberHomeFeedState(),
-    /** 点封面打开详情页。 */
-    onOpenComic: (ComicSummary) -> Unit = {},
+    /** 点封面打开详情页；第二个参数是这块封面的变形 key。 */
+    onOpenComic: (ComicSummary, String) -> Unit = { _, _ -> },
+    /** 给每张封面挂变形源，点开时从它长成整屏详情。 */
+    comicCoverModifier: @Composable (String) -> Modifier = { Modifier },
 ) {
     val colors = MaterialTheme.colorScheme
     val collections = feed.collections
@@ -181,6 +183,7 @@ fun HomeContent(
                     CollectionSection(
                         group = group,
                         onOpenComic = onOpenComic,
+                        coverModifier = comicCoverModifier,
                     )
                 }
             }
@@ -219,7 +222,8 @@ fun HomeContent(
 @Composable
 private fun CollectionSection(
     group: CollectionGroup,
-    onOpenComic: (ComicSummary) -> Unit,
+    onOpenComic: (ComicSummary, String) -> Unit,
+    coverModifier: @Composable (String) -> Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     Column {
@@ -239,7 +243,13 @@ private fun CollectionSection(
         Spacer(Modifier.height(12.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             items(group.comics, key = { it.id }) { comic ->
-                ComicCover(comic = comic, onClick = { onOpenComic(comic) })
+                // 同一本可能在两块合集里都出现，key 带上合集名才不撞。
+                val key = "homeComic-${group.title}-${comic.id}"
+                ComicCover(
+                    comic = comic,
+                    modifier = coverModifier(key),
+                    onClick = { onOpenComic(comic, key) },
+                )
             }
         }
         Spacer(Modifier.height(22.dp))
@@ -251,10 +261,11 @@ private fun CollectionSection(
 private fun ComicCover(
     comic: ComicSummary,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     // 圆角只裁封面，别把下面作者的左下角一起削掉。
-    Column(modifier = Modifier.width(132.dp).clickable(onClick = onClick)) {
+    Column(modifier = modifier.width(132.dp).clickable(onClick = onClick)) {
         PicaImage(
             url = comic.thumb.url(),
             contentDescription = comic.title,

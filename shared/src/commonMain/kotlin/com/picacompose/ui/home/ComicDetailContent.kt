@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -22,7 +22,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -44,87 +46,116 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /** 详情页的分区：章節列表和評論區各占一半的用处。 */
-private enum class DetailTab(val label: String) {
+internal enum class DetailTab(val label: String) {
     Chapters("章節"),
     Comments("評論"),
 }
+
+/**
+ * 详情页状态：整个页面提到外面持有。
+ *
+ * 从详情页进阅读器再退回来，页面会被重建一次；数据和滚动位置放在这里，
+ * 退回来还是刚才那一屏，不用重新拉、也不会跳回顶部。
+ */
+@Stable
+class ComicDetailState(comicId: String) {
+    val comicId: String = comicId
+    val listState: LazyListState = LazyListState()
+
+    var detail by mutableStateOf<ComicDetail?>(null)
+        private set
+    var error by mutableStateOf<String?>(null)
+        private set
+    var loading by mutableStateOf(true)
+        private set
+    var reloadTick by mutableIntStateOf(0)
+        private set
+
+    var tabOrdinal by mutableIntStateOf(0)
+
+    // 自己点的赞和收藏先在本地翻过来，等服务端回话再确认，点下去有反馈。
+    var liked by mutableStateOf(false)
+    var likedCount by mutableStateOf<Int?>(null)
+    var favourited by mutableStateOf(false)
+
+    val episodePager: Pager<Episode> = Pager(
+        load = { page -> pica.comics.episodes(comicId, page) },
+        itemKey = { it.id },
+    )
+    val commentFeed: CommentFeed = CommentFeed(comicId)
+
+    private var started = false
+
+    suspend fun ensureLoaded() {
+        if (started) return
+        started = true
+        load()
+    }
+
+    suspend fun load() {
+        loading = true
+        error = null
+        runCatching { pica.comics.detail(comicId) }
+            .onSuccess {
+                detail = it
+                liked = it.isLiked
+                likedCount = it.likesCount
+                favourited = it.isFavourite
+            }
+            .onFailure { error = it.message ?: "详情拉不下来" }
+        loading = false
+    }
+
+    fun retry() {
+        reloadTick++
+    }
+}
+
+@Composable
+fun rememberComicDetailState(comicId: String): ComicDetailState =
+    remember(comicId) { ComicDetailState(comicId) }
 
 /**
  * 本子详情页：上面是封面和资料，下面切「章節 / 評論」。
  *
  * 章節列表和评论区都是分页的，各自滚到底续页；评论区整套复用 [CommentBits]，
  * 置顶评论、回复、跳页都跟着一起有。
- *
- * [comicId] 一换就是另一本，所有状态按 id 重建；[seedTitle] 是从列表点进来时先拿到的标题，
- * 详情还没拉到也能先把页头画出来。
  */
 @Composable
 fun ComicDetailContent(
-    comicId: String,
+    state: ComicDetailState,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     seedTitle: String? = null,
+    /** 章節行的变形源 key，点开时从那一行撑开成阅读器。 */
+    episodeRowModifier: @Composable (String) -> Modifier = { Modifier },
+    onOpenEpisode: (Episode, String) -> Unit = { _, _ -> },
 ) {
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
+    val listState = state.listState
+    val tab = DetailTab.entries[state.tabOrdinal.coerceIn(0, DetailTab.entries.lastIndex)]
 
-    // 详情本身：一次请求，出错就整块重试。
-    var detail by remember(comicId) { mutableStateOf<ComicDetail?>(null) }
-    var detailError by remember(comicId) { mutableStateOf<String?>(null) }
-    var detailLoading by remember(comicId) { mutableStateOf(true) }
-    var reloadTick by remember(comicId) { mutableStateOf(0) }
+    LaunchedEffect(state) { state.ensureLoaded() }
+    LaunchedEffect(state.reloadTick) { if (state.reloadTick > 0) state.load() }
 
-    LaunchedEffect(comicId, reloadTick) {
-        detailLoading = true
-        detailError = null
-        runCatching { pica.comics.detail(comicId) }
-            .onSuccess { detail = it }
-            .onFailure { detailError = it.message ?: "详情拉不下来" }
-        detailLoading = false
-    }
-
-    val episodePager = remember(comicId) {
-        Pager(
-            load = { page -> pica.comics.episodes(comicId, page) },
-            itemKey = { it.id },
-        )
-    }
-    val commentFeed = rememberCommentFeed(comicId)
-
-    var tabOrdinal by remember(comicId) { mutableStateOf(0) }
-    val tab = DetailTab.entries[tabOrdinal.coerceIn(0, DetailTab.entries.lastIndex)]
-
-    // 自己点的赞和收藏先在本地翻过来，等服务端回话再确认，点下去有反馈。
-    var liked by remember(comicId) { mutableStateOf(false) }
-    var likedCount by remember(comicId) { mutableStateOf<Int?>(null) }
-    var favourited by remember(comicId) { mutableStateOf(false) }
-
-    LaunchedEffect(detail) {
-        detail?.let {
-            liked = it.isLiked
-            favourited = it.isFavourite
-            likedCount = it.likesCount
+    // 章節第一次进来看第一页；切走再切回来不重拉。
+    LaunchedEffect(state.episodePager, tab) {
+        if (tab == DetailTab.Chapters && state.episodePager.items.isEmpty()) {
+            state.episodePager.loadNext()
         }
+    }
+    // 评论跟留言板一样：进来重拉第一页，点赞数会变。
+    if (tab == DetailTab.Comments) {
+        CommentAutoRefresh(state.commentFeed.pager)
+        CommentLoadMore(listState, state.commentFeed.pager)
     }
 
     var replyTarget by remember { mutableStateOf<CommentReplyTarget?>(null) }
     var showJump by remember { mutableStateOf(false) }
-    // 在读哪一話：非空就开阅读器。
-    var reading by remember { mutableStateOf<Episode?>(null) }
-
-    // 章節第一次进来看第一页；切走再切回来不重拉。
-    LaunchedEffect(episodePager, tab) {
-        if (tab == DetailTab.Chapters && episodePager.items.isEmpty()) episodePager.loadNext()
-    }
-    // 评论跟留言板一样：进来重拉第一页，点赞数会变。
-    if (tab == DetailTab.Comments) {
-        CommentAutoRefresh(commentFeed.pager)
-        CommentLoadMore(listState, commentFeed.pager)
-    }
 
     // 章節滚到底续页。
-    LaunchedEffect(listState, episodePager, tab) {
+    LaunchedEffect(listState, state.episodePager, tab) {
         if (tab != DetailTab.Chapters) return@LaunchedEffect
         snapshotFlow {
             val info = listState.layoutInfo
@@ -133,9 +164,11 @@ fun ComicDetailContent(
             .distinctUntilChanged()
             .collect { (lastVisible, total) ->
                 if (total > 0 && lastVisible >= total - 5 &&
-                    episodePager.hasMore && episodePager.loading.not() && episodePager.error == null
+                    state.episodePager.hasMore &&
+                    state.episodePager.loading.not() &&
+                    state.episodePager.error == null
                 ) {
-                    episodePager.loadNext()
+                    state.episodePager.loadNext()
                 }
             }
     }
@@ -145,10 +178,10 @@ fun ComicDetailContent(
             state = listState,
             modifier = Modifier.weight(1f),
             onRefresh = {
-                reloadTick++
+                state.retry()
                 when (tab) {
-                    DetailTab.Chapters -> episodePager.reloadFirstPage()
-                    DetailTab.Comments -> commentFeed.pager.reloadFirstPage()
+                    DetailTab.Chapters -> state.episodePager.reloadFirstPage()
+                    DetailTab.Comments -> state.commentFeed.pager.reloadFirstPage()
                 }
             },
             header = {
@@ -162,7 +195,10 @@ fun ComicDetailContent(
                     }
                     Spacer(Modifier.width(6.dp))
                     Box(Modifier.weight(1f)) {
-                        PageHeader(title = detail?.title ?: seedTitle.orEmpty().ifBlank { "本子" })
+                        PageHeader(
+                            title = state.detail?.title
+                                ?: seedTitle.orEmpty().ifBlank { "本子" },
+                        )
                     }
                     if (tab == DetailTab.Comments) {
                         Text(
@@ -179,21 +215,21 @@ fun ComicDetailContent(
                 }
             },
         ) {
-            val loaded = detail
+            val loaded = state.detail
             when {
                 loaded != null -> item(key = "detail-hero") {
                     DetailHero(
                         detail = loaded,
-                        liked = liked,
-                        likesCount = likedCount ?: loaded.likesCount,
-                        favourited = favourited,
+                        liked = state.liked,
+                        likesCount = state.likedCount ?: loaded.likesCount,
+                        favourited = state.favourited,
                         onLike = {
                             scope.launch {
-                                runCatching { pica.comics.like(comicId) }.onSuccess { action ->
+                                runCatching { pica.comics.like(state.comicId) }.onSuccess { action ->
                                     val nowLiked = action != "unlike"
-                                    if (nowLiked != liked) {
-                                        liked = nowLiked
-                                        likedCount = (likedCount ?: loaded.likesCount) +
+                                    if (nowLiked != state.liked) {
+                                        state.liked = nowLiked
+                                        state.likedCount = (state.likedCount ?: loaded.likesCount) +
                                             if (nowLiked) 1 else -1
                                     }
                                 }
@@ -201,19 +237,20 @@ fun ComicDetailContent(
                         },
                         onFavourite = {
                             scope.launch {
-                                runCatching { pica.comics.favourite(comicId) }.onSuccess { action ->
-                                    favourited = action != "unfavourite"
-                                }
+                                runCatching { pica.comics.favourite(state.comicId) }
+                                    .onSuccess { action ->
+                                        state.favourited = action != "unfavourite"
+                                    }
                             }
                         },
                     )
                 }
 
-                detailError != null -> item(key = "detail-error") {
-                    FailedBlock(detailError.orEmpty()) { reloadTick++ }
+                state.error != null -> item(key = "detail-error") {
+                    FailedBlock(state.error.orEmpty()) { state.retry() }
                 }
 
-                detailLoading -> item(key = "detail-loading") {
+                state.loading -> item(key = "detail-loading") {
                     LoadingBlock("正在拉詳情…")
                 }
             }
@@ -221,47 +258,53 @@ fun ComicDetailContent(
             item(key = "detail-tabs") {
                 PillTabs(
                     labels = DetailTab.entries.map { it.label },
-                    selected = tabOrdinal,
-                    onSelect = { tabOrdinal = it },
+                    selected = state.tabOrdinal,
+                    onSelect = { state.tabOrdinal = it },
                 )
             }
 
             when (tab) {
                 DetailTab.Chapters -> {
-                    val chapters = episodePager.items
+                    val chapters = state.episodePager.items
                     if (chapters.isEmpty()) {
                         item(key = "chapter-state") {
                             when {
-                                episodePager.error != null -> FailedBlock(episodePager.error.orEmpty()) {
-                                    scope.launch { episodePager.retry() }
-                                }
+                                state.episodePager.error != null ->
+                                    FailedBlock(state.episodePager.error.orEmpty()) {
+                                        scope.launch { state.episodePager.retry() }
+                                    }
 
-                                episodePager.loading -> LoadingBlock("正在拉章節…")
+                                state.episodePager.loading -> LoadingBlock("正在拉章節…")
                                 else -> EmptyBlock("这本还没有章節")
                             }
                         }
                     }
                     items(count = chapters.size, key = { chapters[it].id }) { index ->
                         val episode = chapters[index]
-                        EpisodeRow(episode = episode, onClick = { reading = episode })
+                        val key = "episode-${episode.order}"
+                        EpisodeRow(
+                            episode = episode,
+                            modifier = episodeRowModifier(key),
+                            onClick = { onOpenEpisode(episode, key) },
+                        )
                     }
                     if (chapters.isNotEmpty()) {
                         item(key = "chapter-footer") {
                             ListFooter(
-                                loading = episodePager.loading,
-                                error = episodePager.error,
-                                hasMore = episodePager.hasMore,
-                                onRetry = { scope.launch { episodePager.retry() } },
+                                loading = state.episodePager.loading,
+                                error = state.episodePager.error,
+                                hasMore = state.episodePager.hasMore,
+                                onRetry = { scope.launch { state.episodePager.retry() } },
                             )
                         }
                     }
                 }
 
                 DetailTab.Comments -> commentItems(
-                    pager = commentFeed.pager,
-                    onRetry = { scope.launch { commentFeed.pager.retry() } },
+                    pager = state.commentFeed.pager,
+                    onRetry = { scope.launch { state.commentFeed.pager.retry() } },
                     onReply = { replyTarget = it },
-                    topComments = commentFeed.topComments,
+                    topComments = state.commentFeed.topComments,
                 )
             }
         }
@@ -271,8 +314,8 @@ fun ComicDetailContent(
             CommentComposer(
                 placeholder = "說點什麼…",
                 onSend = { content ->
-                    pica.comments.post(comicId, content)
-                    commentFeed.pager.reloadFirstPage()
+                    pica.comments.post(state.comicId, content)
+                    state.commentFeed.pager.reloadFirstPage()
                 },
             )
         }
@@ -280,7 +323,7 @@ fun ComicDetailContent(
 
     if (showJump) {
         PagerJumpDialog(
-            pager = commentFeed.pager,
+            pager = state.commentFeed.pager,
             onDismiss = { showJump = false },
             onJumped = { scope.launch { listState.scrollToItem(0) } },
         )
@@ -290,17 +333,7 @@ fun ComicDetailContent(
         CommentReplyDialog(
             target = target,
             onDismiss = { replyTarget = null },
-            onReplied = { scope.launch { commentFeed.pager.reloadFirstPage() } },
-        )
-    }
-
-    reading?.let { episode ->
-        ReaderDialog(
-            comicId = comicId,
-            comicTitle = detail?.title ?: seedTitle.orEmpty().ifBlank { "本子" },
-            episodes = episodePager.items,
-            startOrder = episode.order,
-            onDismiss = { reading = null },
+            onReplied = { scope.launch { state.commentFeed.pager.reloadFirstPage() } },
         )
     }
 }
@@ -445,13 +478,14 @@ private fun ActionPill(
 private fun EpisodeRow(
     episode: Episode,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     Surface(
         shape = MaterialTheme.shapes.large,
         color = colors.surface,
         tonalElevation = 1.dp,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        modifier = modifier.fillMaxWidth().padding(bottom = 8.dp),
     ) {
         Row(
             modifier = Modifier

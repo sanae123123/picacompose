@@ -58,10 +58,10 @@ fun ComicListContent(
     modifier: Modifier = Modifier,
     sort: String? = null,
     onSortChange: (String?) -> Unit = {},
-    /** 点一本就打开详情页。 */
-    onOpenComic: (ComicSummary) -> Unit = {},
-    /** 每一行的变形源：详情页的 key 和它配对，点开从这一行长成整屏。 */
-    comicRowModifier: @Composable (ComicSummary) -> Modifier = { Modifier },
+    /** 点一本就打开详情页；第二个参数是这一行的变形 key。 */
+    onOpenComic: (ComicSummary, String) -> Unit = { _, _ -> },
+    /** 给每一行挂变形源：详情页的 key 和它配对，点开从这一行长成整屏。 */
+    comicRowModifier: @Composable (String) -> Modifier = { Modifier },
 ) {
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -179,10 +179,11 @@ fun ComicListContent(
         }
         items(count = pager.items.size, key = { pager.items[it].id }) { index ->
             val comic = pager.items[index]
+            val rowKey = "listComic-${comic.id}"
             ComicListRow(
                 comic = comic,
-                onClick = { onOpenComic(comic) },
-                modifier = comicRowModifier(comic),
+                onClick = { onOpenComic(comic, rowKey) },
+                modifier = comicRowModifier(rowKey),
             )
         }
         if (pager.items.isNotEmpty()) {

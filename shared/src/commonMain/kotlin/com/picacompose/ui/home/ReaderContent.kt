@@ -48,8 +48,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
@@ -72,16 +70,17 @@ private const val PRELOAD_AHEAD = 4
  * 阅读器：整屏黑底，图片一张挨一张竖着排，滚到底自动续页。
  *
  * 点一下画面收起 / 放出上下两条工具条；工具条上能返回详情、翻上一話 / 下一話、看进度。
- * 用整屏 Dialog 而不是再叠一层整页，是为了让详情页原样留在下面——读完退出来，
- * 章節列表还停在刚才点的那一行，不用重新找回位置。
+ * 它是整页而不是弹窗：从章節那一行撑开成整屏（和别的整页共用同一套变形），
+ * 退回去时详情页的状态提到外层存着，章節列表还停在刚才点的那一行。
  */
 @Composable
-fun ReaderDialog(
+fun ReaderContent(
     comicId: String,
     comicTitle: String,
     episodes: List<Episode>,
     startOrder: Int,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var order by remember(startOrder) { mutableIntStateOf(startOrder) }
     val pager = remember(comicId, order) {
@@ -142,14 +141,7 @@ fun ReaderDialog(
     val shown = (listState.firstVisibleItemIndex + 1).coerceAtLeast(1)
     val totalPages = pager.total
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false,
-        ),
-    ) {
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier.fillMaxSize().background(Color.Black)) {
             // 内容本身不拦点击，点一下切换工具条。
             Box(
                 Modifier
@@ -250,7 +242,6 @@ fun ReaderDialog(
                         nextOrder?.let { order = it }
                     }
                 }
-            }
         }
     }
 }

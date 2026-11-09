@@ -72,8 +72,10 @@ private enum class PopularRange(val label: String, val tt: String) {
 @Composable
 fun LeaderboardContent(
     onBack: () -> Unit,
-    /** 点一本打开详情页。 */
-    onOpenComic: (ComicSummary) -> Unit = {},
+    /** 点一本打开详情页；第二个参数是那一行的变形 key。 */
+    onOpenComic: (ComicSummary, String) -> Unit = { _, _ -> },
+    /** 给每行挂变形源，点开时从那一行长成整屏详情。 */
+    comicRowModifier: @Composable (String) -> Modifier = { Modifier },
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -173,7 +175,13 @@ fun LeaderboardContent(
                 emptyText = "这个榜单是空的",
                 modifier = Modifier.weight(1f),
             ) { comic, rank ->
-                ComicRankRow(rank = rank, comic = comic, onOpen = { onOpenComic(comic) })
+                val key = "rankComic-${comic.id}"
+                ComicRankRow(
+                    rank = rank,
+                    comic = comic,
+                    modifier = comicRowModifier(key),
+                    onOpen = { onOpenComic(comic, key) },
+                )
             }
         } else {
             RankList(
@@ -281,9 +289,10 @@ private fun ComicRankRow(
     rank: Int,
     comic: ComicSummary,
     onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    PicaCard(modifier = Modifier.clickable(onClick = onOpen)) {
+    PicaCard(modifier = modifier.clickable(onClick = onOpen)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = rank.toString(),

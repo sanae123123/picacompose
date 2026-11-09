@@ -43,8 +43,8 @@ fun RandomComicsContent(
     listState: LazyListState = rememberLazyListState(),
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    onOpenComic: (ComicSummary) -> Unit = {},
-    comicRowModifier: @Composable (ComicSummary) -> Modifier = { Modifier },
+    onOpenComic: (ComicSummary, String) -> Unit = { _, _ -> },
+    comicRowModifier: @Composable (String) -> Modifier = { Modifier },
 ) {
     val colors = MaterialTheme.colorScheme
     var comics by remember { mutableStateOf<List<ComicSummary>?>(null) }
@@ -106,10 +106,11 @@ fun RandomComicsContent(
         if (list != null) {
             items(count = list.size, key = { list[it].id }) { index ->
                 val comic = list[index]
+                val rowKey = "randomComic-${comic.id}"
                 ComicListRow(
                     comic = comic,
-                    onClick = { onOpenComic(comic) },
-                    modifier = comicRowModifier(comic),
+                    onClick = { onOpenComic(comic, rowKey) },
+                    modifier = comicRowModifier(rowKey),
                 )
             }
         }

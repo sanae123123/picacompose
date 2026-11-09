@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -47,7 +48,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** 从按钮长出来的整屏页面。 */
-private enum class OverlayPage { None, Messages, Forum, Leaderboard, Web, Comics, Detail, Random }
+private enum class OverlayPage { None, Messages, Forum, Leaderboard, Web, Comics, Detail, Random, Reader }
 
 /** 变形动画要配对用的 key：源（按钮/卡片）和目标（整页）必须一致。 */
 private val OverlayPage.sharedKey: String
@@ -61,6 +62,8 @@ private val OverlayPage.sharedKey: String
         // 详情页的 key 跟着点的那一本走，这里只是兜底。
         OverlayPage.Detail -> "comicDetail"
         OverlayPage.Random -> "randomTile"
+        // 阅读器的 key 跟着点的那一話走，这里只是兜底。
+        OverlayPage.Reader -> "episode"
         OverlayPage.None -> "mainShell"
     }
 
@@ -115,7 +118,17 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     var detailTitle by rememberSaveable { mutableStateOf("") }
     // 从哪儿点进详情，退出去就回哪儿（列表页 / 首页 / 排行榜）。
     var detailReturnOrdinal by rememberSaveable { mutableStateOf(OverlayPage.None.ordinal) }
-    val detailKey = "comic-$detailComicId"
+    // 详情页的 key 由开它的那个入口决定（列表行 / 首页封面 / 排行榜行各不相同），
+    // 所以这里存下来，不按 id 硬拼。
+    var detailKey by rememberSaveable { mutableStateOf("comicDetail") }
+    // 详情页的状态提到这里：进阅读器再退回详情时页面会被重建，
+    // 数据和滚动位置留在外面，退回来还是刚才那一屏。
+    val detailState = remember(detailComicId) {
+        if (detailComicId.isBlank()) null else ComicDetailState(detailComicId)
+    }
+    // 阅读器：从章節那一行撑开成整屏，读的是哪一話也记下来。
+    var readerOrder by rememberSaveable { mutableIntStateOf(0) }
+    var readerKey by rememberSaveable { mutableStateOf("episode") }
     val overlay = OverlayPage.entries.getOrElse(overlayOrdinal) { OverlayPage.None }
     // 网页视图等整页变形放完再挂（平台视图不参与容器变形）。
     var webMounted by remember { mutableStateOf(false) }
@@ -182,7 +195,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
             OverlayPage.Forum -> forumListState.scrollToItem(0)
             OverlayPage.Comics -> if (!fromDetail) comicListState.scrollToItem(0)
             OverlayPage.None, OverlayPage.Leaderboard, OverlayPage.Web,
-            OverlayPage.Detail, OverlayPage.Random -> Unit
+            OverlayPage.Detail, OverlayPage.Random, OverlayPage.Reader -> Unit
         }
     }
 
@@ -191,9 +204,12 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
 
     // 整页开着的时候，系统返回先退回上一屏，而不是直接退出 App。
     BackHandlerCompat(enabled = overlay != OverlayPage.None) {
-        // 详情页退回它被点开的地方（列表页 / 排行榜），别的整页直接回主界面。
-        overlayOrdinal =
-            if (overlay == OverlayPage.Detail) detailReturnOrdinal else OverlayPage.None.ordinal
+        // 阅读器退回详情页；详情页退回它被点开的地方（列表页 / 排行榜），别的整页直接回主界面。
+        overlayOrdinal = when (overlay) {
+            OverlayPage.Detail -> detailReturnOrdinal
+            OverlayPage.Reader -> OverlayPage.Detail.ordinal
+            else -> OverlayPage.None.ordinal
+        }
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -248,9 +264,14 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         onOpenMessages = {
                                             overlayOrdinal = OverlayPage.Messages.ordinal
                                         },
-                                        onOpenComic = { comic ->
+                                        // 每张封面挂一个变形源，点开时从它长成整屏。
+                                        comicCoverModifier = { key ->
+                                            with(shared) { overlayBounds(key, contentScope) }
+                                        },
+                                        onOpenComic = { comic, key ->
                                             detailComicId = comic.id
                                             detailTitle = comic.title
+                                            detailKey = key
                                             detailReturnOrdinal = OverlayPage.None.ordinal
                                             overlayOrdinal = OverlayPage.Detail.ordinal
                                         },
@@ -323,15 +344,34 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                         OverlayPage.Web -> webKey
                         OverlayPage.Comics -> comicKey
                         OverlayPage.Detail -> detailKey
+                        OverlayPage.Reader -> readerKey
                         else -> page.sharedKey
                     }
                     val pageBounds = with(shared) {
                         overlayBounds(pageKey, contentScope)
                     }
+                    // 阅读器是整屏黑底、铺到系统栏下面的，别的整页才是常规底色。
+                    val fullBleed = page == OverlayPage.Reader
                     Box(modifier = pageBounds) {
-                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
-                        PicaBackdrop()
-                        Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .background(
+                                    if (fullBleed) Color.Black else MaterialTheme.colorScheme.background,
+                                ),
+                        )
+                        if (!fullBleed) PicaBackdrop()
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .then(
+                                    if (fullBleed) {
+                                        Modifier
+                                    } else {
+                                        Modifier.windowInsetsPadding(WindowInsets.systemBars)
+                                    },
+                                ),
+                        ) {
                             when (page) {
                                 OverlayPage.Messages -> MessagesContent(
                                     pager = messagePager,
@@ -349,9 +389,13 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
 
                                 OverlayPage.Leaderboard -> LeaderboardContent(
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
-                                    onOpenComic = { comic ->
+                                    comicRowModifier = { key ->
+                                        with(shared) { overlayBounds(key, contentScope) }
+                                    },
+                                    onOpenComic = { comic, key ->
                                         detailComicId = comic.id
                                         detailTitle = comic.title
+                                        detailKey = key
                                         detailReturnOrdinal = OverlayPage.Leaderboard.ordinal
                                         overlayOrdinal = OverlayPage.Detail.ordinal
                                     },
@@ -371,14 +415,13 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                     sort = comicSort,
                                     onSortChange = { comicSort = it },
                                     // 每一行各自挂一个变形源，点开就从那一行长成整屏。
-                                    comicRowModifier = { comic ->
-                                        with(shared) {
-                                            overlayBounds("comic-${comic.id}", contentScope)
-                                        }
+                                    comicRowModifier = { key ->
+                                        with(shared) { overlayBounds(key, contentScope) }
                                     },
-                                    onOpenComic = { comic ->
+                                    onOpenComic = { comic, key ->
                                         detailComicId = comic.id
                                         detailTitle = comic.title
+                                        detailKey = key
                                         detailReturnOrdinal = OverlayPage.Comics.ordinal
                                         overlayOrdinal = OverlayPage.Detail.ordinal
                                     },
@@ -387,24 +430,47 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
 
                                 OverlayPage.Random -> RandomComicsContent(
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
-                                    comicRowModifier = { comic ->
-                                        with(shared) {
-                                            overlayBounds("comic-${comic.id}", contentScope)
-                                        }
+                                    comicRowModifier = { key ->
+                                        with(shared) { overlayBounds(key, contentScope) }
                                     },
-                                    onOpenComic = { comic ->
+                                    onOpenComic = { comic, key ->
                                         detailComicId = comic.id
                                         detailTitle = comic.title
+                                        detailKey = key
                                         detailReturnOrdinal = OverlayPage.Random.ordinal
                                         overlayOrdinal = OverlayPage.Detail.ordinal
                                     },
                                 )
 
-                                OverlayPage.Detail -> ComicDetailContent(
-                                    comicId = detailComicId,
-                                    seedTitle = detailTitle,
-                                    onBack = { overlayOrdinal = detailReturnOrdinal },
-                                )
+                                OverlayPage.Detail -> detailState?.let { state ->
+                                    ComicDetailContent(
+                                        state = state,
+                                        seedTitle = detailTitle,
+                                        onBack = { overlayOrdinal = detailReturnOrdinal },
+                                        // 章節行也挂变形源：点开从那一行撑成整屏阅读器。
+                                        episodeRowModifier = { key ->
+                                            with(shared) { overlayBounds(key, contentScope) }
+                                        },
+                                        onOpenEpisode = { episode, key ->
+                                            readerOrder = episode.order
+                                            readerKey = key
+                                            overlayOrdinal = OverlayPage.Reader.ordinal
+                                        },
+                                    )
+                                }
+
+                                OverlayPage.Reader -> detailState?.let { state ->
+                                    ReaderContent(
+                                        comicId = state.comicId,
+                                        comicTitle = state.detail?.title
+                                            ?: detailTitle,
+                                        episodes = state.episodePager.items,
+                                        startOrder = readerOrder,
+                                        onDismiss = {
+                                            overlayOrdinal = OverlayPage.Detail.ordinal
+                                        },
+                                    )
+                                }
 
                                 OverlayPage.None -> Unit
                             }
