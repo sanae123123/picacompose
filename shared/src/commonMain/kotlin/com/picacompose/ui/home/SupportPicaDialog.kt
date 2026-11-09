@@ -17,33 +17,45 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.picacompose.data.pica
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PlatformWebView
 import com.picacompose.ui.components.rememberWebViewController
 
 /**
- * 原版 `KEY_AD_URL_BASE` 的默认值，`/android/font` 就是「支持嗶咔」那个页面。
+ * 广告页域名的兜底值。
  *
- * 原版走 http，这边用 https：Android 9 起默认禁明文，而服务端两套都开着。
+ * 原版客户端里写死的是 `http://pica-juicy.picacomic.com`（`KEY_AD_URL_BASE` 的默认值），
+ * 但开屏时会用 waka init 下发的值覆盖掉 —— 那个写死的域名现在 404 了，实际在用的是这个。
  */
-private const val SUPPORT_BASE_URL = "https://pica-juicy.picacomic.com/android/font"
+private const val FALLBACK_ADS_BASE = "https://pica-ad-api.diwodiwo.xyz"
 
 /**
  * 「支持嗶咔」内嵌页：照原版 PopupWebview 的做法，整屏盖一层网页，右上角「關閉」。
  *
- * 原版就是把启动弹窗广告那个组件拿来复用，URL 写死在客户端、不带 token；
+ * 原版就是把启动弹窗广告那个组件拿来复用：`KEY_AD_URL_BASE + "/android/font"`，不带 token；
  * 主题色是黑的时加 `?color=black`，页面自己换深色配色。
  */
 @Composable
 fun SupportPicaDialog(onDismiss: () -> Unit) {
     val dark = isSystemInDarkTheme()
-    val url = if (dark) "$SUPPORT_BASE_URL?color=black" else SUPPORT_BASE_URL
+    // 原版在开屏时问一次 waka init 再存起来，这里也先问一次，问不到就用兜底值。
+    val adsBase by produceState(FALLBACK_ADS_BASE) {
+        value = runCatching { pica.meta.adsBaseUrl() }
+            .getOrNull()
+            ?.trimEnd('/')
+            ?.takeIf { it.startsWith("http") }
+            ?: FALLBACK_ADS_BASE
+    }
+    val url = "$adsBase/android/font" + if (dark) "?color=black" else ""
     val colors = MaterialTheme.colorScheme
     val controller = rememberWebViewController()
 

@@ -198,6 +198,17 @@ class PicaClient(
         }
     }
 
+    /**
+     * 不带签名、不走 PicACG 主站的纯 GET。
+     *
+     * 官方启动页（`SplashActivity`）会去另一台机器拿「waka」配置，那台不认签名也不认这些请求头，
+     * 直接 GET 就行。
+     */
+    internal suspend fun absoluteGet(url: String): String? = runCatching {
+        val response = http.request(url) { method = HttpMethod.Get }
+        if (response.status.value in 200..299) response.bodyAsText() else null
+    }.getOrNull()
+
     private suspend fun send(
         method: HttpMethod,
         path: String,

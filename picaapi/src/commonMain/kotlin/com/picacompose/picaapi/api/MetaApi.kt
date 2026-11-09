@@ -17,6 +17,9 @@ import com.picacompose.picaapi.model.Paged
 import com.picacompose.picaapi.model.PicaApp
 import com.picacompose.picaapi.model.PicaAppsData
 import io.ktor.http.HttpMethod
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /** 初始化与元数据接口。 */
 class MetaApi internal constructor(private val client: PicaClient) {
@@ -84,4 +87,21 @@ class MetaApi internal constructor(private val client: PicaClient) {
         path = "keywords",
         serializer = KeywordData.serializer(),
     ).keywords
+
+    /**
+     * 官方启动页那个「waka init」：`GET http://206.189.95.169/init`，返回
+     * `{"status","addresses","waka","adKeyword"}`，`waka` 就是广告页域名。
+     *
+     * 原版拿到后写进 `KEY_AD_URL_BASE`，之后所有广告页（`/android/font` 等）都拼在它后面；
+     * 客户端里写死的 `pica-juicy.picacomic.com` 只是拉不到时的默认值。
+     */
+    suspend fun adsBaseUrl(): String? {
+        val text = client.absoluteGet(WAKA_INIT_URL) ?: return null
+        return runCatching {
+            client.json.parseToJsonElement(text).jsonObject["waka"]?.jsonPrimitive?.contentOrNull
+        }.getOrNull()?.trim()?.takeIf { it.startsWith("http") }
+    }
 }
+
+/** 原版 `RestWakaClient` 里写死的启动配置地址。 */
+private const val WAKA_INIT_URL = "http://206.189.95.169/init"
