@@ -19,7 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,18 +34,14 @@ import com.picacompose.data.pica
 import com.picacompose.picaapi.model.Banner
 import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.url
-import kotlinx.coroutines.delay
-
-/** 開屏廣告留几秒，跟官方一样到点自己关。 */
-private const val SKIP_SECONDS = 5
 
 private const val AD_LINK_TITLE = "廣告"
 
 /**
  * 嗶咔的開屏廣告：拉 `GET banners` 里 `type=ads` 的那条，整屏铺开。
  *
- * 官方是启动时弹一次；这边只放在分类页「支持嗶咔 / 點擊救嗶咔 / 嗶咔小程式」三块磁贴上，
- * 点开看一次。点图走广告链接，右上角「跳過」随时关。
+ * 官方是启动时弹、看完自动关；这边不倒数也不强留，右上角「關閉」/返回键随时走，
+ * 点图才去广告链接。
  */
 @Composable
 fun SplashAdDialog(
@@ -55,26 +50,13 @@ fun SplashAdDialog(
 ) {
     var ad by remember { mutableStateOf<Banner?>(null) }
     var loading by remember { mutableStateOf(true) }
-    var failed by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         runCatching { pica.meta.banners() }
             .onSuccess { list ->
                 // 先挑广告那几条；接口哪天混了别的类型，也有得显示。
                 ad = list.firstOrNull { it.type == "ads" } ?: list.firstOrNull()
             }
-            .onFailure { failed = true }
         loading = false
-    }
-
-    // 广告露脸了才开始倒数，别图还没加载完就被关掉。
-    var left by remember { mutableIntStateOf(SKIP_SECONDS) }
-    LaunchedEffect(ad, failed) {
-        if (ad == null && !failed) return@LaunchedEffect
-        while (left > 0) {
-            delay(1_000)
-            left--
-        }
-        onDismiss()
     }
 
     Dialog(
@@ -98,13 +80,7 @@ fun SplashAdDialog(
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
                     )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = "稍後再點一次，或先關掉。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.7f),
-                    )
-                    Spacer(Modifier.height(18.dp))
+                    Spacer(Modifier.height(14.dp))
                     Text(
                         text = "關閉",
                         style = MaterialTheme.typography.labelLarge,
@@ -129,42 +105,23 @@ fun SplashAdDialog(
                                 link?.let { onOpenLink(it, AD_LINK_TITLE) }
                             },
                     )
-                    Column(
+                    Text(
+                        text = "廣告",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Black,
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .windowInsetsPadding(WindowInsets.navigationBars)
-                            .padding(20.dp),
-                    ) {
-                        Text(
-                            text = "廣告",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.Black,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color.White.copy(alpha = 0.82f))
-                                .padding(horizontal = 5.dp, vertical = 1.dp),
-                        )
-                        val line = current.shortDescription ?: current.title
-                        if (!line.isNullOrBlank()) {
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = line,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = Color.White,
-                            )
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = "點擊前往",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.7f),
-                        )
-                    }
+                            .padding(16.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color.White.copy(alpha = 0.82f))
+                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                    )
                 }
             }
 
             Text(
-                text = if (left > 0) "跳過 ${left}s" else "跳過",
+                text = "關閉",
                 style = MaterialTheme.typography.labelMedium,
                 color = Color.White,
                 modifier = Modifier
