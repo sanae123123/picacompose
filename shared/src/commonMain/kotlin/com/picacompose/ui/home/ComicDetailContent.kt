@@ -44,6 +44,7 @@ import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.url
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
@@ -79,6 +80,8 @@ class ComicDetailState(comicId: String) {
     var liked by mutableStateOf(false)
     var likedCount by mutableStateOf<Int?>(null)
     var favourited by mutableStateOf(false)
+    // 点赞/收藏没点上的提示，两秒后自己消失。
+    var actionError by mutableStateOf<String?>(null)
 
     val episodePager: Pager<Episode> = Pager(
         load = { page -> pica.comics.episodes(comicId, page) },
@@ -196,6 +199,14 @@ fun ComicDetailContent(
             }
     }
 
+    // 点赞/收藏的失败提示，两秒后自己收起来。
+    LaunchedEffect(state.actionError) {
+        if (state.actionError != null) {
+            delay(2400)
+            state.actionError = null
+        }
+    }
+
     Column(modifier.fillMaxSize().imePadding()) {
         PageScaffold(
             state = listState,
@@ -246,23 +257,41 @@ fun ComicDetailContent(
                         liked = state.liked,
                         likesCount = state.likedCount ?: loaded.likesCount,
                         favourited = state.favourited,
+                        actionError = state.actionError,
                         onLike = {
+                            // 先翻成点过的样子，服务端回话再确认；再点一次就是取消。
+                            val base = state.likedCount ?: loaded.likesCount
+                            val next = !state.liked
+                            state.liked = next
+                            state.likedCount = base + if (next) 1 else -1
                             scope.launch {
-                                runCatching { pica.comics.like(state.comicId) }.onSuccess { action ->
-                                    val nowLiked = action != "unlike"
-                                    if (nowLiked != state.liked) {
-                                        state.liked = nowLiked
-                                        state.likedCount = (state.likedCount ?: loaded.likesCount) +
-                                            if (nowLiked) 1 else -1
+                                postWithRetry { pica.comics.like(state.comicId) }
+                                    .onSuccess { action ->
+                                        val server = !action.isCancelAction()
+                                        if (server != next) {
+                                            state.liked = server
+                                            state.likedCount = base + if (server) 1 else -1
+                                        }
                                     }
-                                }
+                                    .onFailure {
+                                        state.liked = !next
+                                        state.likedCount = base
+                                        state.actionError = "讚沒點上，等一下再點一次"
+                                    }
                             }
                         },
                         onFavourite = {
+                            val next = !state.favourited
+                            state.favourited = next
                             scope.launch {
-                                runCatching { pica.comics.favourite(state.comicId) }
+                                postWithRetry { pica.comics.favourite(state.comicId) }
                                     .onSuccess { action ->
-                                        state.favourited = action != "unfavourite"
+                                        val server = !action.isCancelAction()
+                                        if (server != next) state.favourited = server
+                                    }
+                                    .onFailure {
+                                        state.favourited = !next
+                                        state.actionError = "收藏沒成功，等一下再點一次"
                                     }
                             }
                         },
@@ -444,6 +473,7 @@ private fun DetailHero(
     liked: Boolean,
     likesCount: Int,
     favourited: Boolean,
+    actionError: String?,
     onLike: () -> Unit,
     onFavourite: () -> Unit,
 ) {
@@ -508,14 +538,25 @@ private fun DetailHero(
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             ActionPill(
+                icon = PicaIcon.Like,
                 label = "讚 ${compactCount(likesCount)}",
                 active = liked,
                 onClick = onLike,
             )
             ActionPill(
+                icon = PicaIcon.Star,
                 label = if (favourited) "已收藏" else "收藏",
                 active = favourited,
                 onClick = onFavourite,
+            )
+        }
+        val failure = actionError
+        if (failure != null) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = failure,
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.error,
             )
         }
 
@@ -542,6 +583,7 @@ private fun DetailHero(
 /** 点赞 / 收藏那两粒胶囊，点过就填色。 */
 @Composable
 private fun ActionPill(
+    icon: PicaIcon,
     label: String,
     active: Boolean,
     onClick: () -> Unit,
@@ -559,7 +601,9 @@ private fun ActionPill(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             PicaGlyph(
-                icon = PicaIcon.Like,
+                icon = icon,
+                // 点过是实心、没点过是空心，一眼能分出来。
+                filled = active,
                 modifier = Modifier.size(16.dp),
                 tint = if (active) colors.onSecondaryContainer else colors.onSurfaceVariant,
             )
@@ -571,6 +615,18 @@ private fun ActionPill(
         }
     }
 }
+
+/** POST 偶尔被限流（error 1023），等一下再试一次，省得用户以为没点上。 */
+private suspend fun postWithRetry(block: suspend () -> String?): Result<String?> {
+    val first = runCatching { block() }
+    if (first.isSuccess) return first
+    delay(1100)
+    return runCatching { block() }
+}
+
+/** 服务端回的 action：`like` / `unlike`、`favourite` / `unfavourite`，`un` 开头就是取消。 */
+private fun String?.isCancelAction(): Boolean =
+    this?.trim()?.lowercase()?.startsWith("un") == true
 
 /** 章節一行：序號 + 標題 + 更新日期。 */
 @Composable
