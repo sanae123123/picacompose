@@ -13,11 +13,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.Category
 import com.picacompose.ui.components.PicaImage
-import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.url
 
 /**
@@ -114,11 +111,10 @@ fun CategoriesContent(
     onOpenLatest: () -> Unit = {},
     /** 隨機本子：走 `GET comics/random`，一次一批，无分页。 */
     onOpenRandom: () -> Unit = {},
+    /** 支持嗶咔 / 點擊救嗶咔 / 嗶咔小程式：都弹同一次嗶咔開屏廣告。 */
+    onOpenSplashAd: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
-    // 还没接的入口点一下给个说明，别让磁贴看起来像坏的。
-    var comingSoon by remember { mutableStateOf<String?>(null) }
-
     // 数据放在外层（[CategoriesState]），整页开开关关、栏与栏之间来回切都不重拉。
     LaunchedEffect(state) { state.ensureLoaded() }
 
@@ -134,7 +130,7 @@ fun CategoriesContent(
             SectionTitle("熱門分類")
             Spacer(Modifier.height(12.dp))
             val hotTiles = listOf(
-                HotTile("支持嗶咔", art = "support") { comingSoon = "支持嗶咔" },
+                HotTile("支持嗶咔", art = "support", onClick = onOpenSplashAd),
                 HotTile(
                     label = "嗶咔排行榜",
                     art = "leaderboard",
@@ -142,8 +138,8 @@ fun CategoriesContent(
                     onClick = onOpenLeaderboard,
                 ),
                 HotTile("遊戲推薦", art = "game", onClick = onOpenGames),
-                HotTile("點擊救嗶咔", url = state.adCover) { comingSoon = "點擊救嗶咔" },
-                HotTile("嗶咔小程式", art = "love_pica") { comingSoon = "嗶咔小程式" },
+                HotTile("點擊救嗶咔", url = state.adCover, onClick = onOpenSplashAd),
+                HotTile("嗶咔小程式", art = "love_pica", onClick = onOpenSplashAd),
                 HotTile("嗶咔留言版", art = "forum", modifier = forumTileModifier, onClick = onOpenForum),
                 HotTile(
                     label = "最新更新",
@@ -208,19 +204,6 @@ fun CategoriesContent(
                 }
             }
         }
-    }
-
-    comingSoon?.let { title ->
-        val pop = rememberDialogPop(onDismiss = { comingSoon = null })
-        AlertDialog(
-            onDismissRequest = pop::dismiss,
-            modifier = pop.modifier,
-            title = { Text(title) },
-            text = { Text("这个入口还没接，下一步补上。") },
-            confirmButton = {
-                TextButton(onClick = pop::dismiss) { Text("知道了") }
-            },
-        )
     }
 }
 
