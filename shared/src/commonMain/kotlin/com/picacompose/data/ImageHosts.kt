@@ -72,7 +72,10 @@ internal suspend fun keepImageIpsFresh() {
             continue
         }
         ImageIps.updateEnabled(true)
-        val candidates = CloudflareIps.sample()
+        // 上次测出来的最快三台排在最前面：这一轮一开跑就先测它们，很快就能先用上，
+        // 剩下的官方段地址照旧在后面一起扫。
+        val lastFast = store.savedImageIps.ifEmpty { ImageIps.preferred }.take(TOP_PRIORITY)
+        val candidates = (lastFast + CloudflareIps.sample()).distinct()
         ImageIpsStatus.start(candidates.size)
         // 边测边用：先测出够快的几台就立刻顶上，不用等 200 多台全扫完。
         val best = coroutineScope {
@@ -124,6 +127,9 @@ private const val POOL_SIZE = 10
 
 /** 多快算「快」：500ms 以内的握手速度，一屏图基本不会等。 */
 private const val FAST_MS = 500L
+
+/** 上一次的结果里，最快的那几台下一轮排在最前面先测。 */
+private const val TOP_PRIORITY = 3
 
 /** 开关关着时每隔一会儿看一眼，拨开了就能接着测。 */
 private const val IDLE_MS = 10 * 1000L
