@@ -86,7 +86,10 @@ import kotlin.math.abs
 import kotlin.math.exp
 
 /** 提前把后面几张图抓下来，手指划过去时是现成的。 */
-private const val PRELOAD_AHEAD = 4
+private const val PRELOAD_AHEAD = 6
+
+/** 往回翻也留两张：看完回头找细节不至于重新下。 */
+private const val PRELOAD_BEHIND = 2
 
 /** 最多放到几倍。再大就糊了，也没谁真看那么细。 */
 private const val MAX_ZOOM = 5f
@@ -172,7 +175,9 @@ fun ReaderContent(
             .collect { (index, size) ->
                 if (size == 0) return@collect
                 val until = (index + PRELOAD_AHEAD).coerceAtMost(size - 1)
-                for (i in index + 1..until) {
+                val from = (index - PRELOAD_BEHIND).coerceAtLeast(0)
+                for (i in from..until) {
+                    if (i == index) continue
                     val url = pager.items[i].media.url() ?: continue
                     loader.enqueue(
                         ImageRequest.Builder(platformContext)

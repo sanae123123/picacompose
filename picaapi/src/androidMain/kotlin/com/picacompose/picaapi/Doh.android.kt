@@ -13,6 +13,9 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 /** 接口域名：钉住线路时只有它走钉死的地址，别的域名一律交给 DoH。 */
 private const val API_HOST = "picaapi.picacomic.com"
 
+/** 接口请求在几台地址之间轮换。 */
+private const val API_SPREAD_IPS = 3
+
 /** DoH 答案缓存 5 分钟：图片同一台机器会连着请求，别每张图都问一遍。 */
 private const val CACHE_MS = 5 * 60 * 1000L
 
@@ -33,6 +36,9 @@ private class DohDns(pinnedIps: List<String>) : Dns {
     /** 交给 OkHttp 的地址对象：同一台地址会连着请求，转一次存一次。 */
     private val addresses = ConcurrentHashMap<String, InetAddress>()
 
+    /** 接口地址轮换用的计数器。 */
+    private val turn = java.util.concurrent.atomic.AtomicInteger()
+
     private fun address(ip: String): InetAddress? = addresses[ip]?.let { it }
         ?: runCatching { InetAddress.getByName(ip) }.getOrNull()?.also { addresses[ip] = it }
 
@@ -41,7 +47,11 @@ private class DohDns(pinnedIps: List<String>) : Dns {
         // 优选出来的地址排前面，钉住的线路 IP（`/init` 下发那份）跟着兜底。
         if (pinned.isNotEmpty() && hostname.equals(API_HOST, ignoreCase = true)) {
             val pooled = ImageIps.ordered().mapNotNull(::address)
-            val merged = (pooled + pinned).distinctBy { it.hostAddress }
+            // 首页一次会并发好几个接口请求（列表 + 首页轮播 + 通知），这里同样轮着用几台。
+            val spread = minOf(pooled.size, API_SPREAD_IPS)
+            val start = if (spread == 0) 0 else (turn.getAndIncrement() % spread + spread) % spread
+            val rotated = pooled.drop(start) + pooled.take(start)
+            val merged = (rotated + pinned).distinctBy { it.hostAddress }
             if (merged.isNotEmpty()) return merged
             return pinned
         }
