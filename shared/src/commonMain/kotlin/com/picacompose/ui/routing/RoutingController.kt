@@ -9,6 +9,7 @@ import com.picacompose.data.RouteStore
 import com.picacompose.data.LinePreferences
 import com.picacompose.data.applyPicaRoute
 import com.picacompose.data.dohAddressesIfEnabled
+import com.picacompose.picaapi.dohEngine
 import com.picacompose.picaapi.fetchBootstrap
 import com.picacompose.picaapi.pinnedEngine
 import io.ktor.client.HttpClient
@@ -119,8 +120,13 @@ class RoutingController(
         loading = false
     }
 
+    /** DoH 打开时「系统解析」实际走 DoH 引擎，测速按真实那条路来测。 */
     private suspend fun measure(line: PicaLine, ips: List<String>): Long? {
-        val engine = if (line.pinnedDns) runCatching { pinnedEngine(ips) }.getOrNull() else null
+        val engine = when {
+            line.pinnedDns -> runCatching { pinnedEngine(ips) }.getOrNull()
+            preferences.doh -> dohEngine()
+            else -> null
+        }
         val client = if (engine != null) HttpClient(engine) { probe() } else HttpClient { probe() }
         return try {
             val mark = TimeSource.Monotonic.markNow()

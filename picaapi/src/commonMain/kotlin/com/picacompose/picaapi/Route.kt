@@ -74,7 +74,7 @@ suspend fun fetchBootstrap(): BootstrapInfo? {
 expect suspend fun pinnedEngine(ips: List<String>): HttpClientEngine?
 
 /** DoH 端点：按「结果更可信」的顺序排，国内的放后面当兜底。 */
-private val DOH_ENDPOINTS = listOf(
+internal val DOH_ENDPOINTS = listOf(
     "https://1.1.1.1/dns-query",
     "https://8.8.8.8/dns-query",
     "https://223.5.5.5/dns-query",
@@ -121,7 +121,7 @@ private suspend fun dohLookup(endpoint: String, encodedQuery: String): List<Stri
 }
 
 /** 手搓一个 A 记录的查询包：12 字节头 + 域名 + 类型/类。 */
-private fun dnsQueryPacket(host: String): ByteArray {
+internal fun dnsQueryPacket(host: String): ByteArray {
     val bytes = mutableListOf<Byte>()
     fun short(value: Int) {
         bytes += (value shr 8 and 0xFF).toByte()
@@ -148,7 +148,7 @@ private fun dnsQueryPacket(host: String): ByteArray {
  *
  * 名字可能被压缩（高两位 11 的指针），所以跳名字要单独写；挖不到的字段一律当没有。
  */
-private fun parseAnswers(buf: ByteArray): List<String> {
+internal fun parseAnswers(buf: ByteArray): List<String> {
     if (buf.size < 12) return emptyList()
 
     fun u16(at: Int): Int = ((buf[at].toInt() and 0xFF) shl 8) or (buf[at + 1].toInt() and 0xFF)
@@ -184,3 +184,13 @@ private fun parseAnswers(buf: ByteArray): List<String> {
     }
     return ips
 }
+
+/**
+ * 一个「DNS 走 DoH」的引擎，给主客户端和图片加载共用。
+ *
+ * [pinnedIps] 非空时，接口域名仍然直连这些钉死的地址（线路 2/3 的语义不变），
+ * 其它域名（图片 CDN 这些）一律交给 DoH 解析；DoH 解析不出来就退回系统 DNS。
+ *
+ * 平台没有 DNS 钩子时返回 null，调用方退回系统解析。
+ */
+expect fun dohEngine(pinnedIps: List<String> = emptyList()): HttpClientEngine?

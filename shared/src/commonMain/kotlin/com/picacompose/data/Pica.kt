@@ -1,7 +1,9 @@
 package com.picacompose.data
 
 import com.picacompose.picaapi.PicaClient
+import com.picacompose.picaapi.dohEngine
 import com.picacompose.picaapi.pinnedEngine
+import io.ktor.client.engine.HttpClientEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,10 +27,11 @@ private val retireScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
  * 按线路重建客户端，把登录态一起带过去。
  *
  * 线路 1 不钉 DNS；线路 2/3 用下发 IP 池，平台不支持时 `pinnedEngine` 返回 null，退化成系统解析。
+ * 设置里打开 DoH 时优先用 DoH 引擎：钉住的线只钉接口域名，其它域名也一并走 DoH。
  */
 suspend fun applyPicaRoute(line: PicaLine, ips: List<String>) {
     val old = pica
-    val engine = if (line.pinnedDns) pinnedEngine(ips) else null
+    val engine = routeEngine(line, ips)
     pica = PicaClient(
         config = old.config.copy(
             appChannel = line.channel,
@@ -43,4 +46,13 @@ suspend fun applyPicaRoute(line: PicaLine, ips: List<String>) {
         delay(8_000)
         old.close()
     }
+}
+
+/** DoH 开着就拿 DoH 引擎（能返回 null 的平台会退回原来那套）；关着还是按线路钉 IP。 */
+private suspend fun routeEngine(line: PicaLine, ips: List<String>): HttpClientEngine? {
+    if (LinePreferences().doh) {
+        val doh = dohEngine(if (line.pinnedDns) ips else emptyList())
+        if (doh != null) return doh
+    }
+    return if (line.pinnedDns) pinnedEngine(ips) else null
 }

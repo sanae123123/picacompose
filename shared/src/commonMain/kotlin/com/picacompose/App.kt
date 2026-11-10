@@ -21,12 +21,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import coil3.ImageLoader
+import coil3.annotation.ExperimentalCoilApi
+import coil3.compose.setSingletonImageLoaderFactory
+import coil3.network.ktor3.KtorNetworkFetcherFactory
 import com.picacompose.data.LinePreferences
 import com.picacompose.data.LineRouter
 import com.picacompose.data.RouteStore
 import com.picacompose.data.applyPicaRoute
 import com.picacompose.data.pica
 import com.picacompose.data.picaNetworkFailureHandler
+import com.picacompose.picaapi.dohEngine
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaToast
 import com.picacompose.ui.components.PicaToastHost
@@ -36,6 +41,7 @@ import com.picacompose.ui.login.LoginController
 import com.picacompose.ui.login.LoginScreen
 import com.picacompose.ui.routing.RoutingScreen
 import com.picacompose.ui.theme.PicaTheme
+import io.ktor.client.HttpClient
 
 /** 启动时要停在哪儿：先试着恢复上次的登录，恢复了就直接进首页。 */
 private enum class Screen { Restoring, Login, Home }
@@ -55,6 +61,7 @@ private enum class Screen { Restoring, Login, Home }
 @Composable
 fun App() {
     PicaTheme {
+        InstallDohImageLoader()
         val store = remember { RouteStore() }
         // 开关在设置页里改，下一次冷启动才生效，所以这里只在进 App 时读一次。
         val preferences = remember { LinePreferences() }
@@ -164,6 +171,25 @@ private fun MainScreens() {
                 TextButton(onClick = pop::dismiss) { Text("好") }
             },
         )
+    }
+}
+
+/**
+ * DoH 打开时让图片也走 DoH。
+ *
+ * Coil 默认那个 ktor 客户端是它自己建的，只能自己塞一个带 DoH 引擎的 fetcher 进单例加载器；
+ * 开关关着就完全不碰它，也不会多建一个客户端。
+ */
+@OptIn(ExperimentalCoilApi::class)
+@Composable
+private fun InstallDohImageLoader() {
+    val preferences = remember { LinePreferences() }
+    if (!preferences.doh) return
+    val fetcher = remember {
+        dohEngine()?.let { KtorNetworkFetcherFactory(httpClient = HttpClient(it)) }
+    } ?: return
+    setSingletonImageLoaderFactory { context ->
+        ImageLoader.Builder(context).components { add(fetcher) }.build()
     }
 }
 

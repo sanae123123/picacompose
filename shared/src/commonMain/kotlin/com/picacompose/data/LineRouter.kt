@@ -1,5 +1,6 @@
 package com.picacompose.data
 
+import com.picacompose.picaapi.dohEngine
 import com.picacompose.picaapi.fetchBootstrap
 import com.picacompose.picaapi.pinnedEngine
 import io.ktor.client.HttpClient
@@ -183,9 +184,18 @@ object LineRouter {
         )
     }
 
-    /** 测一次延迟；`ips` 为 null 表示走系统解析。只要连得上有响应就算通，状态码无所谓。 */
+    /**
+     * 测一次延迟；`ips` 为 null 表示走系统解析。只要连得上有响应就算通，状态码无所谓。
+     *
+     * DoH 打开时「系统解析」这条实际用的是 DoH 引擎，测速也得按它来测，不然测出来的不是
+     * 待会儿真正用的那条路。
+     */
     private suspend fun measure(ips: List<String>?): Long? {
-        val engine = if (ips != null) runCatching { pinnedEngine(ips) }.getOrNull() else null
+        val engine = when {
+            ips != null -> runCatching { pinnedEngine(ips) }.getOrNull()
+            preferences.doh -> dohEngine()
+            else -> null
+        }
         val client = if (engine != null) HttpClient(engine) { probe() } else HttpClient { probe() }
         return try {
             val mark = TimeSource.Monotonic.markNow()
