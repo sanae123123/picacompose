@@ -1,22 +1,18 @@
 package com.picacompose.ui.home
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,7 +22,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.picacompose.picaapi.model.Comment
 import com.picacompose.picaapi.model.MyComment
+import com.picacompose.picaapi.model.UserBasic
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -35,7 +33,8 @@ import kotlinx.coroutines.launch
 /**
  * 历史评论：`GET users/my-comments`，我发过的评论，按时间从新到旧。
  *
- * 点一条就打开它所在的本子（游戏评论没有本子，只能看）。
+ * 每条就是详情页那一套 [CommentRow]：点卡片主体就地展开楼中楼（按需拉
+ * `comments/{id}/childrens`），再点收起。卡片上方一行是它所在的本子，点进去看原帖。
  */
 @Composable
 fun MyCommentsContent(
@@ -83,7 +82,13 @@ fun MyCommentsContent(
                 PageHeader(
                     title = "历史评论",
                     action = if (pager.total > 0) {
-                        { Text("共 ${pager.total} 条", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant) }
+                        {
+                            Text(
+                                text = "共 ${pager.total} 条",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
                     } else {
                         null
                     },
@@ -105,15 +110,10 @@ fun MyCommentsContent(
         }
         items(pager.items, key = { it.id }) { comment ->
             val key = "myc-${comment.id}"
-            MyCommentRow(
+            MyCommentCard(
                 comment = comment,
                 modifier = commentRowModifier(key),
-                onClick = {
-                    val comic = comment.comic
-                    if (comic != null && comic.id.isNotBlank()) {
-                        onOpenComic(comic.id, comic.title.orEmpty(), key)
-                    }
-                },
+                onOpenComic = { comicId, title -> onOpenComic(comicId, title, key) },
             )
         }
         if (pager.loading && pager.items.isNotEmpty()) {
@@ -122,76 +122,76 @@ fun MyCommentsContent(
     }
 }
 
+/**
+ * 一条历史评论：所在本子的标题 + 评论本体。
+ *
+ * 评论本体直接用 [CommentRow]，楼中楼的展开、点赞都跟详情页一致；
+ * `MyComment` 里没有作者信息（本来就是自己发的），这里补个「我」把头像位占住。
+ */
 @Composable
-private fun MyCommentRow(
+private fun MyCommentCard(
     comment: MyComment,
-    onClick: () -> Unit,
+    onOpenComic: (comicId: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    val target = comment.comic?.title?.takeIf { it.isNotBlank() }
+    val comic = comment.comic
+    val target = comic?.title?.takeIf { it.isNotBlank() }
         ?: comment.game?.title?.takeIf { it.isNotBlank() }
-    Surface(
-        shape = MaterialTheme.shapes.large,
-        color = colors.surface,
-        tonalElevation = 1.dp,
-        modifier = modifier.fillMaxWidth().padding(bottom = 12.dp),
-    ) {
-        Column(
+    val openable = comic != null && comic.id.isNotBlank()
+
+    Column(modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = comment.comic?.id?.isNotBlank() == true, onClick = onClick)
-                .padding(14.dp),
+                .clickable(enabled = openable) {
+                    if (openable) onOpenComic(comic.id, comic.title.orEmpty())
+                }
+                .padding(start = 4.dp, end = 4.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (target != null) {
-                Text(
-                    text = target,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = colors.primary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(6.dp))
-            }
             Text(
-                text = comment.content,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.onSurface,
-                maxLines = 6,
+                text = target ?: "未知本子",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (openable) colors.primary else colors.onSurfaceVariant,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
             )
-            Spacer(Modifier.height(8.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            if (openable) {
+                Spacer(Modifier.width(4.dp))
                 Text(
-                    text = relativeTime(comment.createdAt),
+                    text = "看本子",
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.onSurfaceVariant,
                 )
-                if (comment.likesCount > 0) {
-                    Text(
-                        text = "${comment.likesCount} 赞",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
-                if (comment.childsCount > 0) {
-                    Text(
-                        text = "${comment.childsCount} 条回复",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
-                if (comment.hide) {
-                    Text(
-                        text = "已隐藏",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.error,
-                    )
-                }
+                PicaGlyph(
+                    icon = PicaIcon.ArrowRight,
+                    modifier = Modifier.size(14.dp),
+                    tint = colors.onSurfaceVariant,
+                )
+            }
+            if (comment.hide) {
+                Spacer(Modifier.width(8.dp))
+                InfoChip("已隐藏")
             }
         }
+        CommentRow(
+            // 自己的评论没有用户名，补一个占位名，卡片布局和详情页保持一致。
+            comment = comment.asComment(),
+            onReply = null,
+        )
     }
 }
+
+/** `MyComment` → 评论行要的那份 `Comment`，字段一一对上，作者填「我」。 */
+private fun MyComment.asComment(): Comment = Comment(
+    id = id,
+    content = content,
+    createdAt = createdAt,
+    likesCount = likesCount,
+    childsCount = childsCount,
+    isLiked = isLiked,
+    hide = hide,
+    user = UserBasic(name = "我"),
+)
