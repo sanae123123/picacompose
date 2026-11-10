@@ -28,6 +28,8 @@ import coil3.compose.setSingletonImageLoaderFactory
 import coil3.network.NetworkFetcher
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import com.picacompose.data.LinePreferences
+import com.picacompose.picaapi.ImageQuality
+import com.picacompose.picaapi.ImageQualitySetting
 import com.picacompose.data.LineRouter
 import com.picacompose.data.RouteStore
 import com.picacompose.data.applyPicaRoute
@@ -71,6 +73,10 @@ fun App() {
         val store = remember { RouteStore() }
         // 开关在设置页里改，下一次冷启动才生效，所以这里只在进 App 时读一次。
         val preferences = remember { LinePreferences() }
+        // 画质要赶在第一条接口请求之前垫上：路由那次重建也会设，但登录恢复可能比它早。
+        LaunchedEffect(Unit) {
+            ImageQualitySetting.current = ImageQuality.fromIndex(preferences.imageQuality)
+        }
         val autoProbe = remember { preferences.autoProbe }
         val fastEntry = remember { preferences.fastEntry }
         // 下发线路没存 IP 池时会退化成系统解析，那种情况不如老老实实测一次。

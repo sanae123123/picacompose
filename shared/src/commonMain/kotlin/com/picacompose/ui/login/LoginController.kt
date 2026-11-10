@@ -33,8 +33,8 @@ class LoginController(
     var passwordVisible by mutableStateOf(false)
         private set
 
-    /** 勾着「记住账号」就把 token 存下来，下次开 App 直接进首页。 */
-    var rememberAccount by mutableStateOf(true)
+    /** 勾着「记住账号」就把 token 存下来，下次开 App 直接进首页。默认值跟设置页那个开关是同一个。 */
+    var rememberAccount by mutableStateOf(session.remember)
         private set
 
     var loading by mutableStateOf(false)
@@ -67,6 +67,8 @@ class LoginController(
 
     fun onRememberChange(value: Boolean) {
         rememberAccount = value
+        // 两处开关共用一个偏好：在登录页勾掉，设置页也应该是关的。
+        session.remember = value
     }
 
     /**

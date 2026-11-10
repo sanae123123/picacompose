@@ -1,6 +1,8 @@
 package com.picacompose.data
 
 import com.picacompose.picaapi.DohAnswer
+import com.picacompose.picaapi.ImageQuality
+import com.picacompose.picaapi.ImageQualitySetting
 import com.picacompose.picaapi.dohAnswer
 
 /**
@@ -47,6 +49,21 @@ class LinePreferences(private val kv: KeyValueStore = platformKeyValueStore()) {
             kv.put(KEY_IMAGE_IPS, if (value) "1" else "0")
         }
 
+    /**
+     * 画质索引，对应 `ImageQuality` 的四个档位（原图 / 低 / 中 / 高），默认 2 就是官方的「中」。
+     *
+     * 改完立刻同步到 [com.picacompose.picaapi.ImageQualitySetting]：图片链路每张图都读它，
+     * 接口链路要等下次重建客户端才换，反正同一个值不影响。
+     */
+    var imageQuality: Int
+        get() = kv.get(KEY_IMAGE_QUALITY)?.toIntOrNull() ?: DEFAULT_IMAGE_QUALITY
+        set(value) {
+            val index = value.coerceIn(0, 3)
+            kv.put(KEY_IMAGE_QUALITY, index.toString())
+            // 单一路径：谁改偏好都顺手把运行期那份换掉，图片和接口都跟着走。
+            ImageQualitySetting.current = ImageQuality.fromIndex(index)
+        }
+
     companion object {
         /**
          * DoH 一个可信地址都解析不出来、被自动关掉时想跟用户说一句（App 接到 toast 上）。
@@ -59,6 +76,8 @@ class LinePreferences(private val kv: KeyValueStore = platformKeyValueStore()) {
         private const val KEY_FAST_ENTRY = "route.fastEntry"
         private const val KEY_DOH = "route.doh"
         private const val KEY_IMAGE_IPS = "route.imageIpsEnabled"
+        private const val KEY_IMAGE_QUALITY = "route.imageQuality"
+        private const val DEFAULT_IMAGE_QUALITY = 2
     }
 }
 

@@ -9,7 +9,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -17,10 +20,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import coil3.compose.LocalPlatformContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -29,18 +35,57 @@ import com.picacompose.data.LinePreferences
 import com.picacompose.data.LineRouter
 import com.picacompose.data.RouteStore
 import com.picacompose.data.SessionStore
+import com.picacompose.data.clearImageCache
+import com.picacompose.data.formatBytes
+import com.picacompose.data.imageCacheBytes
+import com.picacompose.data.pica
 import com.picacompose.picaapi.ImageIps
+import kotlinx.coroutines.launch
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 
-/** 设置：账号状态、线路开关、版本信息，最后是退出登录。 */
+/**
+ * 设置：账号、线路开关、图片、版本，最后是退出登录。
+ *
+ * 下面这些说明原来堆在页面底部（一般人不会往下翻），现在挪到这里，改代码的时候就近能看到：
+ *
+ * - 记住账号：只保存 token 和账号名，不存密码。开着时下次打开直接恢复会话；
+ *   关掉会把已经存的 token 一起清掉，下次得重新登录。退出登录只清 token、账号名留着。
+ * - 线路的开关（自动测速 / 快速进入）改完立即生效（关掉自动测速会当场停掉正在跑的测速），
+ *   不会再自己换线路，网络变了要手动去线路页重选。快速进入关掉后每次启动会多等一次测速。
+ * - DoH：打开后接口走 DoH 解析，图片不走（图片直接钉 Cloudflare 地址，更省事）。
+ *   一个可信地址都拿不到时会自动关掉开关并退回系统 DNS，设置页的开关也会跟着变回关；
+ *   单个端点挂掉会在几路端点之间自动换到还能用的那一路。
+ * - 图片：地址优先用 /init 下发的图床。图床域名（storage1 / storage-b / s3.picacomic.com）
+ *   在很多网络上会被系统解析成别的公司的 IP，所以图片请求单独钉了一组 Cloudflare 地址，
+ *   系统解析的结果排在后面兜底。启动后在后台把候选地址挨个测一遍，按握手耗时挑最快的几台，
+ *   测速范围是 Cloudflare 官方公布的整套地址段（均匀取样几百台一起测），500ms 以内按延迟取最好的 10 台，
+ *   之后每 30 分钟重测；冷启动时先用 /init 下发的官方源，优选测完再顶到前面。
+ *   接口域名也在 Cloudflare 后面，所以同一份顺序也管接口 —— 优选出来的地址排前面，
+ *   线路钉住的 IP 跟着兜底。候选里带 IPv6 地址，设备有 v6 出口就会一起测、一起用；
+ *   全测不出来就退回官方池和内置种子地址，不会把能用的清空。
+ *   「图片 IP 优选」可以整个关掉：关了就不再后台测速，只用 /init 下发的地址加内置种子。
+ *   只要手上有优选池，就不会再自动测线路、也不会自己换线路；请求连不上时先在池子里换一台地址，
+ *   连着换三台都不行才重新测一遍线路。
+ * - 图片质量：对应官方那套 `image-quality` 请求头（original / low / medium / high），
+ *   图床按它决定返回的尺寸；原图最清楚也最费流量，默认「中」和官方一致。
+ * - 清除缓存：只清 Coil 的图片缓存（内存 + 磁盘），不动登录态、线路和阅读进度。
+ */
 @Composable
 fun SettingsContent(onSignOut: () -> Unit) {
     val session = remember { SessionStore() }
-    val savedAccount = session.savedAccount
-    val rememberOn = session.savedToken != null
+    var savedAccount by remember { mutableStateOf(session.savedAccount) }
+    var rememberOn by remember { mutableStateOf(session.remember) }
+    val scope = rememberCoroutineScope()
+    val platformContext = LocalPlatformContext.current
+    // 缓存大小算一次放这儿：清完刷新，不然得退出去再进来才变。
+    var cacheBytes by remember { mutableStateOf(-1L) }
+    LaunchedEffect(platformContext) { cacheBytes = imageCacheBytes(platformContext) }
+    var clearing by remember { mutableStateOf(false) }
     val route = remember { RouteStore() }
     val preferences = remember { LinePreferences() }
+    var qualityIndex by remember { mutableStateOf(preferences.imageQuality) }
+    var qualityMenuOpen by remember { mutableStateOf(false) }
     val line = route.savedLine
     val latency = route.savedLatencyMs
     val ipCount = route.savedIps.size
@@ -62,20 +107,30 @@ fun SettingsContent(onSignOut: () -> Unit) {
     ) {
         item {
             PicaCard {
-                DetailRow(
+                SwitchRow(
                     icon = PicaIcon.Person,
                     title = "记住账号",
-                    value = if (rememberOn) "已开启" else "未开启",
+                    summary = "只存令牌和账号名，不存密码。关掉会清掉已存的令牌，下次打开要重新登录。",
+                    checked = rememberOn,
+                    onCheckedChange = { on ->
+                        rememberOn = on
+                        session.remember = on
+                        // 刚关掉的话，本机已经没令牌了，账号名也一起忘掉。
+                        savedAccount = session.savedAccount
+                        // 开着的时候要是这次登录还没落盘（比如登录时没勾），现在就补上。
+                        if (on) {
+                            val token = pica.token.value
+                            if (!token.isNullOrBlank()) {
+                                session.save(token, savedAccount.orEmpty())
+                                savedAccount = session.savedAccount
+                            }
+                        }
+                    },
                 )
                 DetailRow(
                     icon = PicaIcon.Lock,
                     title = "保存的账号",
                     value = savedAccount ?: "还没有",
-                )
-                DetailRow(
-                    icon = PicaIcon.Eye,
-                    title = "密码",
-                    value = "不落盘",
                 )
             }
             Spacer(Modifier.height(14.dp))
@@ -162,6 +217,47 @@ fun SettingsContent(onSignOut: () -> Unit) {
                         }
                     },
                 )
+                Spacer(Modifier.height(6.dp))
+                // 画质：官方也是每张图带 image-quality 头，图床按档位返回不同尺寸。
+                Box {
+                    PickerRow(
+                        icon = PicaIcon.Star,
+                        title = "图片质量",
+                        value = imageQualityLabel(qualityIndex),
+                        onClick = { qualityMenuOpen = true },
+                    )
+                    DropdownMenu(
+                        expanded = qualityMenuOpen,
+                        onDismissRequest = { qualityMenuOpen = false },
+                    ) {
+                        IMAGE_QUALITY_CHOICES.forEach { (index, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    qualityMenuOpen = false
+                                    qualityIndex = index
+                                    preferences.imageQuality = index
+                                    // 偏好 setter 会同步 ImageQualitySetting，下一张图就按新档位来。
+                                },
+                            )
+                        }
+                    }
+                }
+                PickerRow(
+                    icon = PicaIcon.Close,
+                    title = "清除图片缓存",
+                    value = if (clearing) "清理中…" else formatBytes(cacheBytes),
+                    onClick = {
+                        if (!clearing) {
+                            scope.launch {
+                                clearing = true
+                                cacheBytes = clearImageCache(platformContext)
+                                clearing = false
+                            }
+                        }
+                    },
+                )
+                Spacer(Modifier.height(6.dp))
                 DetailRow(
                     icon = PicaIcon.Gear,
                     title = "优选状态",
@@ -189,30 +285,6 @@ fun SettingsContent(onSignOut: () -> Unit) {
             Spacer(Modifier.height(14.dp))
         }
         item {
-            Text(
-                text = "记住账号只保存 token 和账号名，下次打开直接恢复会话；" +
-                    "退出登录会清掉 token，账号名留着方便下次登录。线路的开关改完下次打开生效：" +
-                    "自动测速关掉后不会再有后台测速，也不会自己换线路，网络变了要手动去线路页重选；" +
-                    "快速进入关掉后每次启动会多等一次测速；DoH 打开后接口走 DoH 解析（图片另说，见下），" +
-                    "只有一个可信地址都拿不到时会自动关掉开关并退回系统 DNS（设置页的开关也会变回关），" +
-                    "单个端点挂掉会在几路端点之间自动换到还能用的那一路。" +
-                    "图片地址优先用 /init 下发的图床；图床域名（storage1 / storage-b / s3.picacomic.com）" +
-                    "在很多网络上会被系统解析成别的公司的 IP，所以图片请求单独钉了一组 Cloudflare 地址，" +
-                    "系统解析的结果排在后面兜底。启动后会在后台把候选地址挨个测一遍，按握手耗时挑最快的三台，" +
-                    "测速范围是 Cloudflare 官方公布的整套地址段（均匀取样几百台一起测），500ms 以内按延迟取最好的 10 台，" +
-                    "之后每 30 分钟重测；冷启动时先用 /init 下发的官方源，优选测完再顶到前面。" +
-                    "接口域名也在 Cloudflare 后面，所以同一份顺序也管接口 —— 优选出来的地址排前面，" +
-                    "线路钉住的 IP 跟着兜底。候选里带 IPv6 地址，设备有 v6 出口就会一起测、一起用；" +
-                    "全测不出来就退回官方池和内置种子地址，不会把能用的清空。" +
-                    "上面的「图片 IP 优选」可以整个关掉：关了就不再后台测速，只用 /init 下发的地址加内置种子。" +
-                    "只要手上有优选池，就不会再自动测线路、也不会自己换线路；请求连不上时先在池子里换一台地址，" +
-                    "连着换三台都不行才重新测一遍线路。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(20.dp))
-        }
-        item {
             OutlinedButton(
                 onClick = onSignOut,
                 shape = CircleShape,
@@ -225,6 +297,18 @@ fun SettingsContent(onSignOut: () -> Unit) {
         }
     }
 }
+
+/** 画质菜单项：索引对应 [ImageQuality]，从最清楚到最省流量排。 */
+private val IMAGE_QUALITY_CHOICES = listOf(
+    0 to "原图",
+    3 to "高",
+    2 to "中",
+    1 to "低",
+)
+
+/** 画质索引 → 界面文案。 */
+private fun imageQualityLabel(index: Int): String =
+    IMAGE_QUALITY_CHOICES.firstOrNull { it.first == index }?.second ?: "中"
 
 /** 后台优选现在的状态。 */
 private fun imageIpsPhaseText(): String = when (ImageIpsStatus.phase) {
@@ -252,6 +336,40 @@ private fun imageIpsAgoText(seconds: Long): String = when {
     seconds < 60 -> "刚刚"
     seconds < 3600 -> "${seconds / 60} 分钟前"
     else -> "${seconds / 3600} 小时前"
+}
+
+/** 设置页里可点开选项的一行：图标 + 标题 + 右侧当前值 + 箭头。 */
+@Composable
+private fun PickerRow(
+    icon: PicaIcon,
+    title: String,
+    value: String,
+    onClick: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PicaGlyph(icon, Modifier.size(18.dp), colors.onSurfaceVariant)
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.onSurfaceVariant,
+        )
+        Spacer(Modifier.width(6.dp))
+        PicaGlyph(PicaIcon.ArrowRight, Modifier.size(16.dp), colors.onSurfaceVariant)
+    }
 }
 
 /** 设置页的一行开关：左边图标 + 标题 + 说明，右边 Material 3 的 Switch。 */

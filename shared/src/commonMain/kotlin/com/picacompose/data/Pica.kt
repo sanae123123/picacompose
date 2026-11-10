@@ -1,5 +1,7 @@
 package com.picacompose.data
 
+import com.picacompose.picaapi.ImageQuality
+import com.picacompose.picaapi.ImageQualitySetting
 import com.picacompose.picaapi.PicaClient
 import com.picacompose.picaapi.ImageIps
 import com.picacompose.picaapi.dohEngine
@@ -38,6 +40,9 @@ suspend fun applyPicaRoute(line: PicaLine, ips: List<String>) {
     ImageIps.updatePreferred(RouteStore().savedImageIps)
     ImageIps.updateEnabled(LinePreferences().imageIps)
     ImageIps.preferOfficialFirst()
+    // 画质也一样：接口头跟着新客户端走，图片拦截器读的是同一份全局值。
+    val quality = ImageQuality.fromIndex(LinePreferences().imageQuality)
+    ImageQualitySetting.current = quality
     val engine = routeEngine(line, ips)
     pica = PicaClient(
         config = old.config.copy(

@@ -244,7 +244,9 @@ class PicaClient(
             header("signature", signature)
             header("app-version", config.appVersion)
             header("app-uuid", config.appUuid)
-            header("image-quality", config.imageQuality)
+            // 画质现读全局值：设置页改完，下一次请求就换档，不用重建客户端。
+            // 服务端按这个头决定返回的图片 path（原图直链 / rs:fit:1000 / 800 / 400）。
+            header("image-quality", ImageQualitySetting.current.header)
             header("app-platform", "android")
             header("app-build-version", config.appBuildVersion)
             header("User-Agent", config.userAgent)

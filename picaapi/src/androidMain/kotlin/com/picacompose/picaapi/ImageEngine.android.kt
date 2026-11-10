@@ -58,5 +58,13 @@ actual fun imageEngine(): HttpClientEngine? = OkHttp.create {
                 maxRequestsPerHost = 16
             },
         )
+        // 图床按 image-quality 头决定返回的尺寸（官方就是这么做的）。
+        // 图床域名和接口不同，这个头得由图片这条链路自己带上。
+        addInterceptor { chain ->
+            val request = chain.request().newBuilder()
+                .header("image-quality", ImageQualitySetting.current.header)
+                .build()
+            chain.proceed(request)
+        }
     }
 }

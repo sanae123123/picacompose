@@ -15,7 +15,11 @@ data class PicaConfig(
     /** `app-uuid` 头，同一安装应保持稳定。 */
     val appUuid: String = DEFAULT_APP_UUID,
     val appChannel: Int = DEFAULT_APP_CHANNEL,
-    /** `image-quality` 头：original / low / medium / high。 */
+    /**
+     * 画质的初始默认值：original / low / medium / high。
+     *
+     * 实际请求读 [ImageQualitySetting]（设置页改完立刻生效），这里只是没动过设置时的默认。
+     */
     val imageQuality: String = DEFAULT_IMAGE_QUALITY,
     val userAgent: String = DEFAULT_USER_AGENT,
     /** 已登录令牌；登录成功后客户端会自动写入。 */
