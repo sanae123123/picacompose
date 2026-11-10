@@ -15,11 +15,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.picacompose.data.LineRouter
+import com.picacompose.data.RouteStore
+import com.picacompose.data.applyPicaRoute
 import com.picacompose.data.pica
+import com.picacompose.data.picaNetworkFailureHandler
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.home.HomeShell
@@ -34,21 +39,49 @@ private enum class Screen { Restoring, Login, Home }
 /**
  * 应用根组件，Android / iOS / Desktop 共用这一份 UI。
  *
- * 冷启动顺序：**选线路**（自动测速，自动选最快的一条）→ 恢复登录态 → 登录页或首页。
+ * 冷启动顺序：
+ * - 上次选过线路：直接按它建好客户端进主界面，测速丢到后台做完；期间只要有请求连不上，
+ *   立刻换成后台测出来能通的那条（见 [LineRouter]）。
+ * - 没记录（首次启动、或上次选的下发线路没留 IP 池）：停在线路选择页测速。
+ *
+ * 之后才是恢复登录态 → 登录页或首页。
  */
 @Composable
 fun App() {
     PicaTheme {
+        val store = remember { RouteStore() }
+        // 下发线路没存 IP 池时会退化成系统解析，那种情况不如老老实实测一次。
+        val cachedLine = remember {
+            store.savedLine?.takeIf { !it.pinnedDns || store.savedIps.isNotEmpty() }
+        }
+        val scope = rememberCoroutineScope()
         var routed by remember { mutableStateOf(false) }
-        Crossfade(targetState = routed) { ready ->
-            if (ready) MainScreens() else RoutingScreen(onReady = { routed = true })
+        // 有缓存线路时要先把它建成客户端，再让主界面发请求。
+        var routeReady by remember { mutableStateOf(cachedLine == null) }
+
+        LaunchedEffect(cachedLine) {
+            picaNetworkFailureHandler = LineRouter::onNetworkFailure
+            if (cachedLine == null) return@LaunchedEffect
+            runCatching { applyPicaRoute(cachedLine, store.savedIps) }
+            LineRouter.start(scope, cachedLine, store.savedIps)
+            routeReady = true
+            routed = true
+        }
+
+        if (!routeReady) {
+            RestoreScreen()
+        } else {
+            Crossfade(targetState = routed) { ready ->
+                if (ready) MainScreens() else RoutingScreen(onReady = { routed = true })
+            }
         }
     }
 }
 
 @Composable
 private fun MainScreens() {
-    val controller = remember { LoginController(pica) }
+    // 传 lambda 而不是客户端本身：换线路会把全局 `pica` 整个换掉。
+    val controller = remember { LoginController({ pica }) }
     var pendingFeature by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) { controller.restoreSession() }

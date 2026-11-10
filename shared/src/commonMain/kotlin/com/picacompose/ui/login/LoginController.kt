@@ -3,6 +3,7 @@ package com.picacompose.ui.login
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.picacompose.data.LineRouter
 import com.picacompose.data.SessionStore
 import com.picacompose.picaapi.PicaClient
 import com.picacompose.picaapi.PicaException
@@ -11,11 +12,14 @@ import com.picacompose.picaapi.model.UserProfile
 /**
  * 登录页的状态。
  *
- * 没上 ViewModel：登录流程只有几个动作，`remember { LoginController(pica) }` 足够，
+ * 没上 ViewModel：登录流程只有几个动作，`remember { LoginController({ pica }) }` 足够，
  * 也不用为三端各配一套 lifecycle-viewmodel 依赖。
+ *
+ * 拿的是取客户端的 lambda 而不是实例：换线路时全局 `pica` 会被整个换掉，
+ * 存着旧实例的话这个页面永远走老线路。
  */
 class LoginController(
-    private val client: PicaClient,
+    private val client: () -> PicaClient,
     private val session: SessionStore = SessionStore(),
 ) {
 
@@ -72,12 +76,12 @@ class LoginController(
     suspend fun restoreSession() {
         val token = session.savedToken ?: return
         restoring = true
-        client.updateToken(token)
+        client().updateToken(token)
         try {
-            profile = client.users.profile()
+            profile = loadProfileWithFailover()
         } catch (e: PicaException) {
             if (e.errorCode == "1005" || e.httpCode == 401) {
-                client.updateToken("")
+                client().updateToken("")
                 session.clearToken()
                 error = "上次的登录过期了，重新登录一下"
             } else {
@@ -87,6 +91,25 @@ class LoginController(
             error = "网络不太稳，稍后再试"
         } finally {
             restoring = false
+        }
+    }
+
+    /**
+     * 拉资料；连不上时等后台测速给出结论，换一条线路再试一次。
+     *
+     * 走缓存线路直接进主界面时，这条请求就是第一个撞上坏线路的，兜住它才不会把
+     * 重新打开 App 的人丢回登录页。
+     */
+    private suspend fun loadProfileWithFailover(): UserProfile {
+        val before = LineRouter.switchCount
+        return try {
+            client().users.profile()
+        } catch (e: Exception) {
+            // 只有「连不上」才值得换线路，HTTP 4xx/5xx 是服务端在说话。
+            if (e is PicaException && e.httpCode != null) throw e
+            val switched = LineRouter.recover() || LineRouter.switchCount != before
+            if (!switched) throw e
+            client().users.profile()
         }
     }
 
@@ -103,7 +126,7 @@ class LoginController(
         loading = true
         error = null
         try {
-            val signedIn = client.auth.signIn(email.trim(), password)
+            val signedIn = client().auth.signIn(email.trim(), password)
             val account = email.trim()
             if (rememberAccount) {
                 session.save(signedIn.token, account)
@@ -111,7 +134,7 @@ class LoginController(
                 session.clearAll()
             }
             // token 已经进了 client，顺手拉一次资料，好让首页有名字可显示。
-            profile = runCatching { client.users.profile() }
+            profile = runCatching { client().users.profile() }
                 .getOrElse { UserProfile(name = account) }
         } catch (e: PicaException) {
             error = e.toUserMessage()
@@ -129,13 +152,13 @@ class LoginController(
      * 进「我的」页时重拉一次，签到状态才是服务器上的真实值。
      */
     suspend fun refreshProfile(): UserProfile? {
-        val fresh = runCatching { client.users.profile() }.getOrNull() ?: return null
+        val fresh = runCatching { client().users.profile() }.getOrNull() ?: return null
         profile = fresh
         return fresh
     }
 
     fun signOut() {
-        client.updateToken("")
+        client().updateToken("")
         session.clearToken()
         profile = null
         password = ""

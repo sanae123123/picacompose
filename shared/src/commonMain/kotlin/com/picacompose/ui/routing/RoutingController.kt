@@ -3,6 +3,7 @@ package com.picacompose.ui.routing
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.picacompose.data.LineRouter
 import com.picacompose.data.PicaLine
 import com.picacompose.data.RouteStore
 import com.picacompose.data.applyPicaRoute
@@ -94,7 +95,8 @@ class RoutingController(private val store: RouteStore = RouteStore()) {
         }
 
         applyPicaRoute(pick, ips)
-        store.save(pick, ips, candidates.toMap()[pick])
+        // 把结果交给后台管家：之后哪条线路开始连不上，它知道该换成哪条。
+        LineRouter.adopt(pick, candidates, ips)
         chosen = pick
         loading = false
     }

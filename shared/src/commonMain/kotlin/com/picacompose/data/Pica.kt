@@ -10,6 +10,9 @@ import com.picacompose.picaapi.pinnedEngine
 var pica: PicaClient = PicaClient()
     private set
 
+/** 请求在传输层失败时的回调，由 App 装上；换线路的逻辑放在 [LineRouter] 里。 */
+var picaNetworkFailureHandler: (() -> Unit)? = null
+
 /**
  * 按线路重建客户端，把登录态一起带过去。
  *
@@ -25,6 +28,7 @@ suspend fun applyPicaRoute(line: PicaLine, ips: List<String>) {
             timeOffsetSeconds = old.serverTimeOffsetSeconds,
         ),
         engine = engine,
+        onTransportFailure = { picaNetworkFailureHandler?.invoke() },
     )
     old.close()
 }

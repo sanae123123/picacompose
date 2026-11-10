@@ -50,6 +50,8 @@ import kotlinx.serialization.json.jsonPrimitive
 class PicaClient(
     val config: PicaConfig = PicaConfig(),
     engine: HttpClientEngine? = null,
+    /** 传输层失败（连不上、超时、DNS 挂了）时回调，用来在后台测速出结果后换线路。 */
+    private val onTransportFailure: (() -> Unit)? = null,
 ) {
     internal val json = Json {
         ignoreUnknownKeys = true
@@ -261,7 +263,11 @@ class PicaClient(
             timeOffset.value = serverTime - nowEpochSeconds()
         }
         response
-    }.getOrElse { throw PicaException(message = it.message, cause = it) }
+    }.getOrElse {
+        // 走到这里说明请求没发出去或没收到响应，和线路强相关。
+        onTransportFailure?.invoke()
+        throw PicaException(message = it.message, cause = it)
+    }
 
     private fun looksLikeEnvelope(text: String): Boolean =
         text.trimStart().startsWith('{')
