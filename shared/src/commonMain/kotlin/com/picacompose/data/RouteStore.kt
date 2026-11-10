@@ -26,6 +26,18 @@ class RouteStore(private val kv: KeyValueStore = platformKeyValueStore()) {
     val savedImageServer: String?
         get() = kv.get(KEY_IMAGE_SERVER)?.takeIf { it.isNotBlank() }
 
+    /** 上次后台优选出来的图片 IP，冷启动时先用它，等新一轮测完再换。 */
+    val savedImageIps: List<String>
+        get() = kv.get(KEY_IMAGE_IPS)
+            ?.split(',')
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            .orEmpty()
+
+    fun saveImageIps(ips: List<String>) {
+        kv.put(KEY_IMAGE_IPS, ips.takeIf { it.isNotEmpty() }?.joinToString(","))
+    }
+
     fun saveImageServer(value: String?) {
         kv.put(KEY_IMAGE_SERVER, value?.takeIf { it.isNotBlank() })
     }
@@ -41,5 +53,6 @@ class RouteStore(private val kv: KeyValueStore = platformKeyValueStore()) {
         const val KEY_IPS = "route.dnsIps"
         const val KEY_LATENCY = "route.latencyMs"
         const val KEY_IMAGE_SERVER = "route.imageServer"
+        const val KEY_IMAGE_IPS = "route.imageIps"
     }
 }

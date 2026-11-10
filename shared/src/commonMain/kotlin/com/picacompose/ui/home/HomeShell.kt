@@ -44,6 +44,7 @@ import com.picacompose.data.pica
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.BackHandlerCompat
 import com.picacompose.data.NoticeUnread
+import com.picacompose.data.keepImageIpsFresh
 import com.picacompose.data.refreshImageHost
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
@@ -100,6 +101,7 @@ fun HomeShell(
     // 官方 App 启动时会拉一次 /init，里面带图片服务器地址；拼图片地址时优先用它，
     // 因为官方图床域名在很多网络上会解析到错的 IP。
     LaunchedEffect(Unit) { refreshImageHost() }
+    LaunchedEffect(Unit) { keepImageIpsFresh() }
     val tabs = HomeTab.entries
     var savedIndex by rememberSaveable { mutableStateOf(0) }
     val pagerState = rememberPagerState(initialPage = savedIndex, pageCount = { tabs.size })

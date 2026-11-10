@@ -3,6 +3,9 @@ package com.picacompose.data
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.picacompose.picaapi.ImageIps
+import com.picacompose.picaapi.probeImageIps
+import kotlinx.coroutines.delay
 
 /**
  * 图片服务器（`/init` 下发的那个）。
@@ -31,8 +34,36 @@ internal object ImageHosts {
  * 拿不到就什么都不做：图床地址只是「优先用它」，没有也能按 `fileServer` 拼。
  */
 internal suspend fun refreshImageHost() {
+    // `/init` 顺带把官方 IP 池记一下：优选测出来之前先用它顶着。
+    ImageIps.updateOfficial(RouteStore().savedIps)
     val data = runCatching { pica.meta.init() }.getOrNull() ?: return
     val server = data.imageServer?.takeIf { it.isNotBlank() } ?: return
     RouteStore().saveImageServer(server)
     ImageHosts.update(server)
 }
+
+/**
+ * 后台跑图片 IP 的优选：开机测一轮，之后每 [INTERVAL_MS] 重测。
+ *
+ * 只做一件事 —— 按握手耗时给池子排序，挑最快的那几台给图片 DNS 用。全都没测出来就保留
+ * 原来的池子（上次的结果 / 内置种子），不会把能用的地址清掉。
+ */
+internal suspend fun keepImageIpsFresh() {
+    val store = RouteStore()
+    ImageIps.updatePreferred(store.savedImageIps)
+    ImageIps.updateOfficial(store.savedIps)
+    while (true) {
+        val best = runCatching { probeImageIps(ImageIps.ordered()) }.getOrDefault(emptyList())
+        if (best.isNotEmpty()) {
+            ImageIps.updatePreferred(best)
+            store.saveImageIps(best)
+        }
+        delay(if (best.isEmpty()) RETRY_MS else INTERVAL_MS)
+    }
+}
+
+/** 优选重测的间隔：15 分钟足够跟上线路抖动，又不会一直在后台耗电。 */
+private const val INTERVAL_MS = 15 * 60 * 1000L
+
+/** 全都没测出来时别等 15 分钟，1 分钟后换个时间点再试。 */
+private const val RETRY_MS = 60 * 1000L
