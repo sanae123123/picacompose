@@ -225,16 +225,16 @@ fun HomeShell(
     // 各栏的滚动位置在滑走再回来时也能接上（懒列表的状态本身是可保存的）。
     val tabStates = rememberSaveableStateHolder()
 
-    // 退出搜索就落回首页那条推荐流：搜完了接着看推荐，而不是把人扔在分类页。
+    // 退出搜索就把搜索页清干净：下次从分类点进来是空的，不再挂着上次的词和结果。
     val exitSearch: () -> Unit = {
+        searchState.reset()
         overlayOrdinal = OverlayPage.None.ordinal
-        scope.launch { pagerState.animateScrollToPage(HomeTab.Home.ordinal) }
     }
 
     // 整页开着的时候，系统返回先退回上一屏，而不是直接退出 App。
     BackHandlerCompat(enabled = overlay != OverlayPage.None) {
         // 阅读器退回详情页；详情页退回它被点开的地方（列表页 / 排行榜）；
-        // 搜索退回首页推荐流；别的整页直接回主界面。
+        // 搜索退回分类页（顺手清空搜索页）；别的整页直接回主界面。
         when (overlay) {
             OverlayPage.Detail -> overlayOrdinal = detailReturnOrdinal
             OverlayPage.Reader -> overlayOrdinal = OverlayPage.Detail.ordinal

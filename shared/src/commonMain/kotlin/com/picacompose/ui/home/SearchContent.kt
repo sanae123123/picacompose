@@ -122,6 +122,15 @@ class SearchState {
         pager = pagerFor(keyword, value)
     }
 
+    /** 关掉搜索页时清空：词、排序、结果都回到刚进来的样子，热搜词留着不用重拉。 */
+    fun reset() {
+        query = ""
+        keyword = ""
+        sort = null
+        pager = null
+        focusPending = false
+    }
+
     private fun pagerFor(keyword: String, sort: String?): Pager<ComicSummary> = Pager(
         load = { page -> pica.comics.advancedSearch(keyword = keyword, sort = sort, page = page) },
         itemKey = { it.id },
