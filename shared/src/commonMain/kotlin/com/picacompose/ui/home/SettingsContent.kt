@@ -150,7 +150,8 @@ fun SettingsContent(onSignOut: () -> Unit) {
                     "单个端点挂掉会在几路端点之间自动换到还能用的那一路。" +
                     "图片地址优先用 /init 下发的图床；图床域名（storage1 / storage-b / s3.picacomic.com）" +
                     "在很多网络上会被系统解析成别的公司的 IP，所以图片请求单独钉了一组 Cloudflare 地址，" +
-                    "系统解析的结果排在后面兜底。",
+                    "系统解析的结果排在后面兜底。启动后会在后台把候选地址挨个测一遍，按握手耗时挑最快的三台，" +
+                    "之后每 15 分钟重测；全测不出来就退回 /init 下发的池子，再不行用内置种子地址，不会把能用的清空。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
