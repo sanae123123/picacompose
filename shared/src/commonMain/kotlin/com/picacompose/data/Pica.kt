@@ -36,6 +36,7 @@ suspend fun applyPicaRoute(line: PicaLine, ips: List<String>) {
     // 所以这里同步一下，并回到「官方源优先，等后台优选覆盖」。
     ImageIps.updateOfficial(ips)
     ImageIps.updatePreferred(RouteStore().savedImageIps)
+    ImageIps.updateEnabled(LinePreferences().imageIps)
     ImageIps.preferOfficialFirst()
     val engine = routeEngine(line, ips)
     pica = PicaClient(

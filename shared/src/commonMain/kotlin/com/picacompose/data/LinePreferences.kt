@@ -10,6 +10,7 @@ import com.picacompose.picaapi.dohAnswer
  *   也不会因为有更快的就自己换线（连不上时仍会用现有 IP 池把这条线路重建一次）。
  * - [fastEntry]：[autoProbe] 打开时才有意义。开着是先按上次的线路进主界面、测速丢后台；
  *   关掉就停在线路选择页，等测完再进。
+ * - [imageIps]：图片 IP 优选开关，后台测速挑最快的 Cloudflare 地址；关掉只用下发地址。
  * - [doh]：启动时额外用 DoH 解析一次接口域名，拿到的地址并进 IP 池（排在 /init 下发的
  *   前面）。默认关。
  *
@@ -35,6 +36,17 @@ class LinePreferences(private val kv: KeyValueStore = platformKeyValueStore()) {
             kv.put(KEY_DOH, if (value) "1" else "0")
         }
 
+    /**
+     * 图片 IP 优选：后台把 Cloudflare 官方地址段测一遍，挑最快的几台给图片和接口用。
+     *
+     * 关掉就只用 `/init` 下发的地址（加内置种子兜底），不再后台测速。默认开。
+     */
+    var imageIps: Boolean
+        get() = kv.get(KEY_IMAGE_IPS) != "0"
+        set(value) {
+            kv.put(KEY_IMAGE_IPS, if (value) "1" else "0")
+        }
+
     companion object {
         /**
          * DoH 一个可信地址都解析不出来、被自动关掉时想跟用户说一句（App 接到 toast 上）。
@@ -46,6 +58,7 @@ class LinePreferences(private val kv: KeyValueStore = platformKeyValueStore()) {
         private const val KEY_AUTO_PROBE = "route.autoProbe"
         private const val KEY_FAST_ENTRY = "route.fastEntry"
         private const val KEY_DOH = "route.doh"
+        private const val KEY_IMAGE_IPS = "route.imageIpsEnabled"
     }
 }
 

@@ -16,4 +16,5 @@ actual suspend fun probeImageIps(
     candidates: List<String>,
     limit: Int,
     thresholdMs: Long,
+    onProgress: ((tested: Int, total: Int, fastestMs: Long?) -> Unit)?,
 ): List<String> = emptyList()

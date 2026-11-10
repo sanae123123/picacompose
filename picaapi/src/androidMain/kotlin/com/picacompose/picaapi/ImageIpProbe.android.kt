@@ -12,6 +12,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.TimeSource
 
 /** 探测目标：任意一个 picacomic 域名都行，只要它跟图床在同一个 zone。 */
@@ -51,11 +53,25 @@ actual suspend fun probeImageIps(
     candidates: List<String>,
     limit: Int,
     thresholdMs: Long,
+    onProgress: ((tested: Int, total: Int, fastestMs: Long?) -> Unit)?,
 ): List<String> = withContext(Dispatchers.IO) {
     val gate = Semaphore(PROBE_PARALLELISM)
+    val unique = candidates.distinct()
+    val done = AtomicInteger(0)
+    val fastest = AtomicLong(Long.MAX_VALUE)
     val results = coroutineScope {
-        candidates.distinct().map { ip ->
-            async { gate.withPermit { ip to probeOne(ip) } }
+        unique.map { ip ->
+            async {
+                val elapsed = gate.withPermit { probeOne(ip) }
+                val tested = done.incrementAndGet()
+                if (elapsed != null) fastest.updateAndGet { old -> minOf(old, elapsed) }
+                onProgress?.invoke(
+                    tested,
+                    unique.size,
+                    fastest.get().takeIf { it != Long.MAX_VALUE },
+                )
+                ip to elapsed
+            }
         }.awaitAll()
     }
     val usable = results.mapNotNull { (ip, elapsed) -> elapsed?.let { ip to it } }

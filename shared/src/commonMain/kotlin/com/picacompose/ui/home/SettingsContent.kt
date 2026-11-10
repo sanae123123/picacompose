@@ -17,15 +17,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import com.picacompose.data.ImageIpsStatus
 import com.picacompose.data.LinePreferences
 import com.picacompose.data.LineRouter
 import com.picacompose.data.RouteStore
 import com.picacompose.data.SessionStore
+import com.picacompose.picaapi.ImageIps
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 
@@ -44,6 +48,14 @@ fun SettingsContent(onSignOut: () -> Unit) {
     var autoProbe by remember { mutableStateOf(preferences.autoProbe) }
     var fastEntry by remember { mutableStateOf(preferences.fastEntry) }
     var doh by remember { mutableStateOf(preferences.doh) }
+    var useImageIps by remember { mutableStateOf(preferences.imageIps) }
+    // 「几分钟前」要自己走：没有系统时钟依赖，用单调时间算相对时长。
+    val imageIpsAgo by produceState(-1L) {
+        while (true) {
+            value = ImageIpsStatus.finishedAt?.elapsedNow()?.inWholeSeconds ?: -1L
+            delay(10_000)
+        }
+    }
 
     PageScaffold(
         header = { PageHeader(title = "设置") },
@@ -129,6 +141,35 @@ fun SettingsContent(onSignOut: () -> Unit) {
                         preferences.doh = on
                     },
                 )
+                Spacer(Modifier.height(6.dp))
+                SwitchRow(
+                    icon = PicaIcon.Speed,
+                    title = "图片 IP 优选",
+                    summary = "后台把 Cloudflare 官方地址段取样测一遍，500ms 以内的按延迟取最好的 10 台，" +
+                        "图片和接口轮着用；关掉只用 /init 下发的地址。开关立即生效，不用重启。",
+                    checked = useImageIps,
+                    onCheckedChange = { on ->
+                        useImageIps = on
+                        preferences.imageIps = on
+                        ImageIps.updateEnabled(on)
+                        if (!on) ImageIps.preferOfficialFirst()
+                    },
+                )
+                DetailRow(
+                    icon = PicaIcon.Gear,
+                    title = "优选状态",
+                    value = imageIpsPhaseText(),
+                )
+                DetailRow(
+                    icon = PicaIcon.Bolt,
+                    title = "地址池",
+                    value = imageIpsPoolText(),
+                )
+                DetailRow(
+                    icon = PicaIcon.Speed,
+                    title = "上次完成",
+                    value = imageIpsAgoText(imageIpsAgo),
+                )
             }
             Spacer(Modifier.height(14.dp))
         }
@@ -155,7 +196,8 @@ fun SettingsContent(onSignOut: () -> Unit) {
                     "之后每 30 分钟重测；冷启动时先用 /init 下发的官方源，优选测完再顶到前面。" +
                     "接口域名也在 Cloudflare 后面，所以同一份顺序也管接口 —— 优选出来的地址排前面，" +
                     "线路钉住的 IP 跟着兜底。候选里带 IPv6 地址，设备有 v6 出口就会一起测、一起用；" +
-                    "全测不出来就退回官方池和内置种子地址，不会把能用的清空。",
+                    "全测不出来就退回官方池和内置种子地址，不会把能用的清空。" +
+                    "上面的「图片 IP 优选」可以整个关掉：关了就不再后台测速，只用 /init 下发的地址加内置种子。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -173,6 +215,32 @@ fun SettingsContent(onSignOut: () -> Unit) {
             }
         }
     }
+}
+
+/** 后台优选现在的状态。 */
+private fun imageIpsPhaseText(): String = when (ImageIpsStatus.phase) {
+    ImageIpsStatus.Phase.Off -> "已关闭"
+    ImageIpsStatus.Phase.Idle -> "准备中"
+    ImageIpsStatus.Phase.Scanning -> "测速中 ${ImageIpsStatus.tested}/${ImageIpsStatus.total}"
+    ImageIpsStatus.Phase.Done -> "已完成"
+    ImageIpsStatus.Phase.Failed -> "这轮没测出可用地址"
+}
+
+/** 池子里现在有什么：优选结果、候选数量，或者退回官方源时的说明。 */
+private fun imageIpsPoolText(): String = when {
+    ImageIpsStatus.phase == ImageIpsStatus.Phase.Off -> "只用 /init 下发的地址"
+    ImageIpsStatus.pool.isEmpty() -> "官方源 + 内置种子"
+    else -> ImageIpsStatus.fastestMs
+        ?.let { "${it}ms 最快 · ${ImageIpsStatus.pool.size} 台" }
+        ?: "${ImageIpsStatus.pool.size} 台"
+}
+
+/** 上一轮是什么时候测完的。 */
+private fun imageIpsAgoText(seconds: Long): String = when {
+    seconds < 0 -> "还没有测过"
+    seconds < 60 -> "刚刚"
+    seconds < 3600 -> "${seconds / 60} 分钟前"
+    else -> "${seconds / 3600} 小时前"
 }
 
 /** 设置页的一行开关：左边图标 + 标题 + 说明，右边 Material 3 的 Switch。 */

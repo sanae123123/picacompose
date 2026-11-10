@@ -41,6 +41,11 @@ object ImageIps {
     var official: List<String> = emptyList()
         private set
 
+    /** 设置里的「图片 IP 优选」开关：关掉就只用官方源 + 内置种子，不测也不用优选结果。 */
+    @Volatile
+    var enabled: Boolean = true
+        private set
+
     /** 优选是否已经测过一轮：false 时官方源优先（冷启动），true 时优选结果优先。 */
     @Volatile
     var preferredActive: Boolean = false
@@ -64,10 +69,18 @@ object ImageIps {
         preferredActive = false
     }
 
-    /** 当前该用的顺序：冷启动是官方源优先，优选完成后是优选优先。 */
-    fun ordered(): List<String> =
-        if (preferredActive) (preferred + official + SEEDS_V4 + SEEDS_V6).distinct()
-        else (official + preferred + SEEDS_V4 + SEEDS_V6).distinct()
+    /** 开关拨一下立刻生效，不用重建客户端（DNS 每次 lookup 都现取）。 */
+    fun updateEnabled(value: Boolean) {
+        enabled = value
+        if (!value) preferredActive = false
+    }
+
+    /** 当前该用的顺序：关掉优选只剩官方源 + 种子；开着则冷启动官方源优先、测完优选优先。 */
+    fun ordered(): List<String> = when {
+        !enabled -> (official + SEEDS_V4 + SEEDS_V6).distinct()
+        preferredActive -> (preferred + official + SEEDS_V4 + SEEDS_V6).distinct()
+        else -> (official + preferred + SEEDS_V4 + SEEDS_V6).distinct()
+    }
 
     /** 后台测速的候选：几层全都要测，才能知道哪台最快（v6 没出口的自然测不过）。 */
     fun candidates(): List<String> = (preferred + official + SEEDS_V4 + SEEDS_V6).distinct()
@@ -87,4 +100,5 @@ expect suspend fun probeImageIps(
     candidates: List<String>,
     limit: Int = 10,
     thresholdMs: Long = 500,
+    onProgress: ((tested: Int, total: Int, fastestMs: Long?) -> Unit)? = null,
 ): List<String>

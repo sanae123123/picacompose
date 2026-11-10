@@ -51,15 +51,33 @@ internal suspend fun refreshImageHost() {
  */
 internal suspend fun keepImageIpsFresh() {
     val store = RouteStore()
+    val preferences = LinePreferences()
     // 冷启动：先用 `/init` 下发的官方源顶上，上次的优选结果只当第二层。
     ImageIps.updatePreferred(store.savedImageIps)
     ImageIps.updateOfficial(store.savedIps)
+    ImageIps.updateEnabled(preferences.imageIps)
     ImageIps.preferOfficialFirst()
     // 首屏先用官方源出图，扫描往后让一让：几百台一起握手会跟首屏的图抢连接。
     delay(START_DELAY_MS)
     while (true) {
+        if (!preferences.imageIps) {
+            // 开关关着：不测、也不用优选结果，只用官方下发地址（设置页随时能开回来）。
+            ImageIps.updateEnabled(false)
+            ImageIps.preferOfficialFirst()
+            ImageIpsStatus.off()
+            delay(IDLE_MS)
+            continue
+        }
+        ImageIps.updateEnabled(true)
+        val candidates = CloudflareIps.sample()
+        ImageIpsStatus.start(candidates.size)
         val best = runCatching {
-            probeImageIps(CloudflareIps.sample(), limit = POOL_SIZE, thresholdMs = FAST_MS)
+            probeImageIps(
+                candidates = candidates,
+                limit = POOL_SIZE,
+                thresholdMs = FAST_MS,
+                onProgress = { tested, _, fastest -> ImageIpsStatus.progress(tested, fastest) },
+            )
         }.getOrDefault(emptyList())
         if (best.isNotEmpty()) {
             // 测完就把官方源让到后面：优选结果是现测的，比下发的那几台更贴近当前网络。
@@ -67,6 +85,7 @@ internal suspend fun keepImageIpsFresh() {
             ImageIps.activatePreferred()
             store.saveImageIps(best)
         }
+        ImageIpsStatus.finish(best)
         delay(if (best.isEmpty()) RETRY_MS else INTERVAL_MS)
     }
 }
@@ -76,6 +95,9 @@ private const val POOL_SIZE = 10
 
 /** 多快算「快」：500ms 以内的握手速度，一屏图基本不会等。 */
 private const val FAST_MS = 500L
+
+/** 开关关着时每隔一会儿看一眼，拨开了就能接着测。 */
+private const val IDLE_MS = 30 * 1000L
 
 /** 进主界面之后才开扫，让首屏那几张图先跑完。 */
 private const val START_DELAY_MS = 3_000L
