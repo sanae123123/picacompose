@@ -74,11 +74,17 @@ object ImageIps {
 }
 
 /**
- * 测一遍 [candidates] 能不能用，按「TLS 握手 + 首个响应」的耗时从快到慢返回前 [limit] 个。
+ * 测一遍 [candidates]，按「TLS 握手 + 首个响应」的耗时从快到慢返回前 [limit] 个。
  *
  * 做法是拿每台地址当 DNS 解析结果去 `HEAD` 一次接口根路径：能过 TLS 且不是 Cloudflare 的
  * 「禁止直连 IP」（403）就算可用；IPv6 地址在没有 v6 出口的设备上会直接失败，不影响 v4。
  *
- * 全部失败时返回空列表，调用方保留原来的池子。平台没有能单独指定 IP 的 HTTP 栈时也返回空列表。
+ * 耗时在 [thresholdMs] 以内的算「快」，优先从里面取；不够 [limit] 个时用剩下的按延迟补满，
+ * 免得某条网络整体偏慢时把池子清空。全部失败返回空列表，调用方保留原来的池子。
+ * 平台没有能单独指定 IP 的 HTTP 栈时也返回空列表。
  */
-expect suspend fun probeImageIps(candidates: List<String>, limit: Int = 3): List<String>
+expect suspend fun probeImageIps(
+    candidates: List<String>,
+    limit: Int = 10,
+    thresholdMs: Long = 500,
+): List<String>

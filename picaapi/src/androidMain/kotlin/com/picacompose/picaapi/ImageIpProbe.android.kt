@@ -3,6 +3,8 @@ package com.picacompose.picaapi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.Dns
@@ -42,15 +44,27 @@ private fun probeOne(ip: String): Long? = runCatching {
     }
 }.getOrNull()
 
-actual suspend fun probeImageIps(candidates: List<String>, limit: Int): List<String> =
-    withContext(Dispatchers.IO) {
-        val results = coroutineScope {
-            candidates.distinct().map { ip ->
-                async { ip to probeOne(ip) }
-            }.awaitAll()
-        }
-        results.mapNotNull { (ip, elapsed) -> elapsed?.let { ip to it } }
-            .sortedBy { it.second }
-            .map { it.first }
-            .take(limit)
+/** 同时开多少台一起测：太多了握手队列自己就慢了，24 台差不多。 */
+private const val PROBE_PARALLELISM = 24
+
+actual suspend fun probeImageIps(
+    candidates: List<String>,
+    limit: Int,
+    thresholdMs: Long,
+): List<String> = withContext(Dispatchers.IO) {
+    val gate = Semaphore(PROBE_PARALLELISM)
+    val results = coroutineScope {
+        candidates.distinct().map { ip ->
+            async { gate.withPermit { ip to probeOne(ip) } }
+        }.awaitAll()
     }
+    val usable = results.mapNotNull { (ip, elapsed) -> elapsed?.let { ip to it } }
+        .sortedBy { it.second }
+    val fast = usable.filter { it.second <= thresholdMs }
+    // 500ms 以内的按顺序先上；凑不满就从剩下的里面按延迟补，池子不至于只剩一两台。
+    val chosen = when {
+        fast.size >= limit -> fast.take(limit)
+        else -> (fast + usable.drop(fast.size)).take(limit)
+    }
+    chosen.map { it.first }
+}

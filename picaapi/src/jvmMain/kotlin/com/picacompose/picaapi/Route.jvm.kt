@@ -12,4 +12,8 @@ actual fun dohEngine(pinnedIps: List<String>): HttpClientEngine? = null
 actual fun imageEngine(): HttpClientEngine? = null
 
 /** 这个平台没有能按 IP 指定目标地址的 HTTP 栈，优选不生效，返回空列表沿用原池子。 */
-actual suspend fun probeImageIps(candidates: List<String>, limit: Int): List<String> = emptyList()
+actual suspend fun probeImageIps(
+    candidates: List<String>,
+    limit: Int,
+    thresholdMs: Long,
+): List<String> = emptyList()

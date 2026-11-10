@@ -14,7 +14,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 private const val API_HOST = "picaapi.picacomic.com"
 
 /** 接口请求在几台地址之间轮换。 */
-private const val API_SPREAD_IPS = 3
+private const val API_SPREAD_IPS = 4
 
 /** DoH 答案缓存 5 分钟：图片同一台机器会连着请求，别每张图都问一遍。 */
 private const val CACHE_MS = 5 * 60 * 1000L

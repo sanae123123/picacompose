@@ -3,6 +3,7 @@ package com.picacompose.data
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.picacompose.picaapi.CloudflareIps
 import com.picacompose.picaapi.ImageIps
 import com.picacompose.picaapi.probeImageIps
 import kotlinx.coroutines.delay
@@ -55,7 +56,9 @@ internal suspend fun keepImageIpsFresh() {
     ImageIps.updateOfficial(store.savedIps)
     ImageIps.preferOfficialFirst()
     while (true) {
-        val best = runCatching { probeImageIps(ImageIps.candidates()) }.getOrDefault(emptyList())
+        val best = runCatching {
+            probeImageIps(CloudflareIps.sample(), limit = POOL_SIZE, thresholdMs = FAST_MS)
+        }.getOrDefault(emptyList())
         if (best.isNotEmpty()) {
             // 测完就把官方源让到后面：优选结果是现测的，比下发的那几台更贴近当前网络。
             ImageIps.updatePreferred(best)
@@ -66,8 +69,14 @@ internal suspend fun keepImageIpsFresh() {
     }
 }
 
-/** 优选重测的间隔：15 分钟足够跟上线路抖动，又不会一直在后台耗电。 */
-private const val INTERVAL_MS = 15 * 60 * 1000L
+/** 池子里留几台：够并发用，又不至于每张图都换一条新连接。 */
+private const val POOL_SIZE = 10
+
+/** 多快算「快」：500ms 以内的握手速度，一屏图基本不会等。 */
+private const val FAST_MS = 500L
+
+/** 全段扫描比只测几台重，半小时一次足够跟上线路抖动。 */
+private const val INTERVAL_MS = 30 * 60 * 1000L
 
 /** 全都没测出来时别等 15 分钟，1 分钟后换个时间点再试。 */
 private const val RETRY_MS = 60 * 1000L

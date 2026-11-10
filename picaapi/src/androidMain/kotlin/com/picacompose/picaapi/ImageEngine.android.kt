@@ -44,8 +44,8 @@ private class ImageDns : Dns {
     }
 }
 
-/** 并发下载时最多在几台地址之间轮换。 */
-private const val SPREAD_IPS = 3
+/** 并发下载时最多在几台地址之间轮换（池子里有 10 台，用前 5 台够散开了）。 */
+private const val SPREAD_IPS = 5
 
 actual fun imageEngine(): HttpClientEngine? = OkHttp.create {
     config {
