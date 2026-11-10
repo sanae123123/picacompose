@@ -3,6 +3,8 @@ package com.picacompose.ui.home
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -287,10 +289,16 @@ fun HomeShell(
                                 onSelect = { target ->
                                     overlayOrdinal = OverlayPage.None.ordinal
                                     scope.launch {
-                                        // 隔好几栏就直接落过去：一格一格滑过去要把中间每一栏都完整组合一遍，
-                                        // 点一下卡好几帧。相邻两栏滑过去还是动画。
+                                        // 隔好几栏照样滑过去，只是把时长压短：中途那几栏还是会被组合一遍，
+                                        // 动画越短越少卡；相邻两栏用默认的那条。
                                         if (abs(target.ordinal - pagerState.currentPage) > 1) {
-                                            pagerState.scrollToPage(target.ordinal)
+                                            pagerState.animateScrollToPage(
+                                                page = target.ordinal,
+                                                animationSpec = tween(
+                                                    durationMillis = 260,
+                                                    easing = FastOutSlowInEasing,
+                                                ),
+                                            )
                                         } else {
                                             pagerState.animateScrollToPage(target.ordinal)
                                         }
