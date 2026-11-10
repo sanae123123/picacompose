@@ -25,6 +25,9 @@ import kotlin.time.TimeSource
 internal class ImageRetryInterceptor : Interceptor {
 
     override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
+        // 开一条「开始」的日志：请求卡住时后面不会再有收尾日志，一对日志就能看出卡在哪张图、
+        // 卡在哪个域名上 —— 光看界面只有转圈，分不清是解析、连接还是图床不返回。
+        (chain.request.data as? String)?.let { log("start ${chain.size} $it") }
         val start = TimeSource.Monotonic.markNow()
         val result = chain.proceed()
         val elapsed = start.elapsedNow().inWholeMilliseconds
