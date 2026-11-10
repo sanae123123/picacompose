@@ -1,6 +1,7 @@
 package com.picacompose.data
 
 import com.picacompose.picaapi.PicaClient
+import com.picacompose.picaapi.ImageIps
 import com.picacompose.picaapi.dohEngine
 import com.picacompose.picaapi.pinnedEngine
 import io.ktor.client.engine.HttpClientEngine
@@ -31,6 +32,10 @@ private val retireScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
  */
 suspend fun applyPicaRoute(line: PicaLine, ips: List<String>) {
     val old = pica
+    // 换线路等于换了官方下发的那几台：接口和图片都用 ImageIps 这一份顺序，
+    // 所以这里同步一下，并回到「官方源优先，等后台优选覆盖」。
+    ImageIps.updateOfficial(ips)
+    ImageIps.preferOfficialFirst()
     val engine = routeEngine(line, ips)
     pica = PicaClient(
         config = old.config.copy(

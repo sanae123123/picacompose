@@ -30,8 +30,21 @@ private class DohDns(pinnedIps: List<String>) : Dns {
 
     private val cache = ConcurrentHashMap<String, Pair<List<InetAddress>, Long>>()
 
+    /** 交给 OkHttp 的地址对象：同一台地址会连着请求，转一次存一次。 */
+    private val addresses = ConcurrentHashMap<String, InetAddress>()
+
+    private fun address(ip: String): InetAddress? = addresses[ip]?.let { it }
+        ?: runCatching { InetAddress.getByName(ip) }.getOrNull()?.also { addresses[ip] = it }
+
     override fun lookup(hostname: String): List<InetAddress> {
-        if (pinned.isNotEmpty() && hostname.equals(API_HOST, ignoreCase = true)) return pinned
+        // 接口域名也在 Cloudflare 后面，所以图片那套 IP 池同样管用：
+        // 优选出来的地址排前面，钉住的线路 IP（`/init` 下发那份）跟着兜底。
+        if (pinned.isNotEmpty() && hostname.equals(API_HOST, ignoreCase = true)) {
+            val pooled = ImageIps.ordered().mapNotNull(::address)
+            val merged = (pooled + pinned).distinctBy { it.hostAddress }
+            if (merged.isNotEmpty()) return merged
+            return pinned
+        }
 
         val now = System.currentTimeMillis()
         cache[hostname]?.let { (addresses, at) ->

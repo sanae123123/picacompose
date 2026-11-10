@@ -152,7 +152,8 @@ fun SettingsContent(onSignOut: () -> Unit) {
                     "在很多网络上会被系统解析成别的公司的 IP，所以图片请求单独钉了一组 Cloudflare 地址，" +
                     "系统解析的结果排在后面兜底。启动后会在后台把候选地址挨个测一遍，按握手耗时挑最快的三台，" +
                     "之后每 15 分钟重测；冷启动时先用 /init 下发的官方源，优选测完再顶到前面。" +
-                    "候选里带 IPv6 地址，设备有 v6 出口就会一起测、一起用；" +
+                    "接口域名也在 Cloudflare 后面，所以同一份顺序也管接口 —— 优选出来的地址排前面，" +
+                    "线路钉住的 IP 跟着兜底。候选里带 IPv6 地址，设备有 v6 出口就会一起测、一起用；" +
                     "全测不出来就退回官方池和内置种子地址，不会把能用的清空。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
