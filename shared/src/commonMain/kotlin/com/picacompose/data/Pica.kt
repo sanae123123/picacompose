@@ -43,6 +43,8 @@ suspend fun applyPicaRoute(line: PicaLine, ips: List<String>) {
         engine = engine,
         onTransportFailure = { picaNetworkFailureHandler?.invoke() },
     )
+    // 图床地址跟着新客户端走：老客户端上的那份（以及本机存的）都可能是上一次 /init 的。
+    ImageHosts.update(pica.currentImageServer ?: RouteStore().savedImageServer)
     // 不立刻 close：刚换上来的线路一般几秒内就稳了，等旧客户端把手上的请求跑完。
     retireScope.launch {
         delay(8_000)

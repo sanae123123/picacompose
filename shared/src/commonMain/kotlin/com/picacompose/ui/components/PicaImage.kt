@@ -9,11 +9,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
+import com.picacompose.data.ImageHosts
 import com.picacompose.picaapi.PicaImage
 import com.picacompose.picaapi.model.Thumbnail
 
 /** 接口里的缩略图地址，拼接规则见 [PicaImage.url]。 */
-fun Thumbnail?.url(imageServer: String? = null): String? = PicaImage.url(this, imageServer)
+fun Thumbnail?.url(imageServer: String? = ImageHosts.server): String? = PicaImage.url(this, imageServer)
 
 /** 网络图片：加载中/失败都留一块底色，不会塌成 0 高。 */
 @Composable

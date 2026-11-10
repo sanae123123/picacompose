@@ -32,6 +32,7 @@ import com.picacompose.data.LineRouter
 import com.picacompose.data.RouteStore
 import com.picacompose.data.applyPicaRoute
 import com.picacompose.data.pica
+import com.picacompose.data.ImageHosts
 import com.picacompose.data.ImageRetryInterceptor
 import com.picacompose.data.picaNetworkFailureHandler
 import com.picacompose.picaapi.dohEngine
@@ -82,6 +83,8 @@ fun App() {
         var routeReady by remember { mutableStateOf(cachedLine == null) }
 
         LaunchedEffect(cachedLine) {
+            // 上次跑过 /init 就把图床地址先摆上，别等这次 /init 回来才把首页封面拼对。
+            ImageHosts.update(store.savedImageServer)
             picaNetworkFailureHandler = LineRouter::onNetworkFailure
             LineRouter.onNotice = PicaToast::show
             LinePreferences.onDohDisabled = PicaToast::show

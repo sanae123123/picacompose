@@ -19,15 +19,17 @@ import com.picacompose.picaapi.model.UserProfile
 object PicaImage {
 
     fun url(thumbnail: Thumbnail?, imageServer: String? = null): String? {
-        val fileServer = thumbnail?.fileServer?.takeIf { it.isNotBlank() } ?: return null
-        val path = thumbnail.path?.takeIf { it.isNotBlank() } ?: return null
+        val path = thumbnail?.path?.takeIf { it.isNotBlank() } ?: return null
+        val fileServer = thumbnail.fileServer?.takeIf { it.isNotBlank() }
         // lorempixel 时代的占位图是拼好的绝对地址，原样返回。
-        if (fileServer.equals("http://lorempixel.com", ignoreCase = true) || path.startsWith("http")) {
-            return path
-        }
+        if (path.startsWith("http")) return path
+        if (fileServer != null && fileServer.equals("http://lorempixel.com", ignoreCase = true)) return path
+        // 官方客户端的 `utils.g.b()`：有 /init 下发的图床就优先用它，没有才回 fileServer。
+        // 官方图床域名在很多网络上被解析到错的 IP，镜像图床反而是能通的那条。
         if (!imageServer.isNullOrBlank()) {
             return imageServer.trimEnd('/') + "/" + path.trimStart('/')
         }
+        if (fileServer == null) return null
         val base = fileServer.trimEnd('/')
         // 游戏图标在 storage-b 上是 `tobs/<file>`，服务端 301 到去掉 `tobs/` 的地址，
         // 这里直接拼最终地址，省一次跳转。
