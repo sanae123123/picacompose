@@ -2,6 +2,11 @@ package com.picacompose.data
 
 import com.picacompose.picaapi.PicaClient
 import com.picacompose.picaapi.pinnedEngine
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * 当前使用的客户端。分流选中线路后会整个换掉 —— DNS 是建引擎那一刻定下的，改不了热生效，
@@ -12,6 +17,9 @@ var pica: PicaClient = PicaClient()
 
 /** 请求在传输层失败时的回调，由 App 装上；换线路的逻辑放在 [LineRouter] 里。 */
 var picaNetworkFailureHandler: (() -> Unit)? = null
+
+/** 退役客户端晚点再关的地方：立刻关会把还在飞的请求一起掐掉，用户就看到报错了。 */
+private val retireScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
 /**
  * 按线路重建客户端，把登录态一起带过去。
@@ -30,5 +38,9 @@ suspend fun applyPicaRoute(line: PicaLine, ips: List<String>) {
         engine = engine,
         onTransportFailure = { picaNetworkFailureHandler?.invoke() },
     )
-    old.close()
+    // 不立刻 close：刚换上来的线路一般几秒内就稳了，等旧客户端把手上的请求跑完。
+    retireScope.launch {
+        delay(8_000)
+        old.close()
+    }
 }

@@ -3,6 +3,7 @@ package com.picacompose
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,6 +27,8 @@ import com.picacompose.data.applyPicaRoute
 import com.picacompose.data.pica
 import com.picacompose.data.picaNetworkFailureHandler
 import com.picacompose.ui.components.PicaBackdrop
+import com.picacompose.ui.components.PicaToast
+import com.picacompose.ui.components.PicaToastHost
 import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.home.HomeShell
 import com.picacompose.ui.login.LoginController
@@ -61,6 +64,7 @@ fun App() {
 
         LaunchedEffect(cachedLine) {
             picaNetworkFailureHandler = LineRouter::onNetworkFailure
+            LineRouter.onNotice = PicaToast::show
             if (cachedLine == null) return@LaunchedEffect
             runCatching { applyPicaRoute(cachedLine, store.savedIps) }
             LineRouter.start(scope, cachedLine, store.savedIps)
@@ -68,12 +72,21 @@ fun App() {
             routed = true
         }
 
-        if (!routeReady) {
-            RestoreScreen()
-        } else {
-            Crossfade(targetState = routed) { ready ->
-                if (ready) MainScreens() else RoutingScreen(onReady = { routed = true })
+        Box(Modifier.fillMaxSize()) {
+            if (!routeReady) {
+                RestoreScreen()
+            } else {
+                Crossfade(targetState = routed) { ready ->
+                    if (ready) MainScreens() else RoutingScreen(onReady = { routed = true })
+                }
             }
+            PicaToastHost(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    // 抬高一点，别压到底部导航栏上。
+                    .padding(horizontal = 32.dp)
+                    .padding(bottom = 100.dp),
+            )
         }
     }
 }

@@ -45,6 +45,9 @@ object LineRouter {
     var switchCount: Int = 0
         private set
 
+    /** 换完线路想跟用户说一句时走这里（App 里接到 toast 上）。 */
+    var onNotice: ((String) -> Unit)? = null
+
     private var scope: CoroutineScope? = null
     private var probeJob: Job? = null
     private val switchLock = Mutex()
@@ -76,6 +79,10 @@ object LineRouter {
                 latencyMs = result.ranked.firstOrNull { it.first == current }?.second
                     ?: store.savedLatencyMs,
             )
+            // 就算现在这条连得上，也换成测出来最快的那条。
+            val best = result.ranked.firstOrNull() ?: return@launch
+            if (best.first == current) return@launch
+            switchTo(best.first, best.second, "已自动切到${best.first.title}（最快，${best.second} ms）")
         }
     }
 
@@ -99,31 +106,41 @@ object LineRouter {
      *
      * 测速还没跑完就先等它（最多一个超时周期）；没有更好的选择时返回 false。
      */
-    suspend fun recover(): Boolean = switchLock.withLock {
-        if (lastSwitch?.let { it.elapsedNow() < 6.seconds } == true) return@withLock false
+    suspend fun recover(): Boolean {
+        // 先等测速收尾，再拿锁：测速自己也要切换线路，锁里等它就成了死锁。
+        probeJob?.takeIf { it.isActive }?.join()
+        return switchLock.withLock {
+            if (lastSwitch?.let { it.elapsedNow() < 6.seconds } == true) return@withLock false
 
-        val job = probeJob
-        if (job != null && job.isActive) job.join()
+            val current = store.savedLine
+            // 优先换一条别的线路；只有当前这条能通时，退一步用刚拿到的 IP 池把它重建一次。
+            val target = ranked.firstOrNull { it.first != current }?.first
+                ?: current
+                ?: ranked.firstOrNull()?.first
+                ?: return@withLock false
+            switchToLocked(
+                line = target,
+                latencyMs = ranked.firstOrNull { it.first == target }?.second,
+                note = "连不上，已切到${target.title}",
+            )
+        }
+    }
 
-        val current = store.savedLine
-        // 优先换一条别的线路；只有当前这条能通时，退一步用刚拿到的 IP 池把它重建一次。
-        val target = ranked.firstOrNull { it.first != current }?.first
-            ?: current
-            ?: ranked.firstOrNull()?.first
-            ?: return@withLock false
-        if (target == appliedLine && knownIps == appliedIps) return@withLock false
-        if (runCatching { applyPicaRoute(target, knownIps) }.isFailure) return@withLock false
+    /** 换线路 + 弹提示；拿锁的版本给协程用，`*Locked` 给已经持锁的调用方用。 */
+    private suspend fun switchTo(line: PicaLine, latencyMs: Long?, note: String): Boolean =
+        switchLock.withLock { switchToLocked(line, latencyMs, note) }
 
-        store.save(
-            line = target,
-            ips = knownIps,
-            latencyMs = ranked.firstOrNull { it.first == target }?.second ?: store.savedLatencyMs,
-        )
-        appliedLine = target
+    private suspend fun switchToLocked(line: PicaLine, latencyMs: Long?, note: String): Boolean {
+        if (line == appliedLine && knownIps == appliedIps) return false
+        if (runCatching { applyPicaRoute(line, knownIps) }.isFailure) return false
+
+        store.save(line, knownIps, latencyMs ?: store.savedLatencyMs)
+        appliedLine = line
         appliedIps = knownIps
         lastSwitch = TimeSource.Monotonic.markNow()
         switchCount += 1
-        true
+        onNotice?.invoke(note)
+        return true
     }
 
     private suspend fun probeAll(savedIps: List<String>): ProbeResult = coroutineScope {
