@@ -5,6 +5,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
@@ -35,6 +40,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,7 +50,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +76,9 @@ import kotlinx.coroutines.launch
 
 /** 提前把后面几张图抓下来，手指划过去时是现成的。 */
 private const val PRELOAD_AHEAD = 4
+
+/** 最多放到几倍。再大就糊了，也没谁真看那么细。 */
+private const val MAX_ZOOM = 5f
 
 /**
  * 阅读器：整屏黑底，图片一张挨一张竖着排，滚到底自动续页。
@@ -97,11 +110,20 @@ fun ReaderContent(
     // 换一话就从头看；同一话重新进来时滚回上次那一页。
     val listState = remember(order) { LazyListState() }
     var chrome by remember { mutableStateOf(true) }
+    // 双指缩放：整块画面一起放大，图片本身还是原图，放大后不糊。
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
     val scope = rememberCoroutineScope()
     val platformContext = LocalPlatformContext.current
 
     // 只有刚进来那次才恢复进度；同一话里换上下话就从头看。
     var resuming by remember { mutableStateOf(startPage > 0) }
+
+    // 换一话回到 1 倍，别把上一话的缩放带过去。
+    LaunchedEffect(order) {
+        scale = 1f
+        offset = Offset.Zero
+    }
 
     LaunchedEffect(pager) {
         if (pager.items.isEmpty()) {
@@ -188,10 +210,32 @@ fun ReaderContent(
     val totalPages = pager.total
 
     Box(modifier.fillMaxSize().background(Color.Black)) {
-            // 内容本身不拦点击，点一下切换工具条。
+            // 内容本身不拦点击，点一下切换工具条；双指放大时整块画面一起缩放。
             Box(
                 Modifier
                     .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offset.x
+                        translationY = offset.y
+                    }
+                    .pointerInput(Unit) {
+                        detectPinchZoom { zoom, pan, centroid ->
+                            val next = (scale * zoom).coerceIn(1f, MAX_ZOOM)
+                            val center = Offset(size.width / 2f, size.height / 2f)
+                            // 手指按在哪儿就以哪儿为轴放大，不然老往屏幕中间跑。
+                            val moved = offset + pan - (centroid - center) * (next - scale)
+                            val maxX = (next - 1f) * size.width / 2f
+                            val maxY = (next - 1f) * size.height / 2f
+                            scale = next
+                            offset = if (next <= 1f) {
+                                Offset.Zero
+                            } else {
+                                Offset(moved.x.coerceIn(-maxX, maxX), moved.y.coerceIn(-maxY, maxY))
+                            }
+                        }
+                    }
                     .pointerInput(Unit) {
                         detectTapGestures(onTap = { chrome = !chrome })
                     },
@@ -456,6 +500,43 @@ private fun ReaderState(
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.8f),
             )
+        }
+    }
+}
+
+/**
+ * 双指缩放 / 拖动。
+ *
+ * 只在第二根手指按下来之后才消费事件：单指上下划留给列表滚动，单击留给工具条，
+ * 免得缩放手势把正常翻页的手势全抢走。放大状态下用单指上下划照样能翻，左右靠双指挪。
+ */
+private suspend fun PointerInputScope.detectPinchZoom(
+    onGesture: (zoom: Float, pan: Offset, centroid: Offset) -> Unit,
+) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        var pinching = false
+        while (true) {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            val pressed = event.changes.count { it.pressed }
+            if (pressed < 2) {
+                when {
+                    // 一根手指都没了：这次手势结束。
+                    pressed == 0 -> return@awaitEachGesture
+                    // 还没开始缩放：单指滑动照常交给列表。
+                    !pinching -> Unit
+                    // 缩放收尾时剩下的那根手指别再触发滚动，松手前先按住。
+                    else -> event.changes.forEach { it.consume() }
+                }
+            } else {
+                pinching = true
+                onGesture(
+                    event.calculateZoom(),
+                    event.calculatePan(),
+                    event.calculateCentroid(),
+                )
+                event.changes.forEach { it.consume() }
+            }
         }
     }
 }
