@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.LinePreferences
+import com.picacompose.data.LineRouter
 import com.picacompose.data.RouteStore
 import com.picacompose.data.SessionStore
 import com.picacompose.ui.components.PicaGlyph
@@ -107,6 +108,14 @@ fun SettingsContent(onSignOut: () -> Unit) {
                         else -> "系统解析"
                     },
                 )
+                // 后台测速列表：换完线路会重测一遍，这里就是最近一次的结果，不通的明确标出来。
+                LineRouter.statuses.forEach { status ->
+                    DetailRow(
+                        icon = PicaIcon.Bolt,
+                        title = status.line.title,
+                        value = status.latencyMs?.let { "$it ms" } ?: "不通",
+                    )
+                }
                 Spacer(Modifier.height(4.dp))
                 SwitchRow(
                     icon = PicaIcon.Shield,
