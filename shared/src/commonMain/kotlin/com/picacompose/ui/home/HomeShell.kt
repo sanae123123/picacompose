@@ -60,7 +60,7 @@ import kotlin.math.abs
 /** 从按钮长出来的整屏页面。 */
 private enum class OverlayPage {
     None, Messages, Forum, Leaderboard, Web, Comics, Detail, Random, Reader, Search,
-    Favorites, MyComments, ReadHistory,
+    Favorites, MyComments, ReadHistory, EditProfile,
 }
 
 /** 变形动画要配对用的 key：源（按钮/卡片）和目标（整页）必须一致。 */
@@ -82,6 +82,8 @@ private val OverlayPage.sharedKey: String
         OverlayPage.Favorites -> "favoritesCard"
         OverlayPage.MyComments -> "myCommentsCard"
         OverlayPage.ReadHistory -> "readHistoryCard"
+        // 从「我的」右上角那颗按钮长成整页。
+        OverlayPage.EditProfile -> "editProfileButton"
         OverlayPage.None -> "mainShell"
     }
 
@@ -292,7 +294,8 @@ fun HomeShell(
 
             OverlayPage.ReadHistory -> if (!fromDetail) historyListState.scrollToItem(0)
             OverlayPage.None, OverlayPage.Leaderboard, OverlayPage.Web,
-            OverlayPage.Detail, OverlayPage.Random, OverlayPage.Reader -> Unit
+            OverlayPage.Detail, OverlayPage.Random, OverlayPage.Reader,
+            OverlayPage.EditProfile -> Unit
         }
     }
 
@@ -487,6 +490,9 @@ fun HomeShell(
                                         onOpenHistory = {
                                             overlayOrdinal = OverlayPage.ReadHistory.ordinal
                                         },
+                                        onOpenEditProfile = {
+                                            overlayOrdinal = OverlayPage.EditProfile.ordinal
+                                        },
                                         // 三张卡各挂一个变形源，点开就从那一块长成整屏。
                                         favouritesModifier = with(shared) {
                                             overlayBounds(OverlayPage.Favorites.sharedKey, contentScope)
@@ -496,6 +502,9 @@ fun HomeShell(
                                         },
                                         historyModifier = with(shared) {
                                             overlayBounds(OverlayPage.ReadHistory.sharedKey, contentScope)
+                                        },
+                                        editProfileModifier = with(shared) {
+                                            overlayBounds(OverlayPage.EditProfile.sharedKey, contentScope)
                                         },
                                     )
                                     HomeTab.Settings -> SettingsContent(onSignOut = onSignOut)
@@ -626,6 +635,15 @@ fun HomeShell(
                                         detailKey = key
                                         detailReturnOrdinal = OverlayPage.Favorites.ordinal
                                         overlayOrdinal = OverlayPage.Detail.ordinal
+                                    },
+                                )
+
+                                OverlayPage.EditProfile -> EditProfileContent(
+                                    profile = profile,
+                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                    onSaved = {
+                                        onRefreshProfile()
+                                        overlayOrdinal = OverlayPage.None.ordinal
                                     },
                                 )
 

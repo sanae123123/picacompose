@@ -8,6 +8,7 @@ import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Menu
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.rounded.ArrowForward as RoundedArrowForwa
 import androidx.compose.material.icons.rounded.Category as RoundedCategory
 import androidx.compose.material.icons.rounded.Check as RoundedCheck
 import androidx.compose.material.icons.rounded.Close as RoundedClose
+import androidx.compose.material.icons.rounded.Edit as RoundedEdit
 import androidx.compose.material.icons.rounded.Email as RoundedEmail
 import androidx.compose.material.icons.rounded.FilterList as RoundedFilterList
 import androidx.compose.material.icons.rounded.Menu as RoundedMenu
@@ -66,12 +68,13 @@ import androidx.compose.ui.unit.dp
  * 默认用 outlined，底部导航选中时换 filled —— Material You 里就是这么区分的。
  */
 enum class PicaIcon {
-    Mail, Back, Lock, Person, Eye, EyeOff, ArrowRight, Logout, Home, Grid, Gamepad, Gear, CheckIn, Notice, Like,
+    Mail, Back, Lock, Person, Eye, EyeOff, ArrowRight, Logout, Home, Grid, Gamepad, Gear, CheckIn, Notice, Like, Edit,
     Menu, Check, Sort, Star, Close, Search, Filter, Speed, Bolt, Shield,
 }
 
 private fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
     PicaIcon.Mail -> if (filled) Icons.Rounded.RoundedEmail else Icons.Outlined.Email
+    PicaIcon.Edit -> if (filled) Icons.Rounded.RoundedEdit else Icons.Outlined.Edit
     PicaIcon.Back -> if (filled) Icons.AutoMirrored.Rounded.ArrowBack else Icons.AutoMirrored.Outlined.ArrowBack
     PicaIcon.Lock -> if (filled) Icons.Rounded.RoundedLock else Icons.Outlined.Lock
     PicaIcon.Person -> if (filled) Icons.Rounded.RoundedPerson else Icons.Outlined.Person

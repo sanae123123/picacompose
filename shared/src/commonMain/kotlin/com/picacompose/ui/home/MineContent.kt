@@ -65,10 +65,13 @@ fun MineContent(
     onOpenFavourites: () -> Unit = {},
     onOpenComments: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
+    /** 右上角「编辑资料」，点开从这颗按钮长成整页。 */
+    onOpenEditProfile: () -> Unit = {},
     /** 三张卡各挂一个变形源，点开时从小卡片长成整页（key 和整页那边配对）。 */
     favouritesModifier: Modifier = Modifier,
     commentsModifier: Modifier = Modifier,
     historyModifier: Modifier = Modifier,
+    editProfileModifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -87,7 +90,19 @@ fun MineContent(
     var showSlogan by remember(slogan) { mutableStateOf(false) }
 
     PageScaffold(
-        header = { PageHeader(title = "我的") },
+        header = {
+            PageHeader(
+                title = "我的",
+                action = {
+                    FilledTonalIconButton(
+                        onClick = onOpenEditProfile,
+                        modifier = editProfileModifier.size(40.dp),
+                    ) {
+                        PicaGlyph(icon = PicaIcon.Edit, modifier = Modifier.size(20.dp))
+                    }
+                },
+            )
+        },
     ) {
         item {
             PicaCard {
