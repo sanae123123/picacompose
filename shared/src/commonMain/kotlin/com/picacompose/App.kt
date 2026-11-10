@@ -22,14 +22,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
+import coil3.PlatformContext
 import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.setSingletonImageLoaderFactory
+import coil3.network.NetworkFetcher
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import com.picacompose.data.LinePreferences
 import com.picacompose.data.LineRouter
 import com.picacompose.data.RouteStore
 import com.picacompose.data.applyPicaRoute
 import com.picacompose.data.pica
+import com.picacompose.data.ImageRetryInterceptor
 import com.picacompose.data.picaNetworkFailureHandler
 import com.picacompose.picaapi.dohEngine
 import com.picacompose.ui.components.PicaBackdrop
@@ -42,6 +45,7 @@ import com.picacompose.ui.login.LoginScreen
 import com.picacompose.ui.routing.RoutingScreen
 import com.picacompose.ui.theme.PicaTheme
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpTimeout
 
 /** 启动时要停在哪儿：先试着恢复上次的登录，恢复了就直接进首页。 */
 private enum class Screen { Restoring, Login, Home }
@@ -61,7 +65,7 @@ private enum class Screen { Restoring, Login, Home }
 @Composable
 fun App() {
     PicaTheme {
-        InstallDohImageLoader()
+        InstallImageLoader()
         val store = remember { RouteStore() }
         // 开关在设置页里改，下一次冷启动才生效，所以这里只在进 App 时读一次。
         val preferences = remember { LinePreferences() }
@@ -176,22 +180,44 @@ private fun MainScreens() {
 }
 
 /**
- * DoH 打开时让图片也走 DoH。
+ * 装应用自己的图片加载器：失败重试一次；开了 DoH 就让图片也走 DoH。
  *
- * Coil 默认那个 ktor 客户端是它自己建的，只能自己塞一个带 DoH 引擎的 fetcher 进单例加载器；
- * 开关关着就完全不碰它，也不会多建一个客户端。
+ * Coil 默认那个 ktor 客户端是它自己建的，没法从外面改 DNS，只能自己塞一个带 DoH 引擎的
+ * fetcher 进单例加载器；开关关着就只加重试，不多建网络客户端。
  */
 @OptIn(ExperimentalCoilApi::class)
 @Composable
-private fun InstallDohImageLoader() {
+private fun InstallImageLoader() {
     val preferences = remember { LinePreferences() }
-    if (!preferences.doh) return
-    val fetcher = remember {
-        dohEngine()?.let { KtorNetworkFetcherFactory(httpClient = HttpClient(it)) }
-    } ?: return
-    setSingletonImageLoaderFactory { context ->
-        ImageLoader.Builder(context).components { add(fetcher) }.build()
+    val fetcher = remember { imageFetcher(preferences) }
+    val factory = remember(fetcher) {
+        { context: PlatformContext ->
+            ImageLoader.Builder(context).components {
+                add(ImageRetryInterceptor())
+                if (fetcher != null) add(fetcher)
+            }.build()
+        }
     }
+    setSingletonImageLoaderFactory(factory)
+}
+
+/**
+ * 走 DoH 的图片 fetcher；DoH 关着或者平台没有 DNS 钩子时返回 null，用 Coil 默认的客户端。
+ *
+ * 图床的超时比接口宽松：一屏图一起加载，掐太紧会误伤本来就慢的图。
+ */
+@OptIn(ExperimentalCoilApi::class)
+private fun imageFetcher(preferences: LinePreferences): NetworkFetcher.Factory? {
+    if (!preferences.doh) return null
+    val engine = dohEngine() ?: return null
+    val client = HttpClient(engine) {
+        install(HttpTimeout) {
+            requestTimeoutMillis = 20_000
+            connectTimeoutMillis = 8_000
+            socketTimeoutMillis = 20_000
+        }
+    }
+    return KtorNetworkFetcherFactory(httpClient = client)
 }
 
 /** 拿旧 token 恢复会话时的一小段过渡，免得先闪一下登录页。 */
