@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -56,8 +57,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -221,20 +224,28 @@ fun ReaderContent(
                         translationY = offset.y
                     }
                     .pointerInput(Unit) {
-                        detectPinchZoom { zoom, pan, centroid ->
-                            val next = (scale * zoom).coerceIn(1f, MAX_ZOOM)
-                            val center = Offset(size.width / 2f, size.height / 2f)
-                            // 手指按在哪儿就以哪儿为轴放大，不然老往屏幕中间跑。
-                            val moved = offset + pan - (centroid - center) * (next - scale)
-                            val maxX = (next - 1f) * size.width / 2f
-                            val maxY = (next - 1f) * size.height / 2f
-                            scale = next
-                            offset = if (next <= 1f) {
-                                Offset.Zero
-                            } else {
-                                Offset(moved.x.coerceIn(-maxX, maxX), moved.y.coerceIn(-maxY, maxY))
-                            }
-                        }
+                        detectReaderGestures(
+                            zoomed = { scale > 1f },
+                            onZoom = { zoom, pan, centroid ->
+                                val next = (scale * zoom).coerceIn(1f, MAX_ZOOM)
+                                val center = Offset(size.width / 2f, size.height / 2f)
+                                // 手指按在哪儿就以哪儿为轴放大，不然老往屏幕中间跑。
+                                val moved = offset + pan * scale - (centroid - center) * (next - scale)
+                                scale = next
+                                offset = if (next <= 1f) Offset.Zero else clampOffset(moved, next, size)
+                            },
+                            onDrag = { drag ->
+                                val s = scale
+                                if (s > 1f) {
+                                    val desired = offset + drag * s
+                                    val clamped = clampOffset(desired, s, size)
+                                    offset = clamped
+                                    // 顶到边上还继续拖：剩下的距离拿去滚列表，接着往下看。
+                                    val leftover = (desired.y - clamped.y) / s
+                                    if (leftover != 0f) scope.launch { listState.scrollBy(-leftover) }
+                                }
+                            },
+                        )
                     }
                     .pointerInput(Unit) {
                         detectTapGestures(onTap = { chrome = !chrome })
@@ -504,38 +515,58 @@ private fun ReaderState(
     }
 }
 
+/** 缩放 / 平移时把画面限制在看得见内容的范围内，别拖出去只剩黑边。 */
+private fun clampOffset(desired: Offset, scale: Float, viewport: IntSize): Offset {
+    val maxX = (scale - 1f) * viewport.width / 2f
+    val maxY = (scale - 1f) * viewport.height / 2f
+    return Offset(desired.x.coerceIn(-maxX, maxX), desired.y.coerceIn(-maxY, maxY))
+}
+
 /**
- * 双指缩放 / 拖动。
+ * 阅读器的手势：
+ * - 两根手指：捏合缩放 + 拖动平移；
+ * - 放大状态下单指：拖动平移（拖到边上再继续拖就滚列表，接着往下看）；
+ * - 没放大时单指：照旧交给列表滚动，单击照旧切换工具条。
  *
- * 只在第二根手指按下来之后才消费事件：单指上下划留给列表滚动，单击留给工具条，
- * 免得缩放手势把正常翻页的手势全抢走。放大状态下用单指上下划照样能翻，左右靠双指挪。
+ * 事件都在 Initial 阶段抢，并且只在真正开始缩放/拖动之后才消费，
+ * 这样单击切工具栏不会被误吞。
  */
-private suspend fun PointerInputScope.detectPinchZoom(
-    onGesture: (zoom: Float, pan: Offset, centroid: Offset) -> Unit,
+private suspend fun PointerInputScope.detectReaderGestures(
+    zoomed: () -> Boolean,
+    onZoom: (zoom: Float, pan: Offset, centroid: Offset) -> Unit,
+    onDrag: (drag: Offset) -> Unit,
 ) {
     awaitEachGesture {
         awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
         var pinching = false
+        var dragging = false
+        var moved = Offset.Zero
         while (true) {
             val event = awaitPointerEvent(PointerEventPass.Initial)
-            val pressed = event.changes.count { it.pressed }
-            if (pressed < 2) {
-                when {
-                    // 一根手指都没了：这次手势结束。
-                    pressed == 0 -> return@awaitEachGesture
-                    // 还没开始缩放：单指滑动照常交给列表。
-                    !pinching -> Unit
-                    // 缩放收尾时剩下的那根手指别再触发滚动，松手前先按住。
-                    else -> event.changes.forEach { it.consume() }
-                }
-            } else {
+            val pressed = event.changes.filter { it.pressed }
+            if (pressed.isEmpty()) return@awaitEachGesture
+
+            if (pressed.size >= 2) {
                 pinching = true
-                onGesture(
-                    event.calculateZoom(),
-                    event.calculatePan(),
-                    event.calculateCentroid(),
-                )
+                dragging = false
+                onZoom(event.calculateZoom(), event.calculatePan(), event.calculateCentroid())
                 event.changes.forEach { it.consume() }
+                continue
+            }
+            // 缩放收尾时剩下的那根手指别再触发滚动或平移，松手前先按住。
+            if (pinching) {
+                event.changes.forEach { it.consume() }
+                continue
+            }
+            if (!zoomed()) continue
+
+            val change = pressed.first()
+            val delta = change.positionChange()
+            moved += delta
+            if (!dragging && moved.getDistance() > viewConfiguration.touchSlop) dragging = true
+            if (dragging) {
+                change.consume()
+                onDrag(delta)
             }
         }
     }
