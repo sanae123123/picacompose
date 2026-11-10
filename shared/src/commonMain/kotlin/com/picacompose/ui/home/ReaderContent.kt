@@ -3,6 +3,7 @@ package com.picacompose.ui.home
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -11,7 +12,6 @@ import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -37,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
@@ -125,6 +126,8 @@ fun ReaderContent(
     var offset by remember { mutableStateOf(Offset.Zero) }
     var viewport by remember { mutableStateOf(IntSize.Zero) }
     var flingJob by remember { mutableStateOf<Job?>(null) }
+    // 捏合缩放的累计量，用来过滤两指斜划时的抖动。
+    var zoomAccum by remember { mutableFloatStateOf(1f) }
     // 只在「有没有放大」翻转时才重组，缩放过程中每帧都读 scale 会把整个列表重组一遍。
     val zoomed by remember { derivedStateOf { scale > 1f } }
     val scope = rememberCoroutineScope()
@@ -229,12 +232,14 @@ fun ReaderContent(
             fun applyPan(delta: Offset) {
                 val s = scale
                 if (s <= 1f || viewport == IntSize.Zero) return
-                val desired = offset + delta * s
+                // 手势监听在缩放图层外面，delta 就是屏幕像素，不用再乘缩放。
+                val desired = offset + delta
                 val clamped = clampOffset(desired, s, viewport)
                 offset = clamped
-                // 顶到边上还继续拖：剩下的距离拿去滚列表，接着往下看。
-                val leftover = (desired.y - clamped.y) / s
-                if (leftover != 0f) scope.launch { listState.scrollBy(-leftover) }
+                // 顶到边上还继续拖：剩下的屏幕距离拿去滚列表，接着往下看。
+                val leftover = desired.y - clamped.y
+                // 同步派发：走 scroll() 会在列表到头时触发系统 overscroll 弹簧，那才是"回弹"。
+                if (leftover != 0f) listState.dispatchRawDelta(-leftover / s)
             }
 
             // 内容本身不拦点击，点一下切换工具条；双指放大时整块画面一起缩放。
@@ -242,23 +247,28 @@ fun ReaderContent(
                 Modifier
                     .fillMaxSize()
                     .onSizeChanged { viewport = it }
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                        translationX = offset.x
-                        translationY = offset.y
-                    }
+                    // 手势监听挂在缩放图层外面：坐标不跟着缩放变，手指和画面才一一对应，
+                    // 挂在里面的话 Compose 拿缩放后的坐标算位移，会越拖越跟不上、松手还往回弹。
                     .pointerInput(Unit) {
                         detectReaderGestures(
                             zoomed = { scale > 1f },
-                            onStart = { flingJob?.cancel() },
+                            onStart = {
+                                flingJob?.cancel()
+                                zoomAccum = 1f
+                            },
                             onZoom = { zoom, pan, centroid ->
-                                // 两指斜着划时指间距会抖，很小的缩放变化直接忽略，免得画面来回弹。
-                                val steady = if (abs(zoom - 1f) < 0.008f) 1f else zoom
+                                // 两指斜着划时指间距会抖，把抖动累计起来，超过 3% 才算真的在捏。
+                                zoomAccum *= zoom
+                                val steady = if (abs(zoomAccum - 1f) < 0.03f) {
+                                    1f
+                                } else {
+                                    zoomAccum.also { zoomAccum = 1f }
+                                }
                                 val next = (scale * steady).coerceIn(1f, MAX_ZOOM)
                                 val center = Offset(viewport.width / 2f, viewport.height / 2f)
-                                // 手指按在哪儿就以哪儿为轴放大，不然老往屏幕中间跑。
-                                val moved = offset + pan * scale - (centroid - center) * (next - scale)
+                                // 手指按住的那一点，缩放前后停在原处；坐标都是屏幕坐标。
+                                val k = 1f - next / scale
+                                val moved = offset + pan + (centroid - center - offset) * k
                                 scale = next
                                 offset = if (next <= 1f) {
                                     Offset.Zero
@@ -280,7 +290,7 @@ fun ReaderContent(
                                                     .coerceIn(0f, 0.05f)
                                                 last = now
                                                 applyPan(v * dt)
-                                                v *= exp(-4f * dt)
+                                                v *= exp(-3f * dt)
                                             }
                                         }
                                     }
@@ -292,25 +302,39 @@ fun ReaderContent(
                         detectTapGestures(onTap = { chrome = !chrome })
                     },
             ) {
-                // 放大时把列表自己的滚动关掉：不然它和我们的平移抢手势，边角上会弹一下。
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    userScrollEnabled = !zoomed,
-                ) {
-                    items(pager.items, key = { it.id }) { page ->
-                        val url = page.media.url()
-                        if (url != null) {
-                            ReaderPage(url = url, platformContext = platformContext)
-                        }
-                    }
-                    if (pager.items.isEmpty()) {
-                        item(key = "reader-state") {
-                            ReaderState(
-                                loading = pager.loading,
-                                error = pager.error,
-                                onRetry = { scope.launch { pager.retry() } },
-                            )
+                // 阅读器里不要系统的边缘拉伸回弹：滑到头就停住，弹回来反而像卡了一下。
+                CompositionLocalProvider(LocalOverscrollFactory provides null) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                                translationX = offset.x
+                                translationY = offset.y
+                            },
+                    ) {
+                        // 放大时把列表自己的滚动关掉：不然它和我们的平移抢手势，边角上会弹一下。
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            userScrollEnabled = !zoomed,
+                        ) {
+                            items(pager.items, key = { it.id }) { page ->
+                                val url = page.media.url()
+                                if (url != null) {
+                                    ReaderPage(url = url, platformContext = platformContext)
+                                }
+                            }
+                            if (pager.items.isEmpty()) {
+                                item(key = "reader-state") {
+                                    ReaderState(
+                                        loading = pager.loading,
+                                        error = pager.error,
+                                        onRetry = { scope.launch { pager.retry() } },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
