@@ -28,11 +28,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import coil3.compose.LocalPlatformContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import com.picacompose.data.APP_VERSION
 import com.picacompose.data.ImageIpsStatus
 import com.picacompose.data.LinePreferences
 import com.picacompose.data.LineRouter
+import com.picacompose.data.REPO_URL
 import com.picacompose.data.RouteStore
 import com.picacompose.data.SessionStore
 import com.picacompose.data.clearImageCache
@@ -43,6 +46,7 @@ import com.picacompose.picaapi.ImageIps
 import kotlinx.coroutines.launch
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
+import com.picacompose.ui.components.rememberBrowserOpener
 
 /**
  * 设置：账号、线路开关、图片、版本，最后是退出登录。
@@ -86,6 +90,7 @@ fun SettingsContent(onSignOut: () -> Unit) {
     val preferences = remember { LinePreferences() }
     var qualityIndex by remember { mutableStateOf(preferences.imageQuality) }
     var qualityMenuOpen by remember { mutableStateOf(false) }
+    val openBrowser = rememberBrowserOpener()
     val line = route.savedLine
     val latency = route.savedLatencyMs
     val ipCount = route.savedIps.size
@@ -279,7 +284,13 @@ fun SettingsContent(onSignOut: () -> Unit) {
         item {
             PicaCard {
                 DetailRow(PicaIcon.Grid, "主题", "Material You 基线配色")
-                DetailRow(PicaIcon.Gear, "版本", "0.1.0")
+                DetailRow(PicaIcon.Gear, "版本", APP_VERSION)
+                LinkRow(
+                    icon = PicaIcon.Star,
+                    title = "GitHub",
+                    url = REPO_URL,
+                    onClick = { openBrowser(REPO_URL) },
+                )
                 DetailRow(PicaIcon.ArrowRight, "接口", "picaapi 模块")
             }
             Spacer(Modifier.height(14.dp))
@@ -419,5 +430,43 @@ private fun SwitchRow(
             onCheckedChange = onCheckedChange,
             enabled = enabled,
         )
+    }
+}
+
+/** 设置页里带地址的一行：标题 + 完整地址，整行点开浏览器。 */
+@Composable
+private fun LinkRow(
+    icon: PicaIcon,
+    title: String,
+    url: String,
+    onClick: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PicaGlyph(icon, Modifier.size(18.dp), colors.onSurfaceVariant)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurface,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = url,
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.width(6.dp))
+        PicaGlyph(PicaIcon.ArrowRight, Modifier.size(16.dp), colors.onSurfaceVariant)
     }
 }
