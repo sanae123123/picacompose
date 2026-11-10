@@ -50,12 +50,16 @@ internal suspend fun refreshImageHost() {
  */
 internal suspend fun keepImageIpsFresh() {
     val store = RouteStore()
+    // 冷启动：先用 `/init` 下发的官方源顶上，上次的优选结果只当第二层。
     ImageIps.updatePreferred(store.savedImageIps)
     ImageIps.updateOfficial(store.savedIps)
+    ImageIps.preferOfficialFirst()
     while (true) {
-        val best = runCatching { probeImageIps(ImageIps.ordered()) }.getOrDefault(emptyList())
+        val best = runCatching { probeImageIps(ImageIps.candidates()) }.getOrDefault(emptyList())
         if (best.isNotEmpty()) {
+            // 测完就把官方源让到后面：优选结果是现测的，比下发的那几台更贴近当前网络。
             ImageIps.updatePreferred(best)
+            ImageIps.activatePreferred()
             store.saveImageIps(best)
         }
         delay(if (best.isEmpty()) RETRY_MS else INTERVAL_MS)
