@@ -6,10 +6,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -32,6 +33,7 @@ import com.picacompose.data.pica
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
+import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.UserAvatar
 import com.picacompose.ui.components.imagePickerSupported
 import com.picacompose.ui.components.rememberImagePicker
@@ -65,7 +67,9 @@ fun EditProfileContent(
 
     var avatarBytes by remember { mutableStateOf<ByteArray?>(null) }
     var saving by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    // 没保存成功的原因，攒起来弹窗说（贴在列表底下会被输入法挡住）。
+    var failure by remember { mutableStateOf<String?>(null) }
+    val keyboard = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(Unit) {
         catchingLoad { pica.users.profile() }.getOrNull()?.let { fresh ->
@@ -92,30 +96,53 @@ fun EditProfileContent(
     fun save() {
         if (saving || !dirty) return
         if (nameBlank) {
-            error = "昵称不能是空的"
+            failure = "昵称不能是空的。"
             return
         }
+        keyboard?.hide()
         scope.launch {
             saving = true
-            error = null
-            try {
-                if (nameChanged) {
-                    if (email == null) {
-                        error = "这份资料里没有邮箱，昵称先改不了"
-                    } else {
+            failure = null
+            // 三项各走各的接口，一项失败不影响另外两项，最后把没成功的列出来。
+            val problems = mutableListOf<String>()
+            if (nameChanged) {
+                if (email == null) {
+                    problems += "昵称：这份资料里没有邮箱，改不了。"
+                } else {
+                    try {
                         pica.users.updatePicaId(email = email, name = trimmedName)
+                    } catch (e: Exception) {
+                        problems += "昵称：${friendlySaveError(e)}"
                     }
                 }
-                if (sloganChanged) pica.users.updateSlogan(trimmedSlogan)
-                if (avatarChanged) {
-                    pica.users.updateAvatar(Base64.Default.encode(avatarBytes!!))
-                }
-                if (error == null) onSaved()
-            } catch (e: Exception) {
-                error = e.message ?: "保存没成功，稍后再试"
-            } finally {
-                saving = false
             }
+            if (sloganChanged) {
+                try {
+                    pica.users.updateSlogan(trimmedSlogan)
+                } catch (e: Exception) {
+                    problems += "签名：${e.message ?: "提交失败"}"
+                }
+            }
+            if (avatarChanged) {
+                try {
+                    pica.users.updateAvatar(Base64.Default.encode(avatarBytes!!))
+                } catch (e: Exception) {
+                    problems += "头像：${e.message ?: "提交失败"}"
+                }
+            }
+            if (problems.isEmpty()) {
+                onSaved()
+            } else {
+                // 成功的那几项先认下来，别让「再点一次保存」把它们又发一遍。
+                catchingLoad { pica.users.profile() }.getOrNull()?.let { fresh ->
+                    current = fresh
+                    if (!nameChanged || fresh.name == trimmedName) name = fresh.name
+                    slogan = fresh.slogan.orEmpty()
+                    avatarBytes = null
+                }
+                failure = problems.joinToString("\n")
+            }
+            saving = false
         }
     }
 
@@ -226,16 +253,45 @@ fun EditProfileContent(
             }
             Spacer(Modifier.height(14.dp))
         }
-        val message = error
-        if (message != null) {
-            item {
+    }
+
+    // 失败的说明用弹窗：列表底下那条会被输入法盖住，等于没说。
+    failure?.let { text ->
+        val pop = rememberDialogPop(onDismiss = { failure = null })
+        AlertDialog(
+            onDismissRequest = pop::dismiss,
+            modifier = pop.modifier,
+            title = { Text(text = "没保存成功", style = MaterialTheme.typography.titleMedium) },
+            text = {
                 Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.error,
-                    modifier = Modifier.padding(horizontal = 6.dp),
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            }
-        }
+            },
+            confirmButton = {
+                TextButton(onClick = pop::dismiss) { Text("知道了") }
+            },
+        )
+    }
+}
+
+/**
+ * 把服务端那串英文翻成人话。
+ *
+ * 改昵称被拒最常见的是「刚改过，短时间不让再改」，服务端只回一句英文，直接摆给用户
+ * 看不懂，所以认出来就补一句解释；认不出来就原样给，至少能拿去搜。
+ */
+private fun friendlySaveError(e: Exception): String {
+    val raw = e.message?.trim().orEmpty()
+    val lower = raw.lowercase()
+    val looksLikeRenameDenied =
+        (lower.contains("nickname") || lower.contains("picaid") || lower.contains("nick")) ||
+            raw.contains("昵称")
+    return when {
+        raw.isBlank() -> "提交失败，网络或服务端出了点问题。"
+        looksLikeRenameDenied && (lower.contains("edit") || lower.contains("change") || raw.contains("编辑") || raw.contains("修改")) ->
+            "服务端说昵称已经改过一次，短时间内不能再改，签名和头像还是能保存。\n\n（原文：$raw）"
+        else -> raw
     }
 }
