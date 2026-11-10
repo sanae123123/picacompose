@@ -48,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,8 +58,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -74,8 +77,10 @@ import com.picacompose.picaapi.model.Episode
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.url
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlin.math.exp
 
 /** 提前把后面几张图抓下来，手指划过去时是现成的。 */
 private const val PRELOAD_AHEAD = 4
@@ -116,6 +121,8 @@ fun ReaderContent(
     // 双指缩放：整块画面一起放大，图片本身还是原图，放大后不糊。
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+    var viewport by remember { mutableStateOf(IntSize.Zero) }
+    var flingJob by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
     val platformContext = LocalPlatformContext.current
 
@@ -124,6 +131,7 @@ fun ReaderContent(
 
     // 换一话回到 1 倍，别把上一话的缩放带过去。
     LaunchedEffect(order) {
+        flingJob?.cancel()
         scale = 1f
         offset = Offset.Zero
     }
@@ -213,10 +221,23 @@ fun ReaderContent(
     val totalPages = pager.total
 
     Box(modifier.fillMaxSize().background(Color.Black)) {
+            // 放大后的拖动位移：平移画面，顶到边上就转成滚列表。
+            fun applyPan(delta: Offset) {
+                val s = scale
+                if (s <= 1f || viewport == IntSize.Zero) return
+                val desired = offset + delta * s
+                val clamped = clampOffset(desired, s, viewport)
+                offset = clamped
+                // 顶到边上还继续拖：剩下的距离拿去滚列表，接着往下看。
+                val leftover = (desired.y - clamped.y) / s
+                if (leftover != 0f) scope.launch { listState.scrollBy(-leftover) }
+            }
+
             // 内容本身不拦点击，点一下切换工具条；双指放大时整块画面一起缩放。
             Box(
                 Modifier
                     .fillMaxSize()
+                    .onSizeChanged { viewport = it }
                     .graphicsLayer {
                         scaleX = scale
                         scaleY = scale
@@ -226,23 +247,37 @@ fun ReaderContent(
                     .pointerInput(Unit) {
                         detectReaderGestures(
                             zoomed = { scale > 1f },
+                            onStart = { flingJob?.cancel() },
                             onZoom = { zoom, pan, centroid ->
                                 val next = (scale * zoom).coerceIn(1f, MAX_ZOOM)
-                                val center = Offset(size.width / 2f, size.height / 2f)
+                                val center = Offset(viewport.width / 2f, viewport.height / 2f)
                                 // 手指按在哪儿就以哪儿为轴放大，不然老往屏幕中间跑。
                                 val moved = offset + pan * scale - (centroid - center) * (next - scale)
                                 scale = next
-                                offset = if (next <= 1f) Offset.Zero else clampOffset(moved, next, size)
+                                offset = if (next <= 1f) {
+                                    Offset.Zero
+                                } else {
+                                    clampOffset(moved, next, viewport)
+                                }
                             },
-                            onDrag = { drag ->
-                                val s = scale
-                                if (s > 1f) {
-                                    val desired = offset + drag * s
-                                    val clamped = clampOffset(desired, s, size)
-                                    offset = clamped
-                                    // 顶到边上还继续拖：剩下的距离拿去滚列表，接着往下看。
-                                    val leftover = (desired.y - clamped.y) / s
-                                    if (leftover != 0f) scope.launch { listState.scrollBy(-leftover) }
+                            onDrag = { drag -> applyPan(drag) },
+                            onFling = { velocity ->
+                                if (scale > 1f && velocity.getDistance() > 120f) {
+                                    flingJob?.cancel()
+                                    // 松手后按速度继续滑，滑到边上就顺着滚列表。
+                                    flingJob = scope.launch {
+                                        var v = velocity
+                                        var last = withFrameNanos { it }
+                                        while (v.getDistance() > 40f) {
+                                            withFrameNanos { now ->
+                                                val dt = ((now - last) / 1_000_000_000f)
+                                                    .coerceIn(0f, 0.05f)
+                                                last = now
+                                                applyPan(v * dt)
+                                                v *= exp(-4f * dt)
+                                            }
+                                        }
+                                    }
                                 }
                             },
                         )
@@ -533,18 +568,29 @@ private fun clampOffset(desired: Offset, scale: Float, viewport: IntSize): Offse
  */
 private suspend fun PointerInputScope.detectReaderGestures(
     zoomed: () -> Boolean,
+    onStart: () -> Unit,
     onZoom: (zoom: Float, pan: Offset, centroid: Offset) -> Unit,
     onDrag: (drag: Offset) -> Unit,
+    onFling: (velocity: Offset) -> Unit,
 ) {
     awaitEachGesture {
         awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        onStart()
+        val tracker = VelocityTracker()
         var pinching = false
         var dragging = false
         var moved = Offset.Zero
         while (true) {
             val event = awaitPointerEvent(PointerEventPass.Initial)
             val pressed = event.changes.filter { it.pressed }
-            if (pressed.isEmpty()) return@awaitEachGesture
+            if (pressed.isEmpty()) {
+                // 松手：把最后那段速度交出去，接着滑。
+                if (dragging) {
+                    val v = tracker.calculateVelocity()
+                    onFling(Offset(v.x, v.y))
+                }
+                return@awaitEachGesture
+            }
 
             if (pressed.size >= 2) {
                 pinching = true
@@ -566,6 +612,7 @@ private suspend fun PointerInputScope.detectReaderGestures(
             if (!dragging && moved.getDistance() > viewConfiguration.touchSlop) dragging = true
             if (dragging) {
                 change.consume()
+                tracker.addPosition(change.uptimeMillis, change.position)
                 onDrag(delta)
             }
         }
