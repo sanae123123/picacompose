@@ -75,6 +75,10 @@ class SearchState {
     var sort by mutableStateOf<String?>(null)
         private set
 
+    /** 完结筛选。搜索接口没有这个参数，只能拉到结果后在本地筛（见 [pagerFor]）。 */
+    var finished by mutableStateOf(ComicFinished.All)
+        private set
+
     /** 当前关键词的结果分页；null 是还没搜。 */
     var pager by mutableStateOf<Pager<ComicSummary>?>(null)
         private set
@@ -127,14 +131,39 @@ class SearchState {
         query = ""
         keyword = ""
         sort = null
+        finished = ComicFinished.All
         pager = null
         focusPending = false
     }
 
-    private fun pagerFor(keyword: String, sort: String?): Pager<ComicSummary> = Pager(
-        load = { page -> pica.comics.advancedSearch(keyword = keyword, sort = sort, page = page) },
-        itemKey = { it.id },
-    )
+    /** 换排序：同一个关键词按新顺序重搜一遍，没搜过就只记下来。 */
+    fun onFinishedChange(value: ComicFinished) {
+        if (value == finished) return
+        finished = value
+        if (keyword.isBlank()) return
+        pager = pagerFor(keyword, sort)
+    }
+
+    /**
+     * 一次搜索的分页。
+     *
+     * 搜索接口不吃完结参数，所以等服务端回来后在 `docs` 上再筛一遍；页数、总数仍按
+     * 服务端那套走，翻页不会乱（某一页被筛空时由界面自己接着往下翻）。
+     */
+    private fun pagerFor(keyword: String, sort: String?): Pager<ComicSummary> {
+        val want = finished.value
+        return Pager(
+            load = { page ->
+                val paged = pica.comics.advancedSearch(keyword = keyword, sort = sort, page = page)
+                if (want == null) {
+                    paged
+                } else {
+                    paged.copy(docs = paged.docs.filter { it.finished == want })
+                }
+            },
+            itemKey = { it.id },
+        )
+    }
 
     /** 热搜词只问一次，没拿到就不摆那一块，不挡搜索。 */
     suspend fun ensureHotKeywords() {
@@ -169,6 +198,7 @@ fun SearchContent(
     val focus = remember { FocusRequester() }
     var menuOpen by remember { mutableStateOf(false) }
     var showJump by remember { mutableStateOf(false) }
+    var showFilter by remember { mutableStateOf(false) }
     val pager = state.pager
 
     LaunchedEffect(state) { state.ensureHotKeywords() }
@@ -202,6 +232,17 @@ fun SearchContent(
             }
     }
 
+    // 本地过滤可能把整整一页都筛掉：这时列表是空的、也滚不动，得自己接着翻下一页，
+    // 不然会停在「没搜到」上，其实后面还有。
+    LaunchedEffect(listState, pager) {
+        if (pager == null) return@LaunchedEffect
+        snapshotFlow { pager.items.isEmpty() to (pager.hasMore && !pager.loading && pager.error == null) }
+            .distinctUntilChanged()
+            .collect { (empty, canLoad) ->
+                if (empty && canLoad) pager.loadNext()
+            }
+    }
+
     val submit: (String?) -> Unit = { text ->
         state.submit(text ?: state.query)
         keyboard?.hide()
@@ -232,6 +273,21 @@ fun SearchContent(
                             text = "${compactCount(pager.total)} 本",
                             style = MaterialTheme.typography.labelMedium,
                             color = colors.onSurfaceVariant,
+                        )
+                    }
+                    // 筛选：排序方式 + 完结状态。完结是拿回来后在本地筛的（搜索接口不吃这个参数）。
+                    IconButton(
+                        onClick = { showFilter = true },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        PicaGlyph(
+                            icon = PicaIcon.Filter,
+                            modifier = Modifier.size(22.dp),
+                            tint = if (state.finished == ComicFinished.All) {
+                                colors.onBackground
+                            } else {
+                                colors.primary
+                            },
                         )
                     }
                     // 汉堡菜单：跳页 + 排序方式，和本子列表里那颗一样。
@@ -349,7 +405,9 @@ fun SearchContent(
                         }
 
                         pager.loading -> LoadingBlock("正在搜…")
-                        else -> EmptyBlock("没搜到，换个词试试")
+                        // 本地筛掉了也是这个空态，说清楚是筛选的问题还是词的问题。
+                        state.finished == ComicFinished.All -> EmptyBlock("没搜到，换个词试试")
+                        else -> EmptyBlock("这个筛选下没搜到，换个条件试试")
                     }
                 }
             }
@@ -373,6 +431,19 @@ fun SearchContent(
                 }
             }
         }
+    }
+
+    if (showFilter) {
+        ComicFilterDialog(
+            sort = state.sort,
+            finished = state.finished,
+            onApply = { newSort, newFinished ->
+                showFilter = false
+                state.onSortChange(newSort)
+                state.onFinishedChange(newFinished)
+            },
+            onDismiss = { showFilter = false },
+        )
     }
 
     if (showJump && pager != null) {

@@ -253,7 +253,7 @@ fun ComicListContent(
  * 里面是草稿，点「应用」才真的换条件（每点一下就重拉一遍列表太浪费请求）。
  */
 @Composable
-private fun ComicFilterDialog(
+internal fun ComicFilterDialog(
     sort: String?,
     finished: ComicFinished,
     onApply: (String?, ComicFinished) -> Unit,
