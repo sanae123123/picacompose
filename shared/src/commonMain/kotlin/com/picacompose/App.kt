@@ -35,7 +35,7 @@ import com.picacompose.data.pica
 import com.picacompose.data.ImageHosts
 import com.picacompose.data.ImageRetryInterceptor
 import com.picacompose.data.picaNetworkFailureHandler
-import com.picacompose.picaapi.dohEngine
+import com.picacompose.picaapi.imageEngine
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaToast
 import com.picacompose.ui.components.PicaToastHost
@@ -193,7 +193,7 @@ private fun MainScreens() {
 @Composable
 private fun InstallImageLoader() {
     val preferences = remember { LinePreferences() }
-    val fetcher = remember { imageFetcher(preferences) }
+    val fetcher = remember { imageFetcher() }
     val factory = remember(fetcher) {
         { context: PlatformContext ->
             ImageLoader.Builder(context).components {
@@ -206,7 +206,8 @@ private fun InstallImageLoader() {
 }
 
 /**
- * 图片专用的 Ktor 客户端：DoH 开着就走 DoH 引擎，关着就走平台默认引擎。
+ * 图片专用的 Ktor 客户端：DNS 用 [imageEngine]（picacomic 的图床域名钉到一组能连的 IP），
+ * 不走 DoH —— DoH 开关管的是接口那条链路，图片这边钉子地址更直接。
  *
  * 关键是**一定有超时**。Coil 默认那个客户端是 Ktor 现搭的，超时按引擎默认来；
  * 移动网络下连接被挂住的时候（图床在切节点、或者半路丢包），请求会一直不返回，
@@ -216,8 +217,8 @@ private fun InstallImageLoader() {
  * 图床的时限比接口宽松：一屏图一起加载，掐太紧会误伤本来就慢的图。
  */
 @OptIn(ExperimentalCoilApi::class)
-private fun imageFetcher(preferences: LinePreferences): NetworkFetcher.Factory {
-    val engine = if (preferences.doh) dohEngine() else null
+private fun imageFetcher(): NetworkFetcher.Factory {
+    val engine = imageEngine()
     val timeouts: HttpTimeoutConfig.() -> Unit = {
         requestTimeoutMillis = 60_000
         connectTimeoutMillis = 10_000

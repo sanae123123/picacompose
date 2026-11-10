@@ -145,11 +145,12 @@ fun SettingsContent(onSignOut: () -> Unit) {
                 text = "记住账号只保存 token 和账号名，下次打开直接恢复会话；" +
                     "退出登录会清掉 token，账号名留着方便下次登录。线路的开关改完下次打开生效：" +
                     "自动测速关掉后不会再有后台测速，也不会自己换线路，网络变了要手动去线路页重选；" +
-                    "快速进入关掉后每次启动会多等一次测速；DoH 打开后接口和图片都走 DoH 解析，" +
+                    "快速进入关掉后每次启动会多等一次测速；DoH 打开后接口走 DoH 解析（图片另说，见下），" +
                     "只有一个可信地址都拿不到时会自动关掉开关并退回系统 DNS（设置页的开关也会变回关），" +
                     "单个端点挂掉会在几路端点之间自动换到还能用的那一路。" +
-                    "图片地址优先用 /init 下发的镜像图床：官方图床域名（storage1.picacomic.com）" +
-                    "在很多网络上会被解析到错的 IP，直连只会超时。",
+                    "图片地址优先用 /init 下发的图床；图床域名（storage1 / storage-b / s3.picacomic.com）" +
+                    "在很多网络上会被系统解析成别的公司的 IP，所以图片请求单独钉了一组 Cloudflare 地址，" +
+                    "系统解析的结果排在后面兜底。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

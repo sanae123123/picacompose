@@ -73,6 +73,18 @@ suspend fun fetchBootstrap(): BootstrapInfo? {
  */
 expect suspend fun pinnedEngine(ips: List<String>): HttpClientEngine?
 
+/**
+ * 建一个给图片用的引擎：把 `*.picacomic.com` 的解析钉在一组已知能连的地址上。
+ *
+ * 图床都在 Cloudflare 后面，而有些网络会把这些域名的系统解析污染成别的公司的 IP
+ * （本机就把 `storage-b.picacomic.com` 解析成 Facebook 的 185.60.216.36），连过去只会超时 ——
+ * 图片就一直转圈。官方客户端靠下发 IP 池绕开这一步，我们同样给一份，系统解析那份留着兜底。
+ *
+ * 只影响图片：接口域名还是按线路钉 IP / 走 DoH，跟这里无关。
+ * 平台没有 DNS 钩子时返回 null，调用方退回默认客户端。
+ */
+expect fun imageEngine(): HttpClientEngine?
+
 /** DoH 端点：按「结果更可信」的顺序排，国内的放后面当兜底。 */
 internal val DOH_ENDPOINTS = listOf(
     "https://1.1.1.1/dns-query",
