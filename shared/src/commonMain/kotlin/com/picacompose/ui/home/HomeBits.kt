@@ -69,14 +69,25 @@ import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.rememberDialogPop
 
-/** 页面顶部的标题。只放标题，说明文字不占这儿的位置。 */
+/**
+ * 页面顶部的标题。只放标题，说明文字不占这儿的位置。
+ *
+ * [action] 是标题右端那颗按钮（比如分类页的搜索），不传就还是纯标题。
+ */
 @Composable
-fun PageHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.headlineSmall,
-        color = MaterialTheme.colorScheme.onBackground,
-    )
+fun PageHeader(
+    title: String,
+    action: (@Composable () -> Unit)? = null,
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f),
+        )
+        if (action != null) action()
+    }
 }
 
 /** 大圆角卡片，页面里的分区都用它装。 */

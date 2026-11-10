@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,6 +33,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.Category
+import com.picacompose.ui.components.PicaGlyph
+import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.url
 
@@ -135,6 +139,8 @@ fun CategoriesContent(
     onOpenSupport: () -> Unit = {},
     /** 点击救哔咔 / 哔咔小程序：弹哔咔的开屏广告。 */
     onOpenSplashAd: () -> Unit = {},
+    /** 顶栏右上角的搜索：打开搜索页搜本子。 */
+    onOpenSearch: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     // 数据放在外层（[CategoriesState]），整页开开关关、栏与栏之间来回切都不重拉。
@@ -145,7 +151,17 @@ fun CategoriesContent(
 
     PageScaffold(
         state = listState,
-        header = { PageHeader(title = "分类") },
+        header = {
+            PageHeader(title = "分类") {
+                IconButton(onClick = onOpenSearch, modifier = Modifier.size(40.dp)) {
+                    PicaGlyph(
+                        icon = PicaIcon.Search,
+                        modifier = Modifier.size(22.dp),
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
+            }
+        },
         onRefresh = { state.load() },
     ) {
         item {

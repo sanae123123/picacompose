@@ -49,7 +49,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** 从按钮长出来的整屏页面。 */
-private enum class OverlayPage { None, Messages, Forum, Leaderboard, Web, Comics, Detail, Random, Reader }
+private enum class OverlayPage {
+    None, Messages, Forum, Leaderboard, Web, Comics, Detail, Random, Reader, Search,
+}
 
 /** 变形动画要配对用的 key：源（按钮/卡片）和目标（整页）必须一致。 */
 private val OverlayPage.sharedKey: String
@@ -65,6 +67,8 @@ private val OverlayPage.sharedKey: String
         OverlayPage.Random -> "randomTile"
         // 阅读器的 key 跟着点的那一话走，这里只是兜底。
         OverlayPage.Reader -> "episode"
+        // 搜索是从分类页顶栏那颗按钮打开的，没有对应的源，纯淡入。
+        OverlayPage.Search -> "searchPage"
         OverlayPage.None -> "mainShell"
     }
 
@@ -188,6 +192,9 @@ fun HomeShell(
     val categoryListState = rememberLazyListState()
     // 分类数据同样提上来：开关整页时页面会被重建，退回来不该重新拉一遍。
     val categoriesState = rememberCategoriesState()
+    // 搜索：输入框、搜过的词和结果都留在这里，翻完详情退回来还是那一批。
+    val searchState = rememberSearchState()
+    val searchListState = rememberLazyListState()
 
     // 换了一页就从头看：底部栏切到哪一栏，那一栏的列表滚回顶部。
     LaunchedEffect(tab) {
@@ -209,6 +216,7 @@ fun HomeShell(
             OverlayPage.Messages -> messageListState.scrollToItem(0)
             OverlayPage.Forum -> forumListState.scrollToItem(0)
             OverlayPage.Comics -> if (!fromDetail) comicListState.scrollToItem(0)
+            OverlayPage.Search -> if (!fromDetail) searchListState.scrollToItem(0)
             OverlayPage.None, OverlayPage.Leaderboard, OverlayPage.Web,
             OverlayPage.Detail, OverlayPage.Random, OverlayPage.Reader -> Unit
         }
@@ -353,6 +361,10 @@ fun HomeShell(
                                             overlayOrdinal = OverlayPage.Web.ordinal
                                         },
                                         onOpenSplashAd = { splashAdOpen = true },
+                                        onOpenSearch = {
+                                            searchState.requestFocus()
+                                            overlayOrdinal = OverlayPage.Search.ordinal
+                                        },
                                         onOpenGames = {
                                             overlayOrdinal = OverlayPage.None.ordinal
                                             scope.launch {
@@ -460,6 +472,22 @@ fun HomeShell(
                                         overlayOrdinal = OverlayPage.Detail.ordinal
                                     },
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                )
+
+                                OverlayPage.Search -> SearchContent(
+                                    state = searchState,
+                                    listState = searchListState,
+                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                    comicRowModifier = { key ->
+                                        with(shared) { overlayBounds(key, contentScope) }
+                                    },
+                                    onOpenComic = { comic, key ->
+                                        detailComicId = comic.id
+                                        detailTitle = comic.title
+                                        detailKey = key
+                                        detailReturnOrdinal = OverlayPage.Search.ordinal
+                                        overlayOrdinal = OverlayPage.Detail.ordinal
+                                    },
                                 )
 
                                 OverlayPage.Random -> RandomComicsContent(
