@@ -44,8 +44,8 @@ private fun probeOne(ip: String): Long? = runCatching {
     }
 }.getOrNull()
 
-/** 同时开多少台一起测：太多了握手队列自己就慢了，24 台差不多。 */
-private const val PROBE_PARALLELISM = 24
+/** 同时开多少台一起测：控制在 12 台，既快又不跟前台图片抢连接。 */
+private const val PROBE_PARALLELISM = 12
 
 actual suspend fun probeImageIps(
     candidates: List<String>,

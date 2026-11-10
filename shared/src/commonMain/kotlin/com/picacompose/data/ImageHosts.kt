@@ -55,6 +55,8 @@ internal suspend fun keepImageIpsFresh() {
     ImageIps.updatePreferred(store.savedImageIps)
     ImageIps.updateOfficial(store.savedIps)
     ImageIps.preferOfficialFirst()
+    // 首屏先用官方源出图，扫描往后让一让：几百台一起握手会跟首屏的图抢连接。
+    delay(START_DELAY_MS)
     while (true) {
         val best = runCatching {
             probeImageIps(CloudflareIps.sample(), limit = POOL_SIZE, thresholdMs = FAST_MS)
@@ -74,6 +76,9 @@ private const val POOL_SIZE = 10
 
 /** 多快算「快」：500ms 以内的握手速度，一屏图基本不会等。 */
 private const val FAST_MS = 500L
+
+/** 进主界面之后才开扫，让首屏那几张图先跑完。 */
+private const val START_DELAY_MS = 3_000L
 
 /** 全段扫描比只测几台重，半小时一次足够跟上线路抖动。 */
 private const val INTERVAL_MS = 30 * 60 * 1000L

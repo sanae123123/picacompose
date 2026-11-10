@@ -35,6 +35,7 @@ suspend fun applyPicaRoute(line: PicaLine, ips: List<String>) {
     // 换线路等于换了官方下发的那几台：接口和图片都用 ImageIps 这一份顺序，
     // 所以这里同步一下，并回到「官方源优先，等后台优选覆盖」。
     ImageIps.updateOfficial(ips)
+    ImageIps.updatePreferred(RouteStore().savedImageIps)
     ImageIps.preferOfficialFirst()
     val engine = routeEngine(line, ips)
     pica = PicaClient(
