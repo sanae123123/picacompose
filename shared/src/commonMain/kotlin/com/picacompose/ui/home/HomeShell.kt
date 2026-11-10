@@ -20,10 +20,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -46,7 +48,9 @@ import com.picacompose.ui.components.overlayBounds
 import com.picacompose.ui.components.WebPageContent
 import com.picacompose.ui.components.overlayPageFade
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /** 从按钮长出来的整屏页面。 */
 private enum class OverlayPage {
@@ -93,15 +97,20 @@ fun HomeShell(
     val tabs = HomeTab.entries
     var savedIndex by rememberSaveable { mutableStateOf(0) }
     val pagerState = rememberPagerState(initialPage = savedIndex, pageCount = { tabs.size })
-    val tab = tabs[pagerState.currentPage.coerceIn(tabs.indices)]
+    // 选中哪一栏只在底部栏里读（见 [PicaNavigationBar]）：这里一旦读 pagerState.currentPage，
+    // 每换一次页整个主界面连同两页内容都要重组一遍，横滑的时候就是这么卡的。
     // 进程被杀掉再回来还能停在原来那一栏。
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { savedIndex = it }
     }
     // 登录时拉到的那份资料会一直用到下次登录，签到状态早就过期了；
     // 每次进「我的」都重拉一次，才不会出现「刚签到过、再进来又显示未签到」。
-    LaunchedEffect(tab) {
-        if (tab == HomeTab.Mine) onRefreshProfile()
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }
+            .distinctUntilChanged()
+            .collect { page ->
+                if (tabs[page.coerceIn(tabs.indices)] == HomeTab.Mine) onRefreshProfile()
+            }
     }
     // 叠在主页上的两级整页：消息（从首页卡片开）、留言板（从分类磁贴开）。
     var overlayOrdinal by rememberSaveable { mutableStateOf(OverlayPage.None.ordinal) }
@@ -197,13 +206,18 @@ fun HomeShell(
     val searchListState = rememberLazyListState()
 
     // 换了一页就从头看：底部栏切到哪一栏，那一栏的列表滚回顶部。
-    LaunchedEffect(tab) {
-        when (tab) {
-            HomeTab.Home -> homeListState.scrollToItem(0)
-            HomeTab.Category -> categoryListState.scrollToItem(0)
-            HomeTab.Game -> gameListState.scrollToItem(0)
-            HomeTab.Mine, HomeTab.Settings -> Unit
-        }
+    // 等这一栏停稳再拨，不然横滑动画正播着往列表里插一堆组合，一帧就爆了。
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }
+            .distinctUntilChanged()
+            .collect { page ->
+                when (tabs[page.coerceIn(tabs.indices)]) {
+                    HomeTab.Home -> homeListState.scrollToItem(0)
+                    HomeTab.Category -> categoryListState.scrollToItem(0)
+                    HomeTab.Game -> gameListState.scrollToItem(0)
+                    HomeTab.Mine, HomeTab.Settings -> Unit
+                }
+            }
     }
 
     // 打开整页也从头看，别接着上次读到的地方。
@@ -269,10 +283,18 @@ fun HomeShell(
                         containerColor = Color.Transparent,
                         bottomBar = {
                             PicaNavigationBar(
-                                selected = tab,
-                                onSelect = {
+                                pagerState = pagerState,
+                                onSelect = { target ->
                                     overlayOrdinal = OverlayPage.None.ordinal
-                                    scope.launch { pagerState.animateScrollToPage(it.ordinal) }
+                                    scope.launch {
+                                        // 隔好几栏就直接落过去：一格一格滑过去要把中间每一栏都完整组合一遍，
+                                        // 点一下卡好几帧。相邻两栏滑过去还是动画。
+                                        if (abs(target.ordinal - pagerState.currentPage) > 1) {
+                                            pagerState.scrollToPage(target.ordinal)
+                                        } else {
+                                            pagerState.animateScrollToPage(target.ordinal)
+                                        }
+                                    }
                                 },
                             )
                         },
@@ -584,13 +606,18 @@ fun HomeShell(
 }
 
 @Composable
-private fun PicaNavigationBar(selected: HomeTab, onSelect: (HomeTab) -> Unit) {
+private fun PicaNavigationBar(pagerState: PagerState, onSelect: (HomeTab) -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val tabs = HomeTab.entries
+    // 选中态只在这一层读：换页时整页不重组，只有底部栏这颗会跟着更新。
+    val selected by remember(pagerState) {
+        derivedStateOf { tabs[pagerState.currentPage.coerceIn(tabs.indices)] }
+    }
     NavigationBar(
         containerColor = colors.surface.copy(alpha = 0.94f),
         tonalElevation = 3.dp,
     ) {
-        HomeTab.entries.forEach { tab ->
+        tabs.forEach { tab ->
             val isSelected = tab == selected
             NavigationBarItem(
                 selected = isSelected,
