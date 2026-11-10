@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,14 +14,11 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -143,10 +139,10 @@ class SearchState {
 fun rememberSearchState(): SearchState = remember { SearchState() }
 
 /**
- * 搜索页：顶栏和本子列表一样（返回 / 标题 / 共几本 / 汉堡菜单），下面一条搜索框。
+ * 搜索页：整页容器和本子列表一样（[PageScaffold]），顶栏也会跟着滚动自动收起 / 展开。
  *
- * 汉堡里能跳页、能换排序；没搜的时候摆一排热搜词，点一个直接搜。
- * 结果沿用分类列表那一行本子，滚到底接着续页。
+ * 顶栏还是那套：返回 / 标题 / 共几本 / 汉堡（跳页 + 排序方式），下面多一行搜索框。
+ * 没搜的时候摆一排热搜词，点一个直接搜；结果沿用分类列表那一行本子，滚到底接着续页。
  */
 @Composable
 fun SearchContent(
@@ -201,137 +197,172 @@ fun SearchContent(
         state.submit(text ?: state.query)
         keyboard?.hide()
     }
+    // 下拉刷新 = 拿同一个词重搜一遍（和本子列表的刷新一个意思）。
+    val refresh: (suspend () -> Unit)? = if (pager == null) null else ({ pager.reloadFirstPage() })
 
-    Column(modifier.fillMaxSize().imePadding()) {
-        // 顶栏：和本子列表同一套 —— 返回 + 标题 + 共几本 + 汉堡菜单。
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 8.dp, end = 12.dp, top = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
-                PicaGlyph(
-                    icon = PicaIcon.Back,
-                    modifier = Modifier.size(22.dp),
-                    tint = colors.onBackground,
-                )
-            }
-            Spacer(Modifier.width(6.dp))
-            Box(Modifier.weight(1f)) { PageHeader(title = "搜索") }
-            if (pager != null && pager.total > 0) {
-                Text(
-                    text = "${compactCount(pager.total)} 本",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colors.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 4.dp),
-                )
-            }
-            // 汉堡菜单：跳页 + 排序方式，和本子列表里那颗一样。
-            Box {
-                IconButton(
-                    onClick = { menuOpen = true },
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    PicaGlyph(
-                        icon = PicaIcon.Menu,
-                        modifier = Modifier.size(22.dp),
-                        tint = colors.onBackground,
-                    )
-                }
-                DropdownMenu(
-                    expanded = menuOpen,
-                    onDismissRequest = { menuOpen = false },
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("跳页") },
-                        enabled = pager != null,
-                        leadingIcon = {
-                            PicaGlyph(PicaIcon.ArrowRight, Modifier.size(18.dp), colors.onSurfaceVariant)
-                        },
-                        onClick = {
-                            menuOpen = false
-                            showJump = true
-                        },
-                    )
-                    HorizontalDivider()
-                    Text(
-                        text = "排序方式",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp),
-                    )
-                    ComicSort.entries.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option.label) },
-                            trailingIcon = {
-                                if (option.value == state.sort) {
-                                    PicaGlyph(PicaIcon.Check, Modifier.size(18.dp), colors.primary)
-                                }
-                            },
-                            onClick = {
-                                menuOpen = false
-                                state.onSortChange(option.value)
-                            },
+    PageScaffold(
+        state = listState,
+        modifier = modifier.fillMaxSize().imePadding(),
+        onRefresh = refresh,
+        header = {
+            Column(Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                        PicaGlyph(
+                            icon = PicaIcon.Back,
+                            modifier = Modifier.size(22.dp),
+                            tint = colors.onBackground,
                         )
                     }
-                }
-            }
-        }
-
-        // 搜索框：回车 / 键盘上的搜索键 / 右边那颗「搜索」都行。
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 2.dp, bottom = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = state::onQueryChange,
-                modifier = Modifier.weight(1f).focusRequester(focus),
-                placeholder = { Text("搜本子：标题、作者", style = MaterialTheme.typography.bodyMedium) },
-                singleLine = true,
-                shape = CircleShape,
-                textStyle = MaterialTheme.typography.bodyMedium,
-                leadingIcon = {
-                    PicaGlyph(
-                        icon = PicaIcon.Search,
-                        modifier = Modifier.size(20.dp),
-                        tint = colors.onSurfaceVariant,
-                    )
-                },
-                trailingIcon = {
-                    if (state.query.isNotEmpty()) {
-                        IconButton(onClick = { state.onQueryChange("") }) {
+                    Spacer(Modifier.width(6.dp))
+                    Box(Modifier.weight(1f)) {
+                        PageHeader(title = "搜索")
+                    }
+                    if (pager != null && pager.total > 0) {
+                        Text(
+                            text = "${compactCount(pager.total)} 本",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
+                    // 汉堡菜单：跳页 + 排序方式，和本子列表里那颗一样。
+                    Box {
+                        IconButton(
+                            onClick = { menuOpen = true },
+                            modifier = Modifier.size(40.dp),
+                        ) {
                             PicaGlyph(
-                                icon = PicaIcon.Close,
-                                modifier = Modifier.size(18.dp),
-                                tint = colors.onSurfaceVariant,
+                                icon = PicaIcon.Menu,
+                                modifier = Modifier.size(22.dp),
+                                tint = colors.onBackground,
                             )
                         }
+                        DropdownMenu(
+                            expanded = menuOpen,
+                            onDismissRequest = { menuOpen = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("跳页") },
+                                enabled = pager != null,
+                                leadingIcon = {
+                                    PicaGlyph(
+                                        icon = PicaIcon.ArrowRight,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = colors.onSurfaceVariant,
+                                    )
+                                },
+                                onClick = {
+                                    menuOpen = false
+                                    showJump = true
+                                },
+                            )
+                            HorizontalDivider()
+                            Text(
+                                text = "排序方式",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp),
+                            )
+                            ComicSort.entries.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.label) },
+                                    trailingIcon = {
+                                        if (option.value == state.sort) {
+                                            PicaGlyph(PicaIcon.Check, Modifier.size(18.dp), colors.primary)
+                                        }
+                                    },
+                                    onClick = {
+                                        menuOpen = false
+                                        state.onSortChange(option.value)
+                                    },
+                                )
+                            }
+                        }
                     }
-                },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { submit(null) }),
-                colors = searchFieldColors(),
-            )
-            Spacer(Modifier.width(4.dp))
-            TextButton(onClick = { submit(null) }) {
-                Text("搜索", style = MaterialTheme.typography.labelLarge)
+                }
+                // 搜索框：回车 / 键盘上的搜索键 / 右边那颗「搜索」都行。
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedTextField(
+                        value = state.query,
+                        onValueChange = state::onQueryChange,
+                        modifier = Modifier.weight(1f).focusRequester(focus),
+                        placeholder = {
+                            Text("搜本子：标题、作者", style = MaterialTheme.typography.bodyMedium)
+                        },
+                        singleLine = true,
+                        shape = CircleShape,
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        leadingIcon = {
+                            PicaGlyph(
+                                icon = PicaIcon.Search,
+                                modifier = Modifier.size(20.dp),
+                                tint = colors.onSurfaceVariant,
+                            )
+                        },
+                        trailingIcon = {
+                            if (state.query.isNotEmpty()) {
+                                IconButton(onClick = { state.onQueryChange("") }) {
+                                    PicaGlyph(
+                                        icon = PicaIcon.Close,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = colors.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { submit(null) }),
+                        colors = searchFieldColors(),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    TextButton(onClick = { submit(null) }) {
+                        Text("搜索", style = MaterialTheme.typography.labelLarge)
+                    }
+                }
             }
-        }
-
+        },
+    ) {
         if (pager == null) {
-            HotKeywordPanel(state = state, onSubmit = submit)
+            item(key = "search-hot") {
+                HotKeywordPanel(state = state, onSubmit = submit)
+            }
         } else {
-            SearchResults(
-                pager = pager,
-                listState = listState,
-                onOpenComic = onOpenComic,
-                comicRowModifier = comicRowModifier,
-                onRetry = { scope.launch { pager.retry() } },
-            )
+            if (pager.items.isEmpty()) {
+                item(key = "search-state") {
+                    when {
+                        pager.error != null -> FailedBlock(pager.error.orEmpty()) {
+                            scope.launch { pager.retry() }
+                        }
+
+                        pager.loading -> LoadingBlock("正在搜…")
+                        else -> EmptyBlock("没搜到，换个词试试")
+                    }
+                }
+            }
+            items(count = pager.items.size, key = { pager.items[it].id }) { index ->
+                val comic = pager.items[index]
+                val rowKey = "searchComic-${comic.id}"
+                ComicListRow(
+                    comic = comic,
+                    onClick = { onOpenComic(comic, rowKey) },
+                    modifier = comicRowModifier(rowKey),
+                )
+            }
+            if (pager.items.isNotEmpty()) {
+                item(key = "search-footer") {
+                    ListFooter(
+                        loading = pager.loading,
+                        error = pager.error,
+                        hasMore = pager.hasMore,
+                        onRetry = { scope.launch { pager.retry() } },
+                    )
+                }
+            }
         }
     }
 
@@ -344,20 +375,14 @@ fun SearchContent(
     }
 }
 
-/** 还没搜时的那一块：热搜词 + 一句提示。 */
+/** 还没搜时的那一块：热搜词 + 一句提示。放在列表当第一项，滚动交给外面的容器。 */
 @Composable
 private fun HotKeywordPanel(
     state: SearchState,
     onSubmit: (String?) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 22.dp),
-    ) {
-        Spacer(Modifier.height(16.dp))
+    Column(Modifier.fillMaxWidth()) {
         if (state.hotKeywords.isNotEmpty()) {
             Text(
                 text = "大家都在搜",
@@ -373,14 +398,13 @@ private fun HotKeywordPanel(
                     HotKeywordChip(text = word, onClick = { onSubmit(word) })
                 }
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
         }
         Text(
             text = "输入关键词，按键盘上的搜索键就能找本子；标题和作者都能搜。",
             style = MaterialTheme.typography.bodySmall,
             color = colors.onSurfaceVariant,
         )
-        Spacer(Modifier.height(24.dp))
     }
 }
 
@@ -401,51 +425,6 @@ private fun HotKeywordChip(text: String, onClick: () -> Unit) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
         )
-    }
-}
-
-/** 搜索结果：和分类列表一样的单列本子，滚到底续页。 */
-@Composable
-private fun SearchResults(
-    pager: Pager<ComicSummary>,
-    listState: LazyListState,
-    onOpenComic: (ComicSummary, String) -> Unit,
-    comicRowModifier: @Composable (String) -> Modifier,
-    onRetry: () -> Unit,
-) {
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 22.dp, vertical = 12.dp),
-    ) {
-        if (pager.items.isEmpty()) {
-            item(key = "search-state") {
-                when {
-                    pager.error != null -> FailedBlock(pager.error.orEmpty(), onRetry)
-                    pager.loading -> LoadingBlock("正在搜…")
-                    else -> EmptyBlock("没搜到，换个词试试")
-                }
-            }
-        }
-        items(count = pager.items.size, key = { pager.items[it].id }) { index ->
-            val comic = pager.items[index]
-            val rowKey = "searchComic-${comic.id}"
-            ComicListRow(
-                comic = comic,
-                onClick = { onOpenComic(comic, rowKey) },
-                modifier = comicRowModifier(rowKey),
-            )
-        }
-        if (pager.items.isNotEmpty()) {
-            item(key = "search-footer") {
-                ListFooter(
-                    loading = pager.loading,
-                    error = pager.error,
-                    hasMore = pager.hasMore,
-                    onRetry = onRetry,
-                )
-            }
-        }
     }
 }
 
