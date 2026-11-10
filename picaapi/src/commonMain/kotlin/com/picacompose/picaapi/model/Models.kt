@@ -40,6 +40,8 @@ data class ComicSummary(
     @SerialName("epsCount") val episodesCount: Int = 0,
     val finished: Boolean = false,
     val categories: List<String> = emptyList(),
+    /** 列表接口也带着标签，筛多标签时靠它本地过滤。 */
+    val tags: List<String> = emptyList(),
     val thumb: Thumbnail? = null,
     val viewsCount: Int = 0,
     val leaderboardCount: Int = 0,

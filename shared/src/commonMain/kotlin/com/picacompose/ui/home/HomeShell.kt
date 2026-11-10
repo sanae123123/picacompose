@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
+import com.picacompose.picaapi.model.ComicSummary
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.BackHandlerCompat
 import com.picacompose.data.NoticeUnread
@@ -140,17 +141,32 @@ fun HomeShell(
     var comicSort by rememberSaveable { mutableStateOf<String?>(null) }
     // 完结筛选是枚举，rememberSaveable 能直接存；换排序 / 换筛选都会换一个 pager，从头拉。
     var comicFinished by rememberSaveable { mutableStateOf(ComicFinished.All) }
-    val comicPager = remember(comicTitle, comicSort, comicFinished) {
+    // 标签筛选：多个标签要求同时包含。服务端只认一个 `t`，所以第一个丢给接口，其余在本地筛。
+    // rememberSaveable 存 List 不稳，用换行拼成一个字符串。
+    var comicTagsRaw by rememberSaveable { mutableStateOf("") }
+    val comicTags = remember(comicTagsRaw) {
+        comicTagsRaw.split('\n').filter { it.isNotBlank() }
+    }
+    val comicPager = remember(comicTitle, comicSort, comicFinished, comicTagsRaw) {
+        val extraTags = comicTags.drop(1)
         Pager(
             load = { page ->
                 pica.comics.list(
                     page = page,
                     category = comicTitle.ifBlank { null },
+                    tag = comicTags.firstOrNull(),
                     sort = comicSort,
                     finished = comicFinished.value,
                 )
             },
             itemKey = { it.id },
+            filter = if (extraTags.isEmpty()) {
+                null
+            } else {
+                { comic: ComicSummary ->
+                    extraTags.all { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } }
+                }
+            },
         )
     }
     val comicListState = rememberLazyListState()
@@ -411,6 +427,7 @@ fun HomeShell(
                                             comicLabel = category.title
                                             comicSort = null
                                             comicFinished = ComicFinished.All
+                                            comicTagsRaw = ""
                                             comicKey = categoryTileKey(category)
                                             overlayOrdinal = OverlayPage.Comics.ordinal
                                         },
@@ -419,6 +436,7 @@ fun HomeShell(
                                             comicLabel = "最新更新"
                                             comicSort = "dd"
                                             comicFinished = ComicFinished.All
+                                            comicTagsRaw = ""
                                             comicKey = "latestTile"
                                             overlayOrdinal = OverlayPage.Comics.ordinal
                                         },
@@ -563,6 +581,8 @@ fun HomeShell(
                                     onSortChange = { comicSort = it },
                                     finished = comicFinished,
                                     onFinishedChange = { comicFinished = it },
+                                    tags = comicTags,
+                                    onTagsChange = { comicTagsRaw = it.joinToString("\n") },
                                     // 每一行各自挂一个变形源，点开就从那一行长成整屏。
                                     comicRowModifier = { key ->
                                         with(shared) { overlayBounds(key, contentScope) }

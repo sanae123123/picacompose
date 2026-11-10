@@ -16,16 +16,23 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.readingProgressStore
@@ -69,6 +77,9 @@ fun ComicListContent(
     /** 完结筛选，点了筛选弹窗里的「应用」才变。 */
     finished: ComicFinished = ComicFinished.All,
     onFinishedChange: (ComicFinished) -> Unit = {},
+    /** 标签筛选：多个标签要同时包含。服务端只认一个标签，其余在本地过一遍。 */
+    tags: List<String> = emptyList(),
+    onTagsChange: (List<String>) -> Unit = {},
     /** 点一本就打开详情页；第二个参数是这一行的变形 key。 */
     onOpenComic: (ComicSummary, String) -> Unit = { _, _ -> },
     /** 给每一行挂变形源：详情页的 key 和它配对，点开从这一行长成整屏。 */
@@ -79,6 +90,19 @@ fun ComicListContent(
     var menuOpen by remember { mutableStateOf(false) }
     var showJump by remember { mutableStateOf(false) }
     var showFilter by remember { mutableStateOf(false) }
+
+    // 筛选弹窗里的候选标签：服务端没有标签字典接口，就拿当前列表里出现过的标签按频次凑。
+    val tagSuggestions = remember(pager.items) {
+        pager.items
+            .flatMap { it.tags }
+            .filter { it.isNotBlank() }
+            .groupingBy { it }
+            .eachCount()
+            .entries
+            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+            .map { it.key }
+            .take(40)
+    }
 
     LaunchedEffect(pager) {
         // 换排序会换一个 pager，回到顶部重新看。
@@ -117,10 +141,15 @@ fun ComicListContent(
                 Box(Modifier.weight(1f)) {
                     PageHeader(title = title)
                 }
-                // 官方列表右上角有个总数，这里也给一个。
-                if (pager.total > 0) {
+                // 官方列表右上角有个总数，这里也给一个；加了标签筛之后总数没意义，显示筛出来的条数。
+                val countText = if (tags.isEmpty()) {
+                    if (pager.total > 0) "${compactCount(pager.total)} 本" else null
+                } else {
+                    "已筛 ${pager.items.size} 本"
+                }
+                if (countText != null) {
                     Text(
-                        text = "${compactCount(pager.total)} 本",
+                        text = countText,
                         style = MaterialTheme.typography.labelMedium,
                         color = colors.onSurfaceVariant,
                     )
@@ -133,7 +162,7 @@ fun ComicListContent(
                     PicaGlyph(
                         icon = PicaIcon.Filter,
                         modifier = Modifier.size(22.dp),
-                        tint = if (finished == ComicFinished.All) {
+                        tint = if (finished == ComicFinished.All && tags.isEmpty()) {
                             colors.onBackground
                         } else {
                             colors.primary
@@ -237,10 +266,13 @@ fun ComicListContent(
         ComicFilterDialog(
             sort = sort,
             finished = finished,
-            onApply = { newSort, newFinished ->
+            tags = tags,
+            tagSuggestions = tagSuggestions,
+            onApply = { newSort, newFinished, newTags ->
                 showFilter = false
                 onSortChange(newSort)
                 onFinishedChange(newFinished)
+                onTagsChange(newTags)
             },
             onDismiss = { showFilter = false },
         )
@@ -248,28 +280,44 @@ fun ComicListContent(
 }
 
 /**
- * 筛选弹窗：排序方式和完结状态。
+ * 筛选弹窗：排序方式、完结状态和标签。
  *
  * 里面是草稿，点「应用」才真的换条件（每点一下就重拉一遍列表太浪费请求）。
+ * 标签可以加好几个，语义是同时包含。
  */
 @Composable
 internal fun ComicFilterDialog(
     sort: String?,
     finished: ComicFinished,
-    onApply: (String?, ComicFinished) -> Unit,
+    tags: List<String>,
+    tagSuggestions: List<String>,
+    onApply: (String?, ComicFinished, List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val pop = rememberDialogPop(onDismiss)
     var draftSort by remember { mutableStateOf(sort) }
     var draftFinished by remember { mutableStateOf(finished) }
+    var draftTags by remember { mutableStateOf(tags) }
+    var tagInput by remember { mutableStateOf("") }
+
+    fun addTag(raw: String) {
+        val tag = raw.trim()
+        if (tag.isEmpty()) return
+        if (draftTags.none { it.equals(tag, ignoreCase = true) }) draftTags = draftTags + tag
+        tagInput = ""
+    }
 
     AlertDialog(
         onDismissRequest = pop::dismiss,
         modifier = pop.modifier,
         title = { Text(text = "筛选", style = MaterialTheme.typography.titleMedium) },
         text = {
-            Column {
+            Column(
+                Modifier
+                    .heightIn(max = 460.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
                 Text(
                     text = "排序方式",
                     style = MaterialTheme.typography.labelMedium,
@@ -311,10 +359,99 @@ internal fun ComicFilterDialog(
                         )
                     }
                 }
+                Spacer(Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "标签筛选",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (draftTags.isNotEmpty()) {
+                        TextButton(onClick = { draftTags = emptyList() }) {
+                            Text(text = "清空", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "可加多个，要求同时包含。服务端一次只认一个标签，其余的在这里本地筛，命中少会自动多翻几页。",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = tagInput,
+                        onValueChange = { tagInput = it },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall,
+                        placeholder = {
+                            Text(text = "输入标签名", style = MaterialTheme.typography.bodySmall)
+                        },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { addTag(tagInput) }),
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(onClick = { addTag(tagInput) }, enabled = tagInput.isNotBlank()) {
+                        Text("添加")
+                    }
+                }
+                if (draftTags.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        draftTags.forEach { tag ->
+                            InputChip(
+                                selected = true,
+                                onClick = { draftTags = draftTags - tag },
+                                label = {
+                                    Text(text = tag, style = MaterialTheme.typography.bodySmall)
+                                },
+                                trailingIcon = {
+                                    PicaGlyph(
+                                        icon = PicaIcon.Close,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = colors.onSurfaceVariant,
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
+                val remaining = tagSuggestions
+                    .filter { candidate -> draftTags.none { it.equals(candidate, ignoreCase = true) } }
+                    .take(24)
+                if (remaining.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "列表里出现过的标签",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        remaining.forEach { tag ->
+                            FilterChip(
+                                selected = false,
+                                onClick = { addTag(tag) },
+                                label = {
+                                    Text(text = tag, style = MaterialTheme.typography.bodySmall)
+                                },
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onApply(draftSort, draftFinished) }) { Text("应用") }
+            TextButton(onClick = { onApply(draftSort, draftFinished, draftTags) }) { Text("应用") }
         },
         dismissButton = {
             TextButton(onClick = pop::dismiss) { Text("取消") }

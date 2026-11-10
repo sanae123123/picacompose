@@ -24,7 +24,18 @@ class Pager<T>(
      * 让同一个 key 塞进 LazyColumn，那条路是会直接崩的。传 null 就原样拼接。
      */
     private val itemKey: ((T) -> String)? = null,
+    /**
+     * 每拉回一页再筛一道。服务端不支持的条件（比如多个标签同时包含）走这里：
+     * 筛完一页太少，[loadNext] 会自己接着往下拉，不至于一屏见底。
+     */
+    private val filter: ((T) -> Boolean)? = null,
 ) {
+    /** 筛完一页至少要有这么多条，不够就继续拉下一页。 */
+    private val minFreshPerPage = 8
+
+    /** 一次加载最多连拉多少页，别在筛得太狠时把请求打爆。 */
+    private val maxFetchRounds = 10
+
     var items by mutableStateOf<List<T>>(emptyList())
         private set
     var loading by mutableStateOf(false)
@@ -49,14 +60,28 @@ class Pager<T>(
         loading = true
         error = null
         try {
-            catchingLoad { load(loadedPage + 1) }
-                .onSuccess { paged ->
-                    items = merged(items + paged.docs)
-                    loadedPage = paged.page.takeIf { it > 0 } ?: (loadedPage + 1)
-                    lastPage = paged.pages.coerceAtLeast(loadedPage)
-                    total = paged.total
+            var fresh = 0
+            var rounds = 0
+            var failure: Throwable? = null
+            while (rounds < maxFetchRounds) {
+                val target = loadedPage + 1
+                val result = catchingLoad { load(target) }
+                val paged = result.getOrNull()
+                if (paged == null) {
+                    failure = result.exceptionOrNull()
+                    break
                 }
-                .onFailure { error = it.message ?: "列表没拉到" }
+                val kept = if (filter == null) paged.docs else paged.docs.filter(filter)
+                items = merged(items + kept)
+                fresh += kept.size
+                loadedPage = paged.page.takeIf { it > 0 } ?: target
+                lastPage = paged.pages.coerceAtLeast(loadedPage)
+                total = paged.total
+                rounds++
+                // 没配过滤器、原始页见底、或者筛出来的够一屏了，就收手。
+                if (filter == null || loadedPage >= lastPage || fresh >= minFreshPerPage) break
+            }
+            failure?.let { error = it.message ?: "列表没拉到" }
         } finally {
             // 页面被销毁导致取消时也得放掉，不然下次进来一直被挡住。
             loading = false
@@ -83,13 +108,30 @@ class Pager<T>(
         loading = true
         error = null
         try {
-            catchingLoad { load(1) }
-                .onSuccess { paged ->
-                    items = merged(paged.docs)
-                    loadedPage = 1
-                    lastPage = paged.pages.coerceAtLeast(1)
+            var loaded: List<T> = emptyList()
+            var fresh = 0
+            var rounds = 0
+            var page = 1
+            var failure: Throwable? = null
+            while (rounds < maxFetchRounds) {
+                val result = catchingLoad { load(page) }
+                val paged = result.getOrNull()
+                if (paged == null) {
+                    failure = result.exceptionOrNull()
+                    break
                 }
-                .onFailure { error = it.message ?: "列表没拉到" }
+                val kept = if (filter == null) paged.docs else paged.docs.filter(filter)
+                loaded = loaded + kept
+                fresh += kept.size
+                loadedPage = paged.page.takeIf { it > 0 } ?: page
+                lastPage = paged.pages.coerceAtLeast(loadedPage)
+                total = paged.total
+                rounds++
+                if (filter == null || loadedPage >= lastPage || fresh >= minFreshPerPage) break
+                page = loadedPage + 1
+            }
+            items = merged(loaded)
+            failure?.let { error = it.message ?: "列表没拉到" }
         } finally {
             loading = false
         }
@@ -107,7 +149,8 @@ class Pager<T>(
         try {
             catchingLoad { load(page) }
                 .onSuccess { paged ->
-                    items = merged(paged.docs)
+                    val kept = if (filter == null) paged.docs else paged.docs.filter(filter)
+                    items = merged(kept)
                     loadedPage = page
                     lastPage = paged.pages.coerceAtLeast(page)
                 }

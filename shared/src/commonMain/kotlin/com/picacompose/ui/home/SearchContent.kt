@@ -79,6 +79,10 @@ class SearchState {
     var finished by mutableStateOf(ComicFinished.All)
         private set
 
+    /** 标签筛选：多个要同时包含，搜索接口同样不吃，拢在 [pagerFor] 里本地筛。 */
+    var tags by mutableStateOf<List<String>>(emptyList())
+        private set
+
     /** 当前关键词的结果分页；null 是还没搜。 */
     var pager by mutableStateOf<Pager<ComicSummary>?>(null)
         private set
@@ -132,6 +136,7 @@ class SearchState {
         keyword = ""
         sort = null
         finished = ComicFinished.All
+        tags = emptyList()
         pager = null
         focusPending = false
     }
@@ -144,24 +149,37 @@ class SearchState {
         pager = pagerFor(keyword, sort)
     }
 
+    /** 换标签筛选，同样的关键词重搜。 */
+    fun onTagsChange(value: List<String>) {
+        if (value == tags) return
+        tags = value
+        if (keyword.isBlank()) return
+        pager = pagerFor(keyword, sort)
+    }
+
     /**
      * 一次搜索的分页。
      *
-     * 搜索接口不吃完结参数，所以等服务端回来后在 `docs` 上再筛一遍；页数、总数仍按
-     * 服务端那套走，翻页不会乱（某一页被筛空时由界面自己接着往下翻）。
+     * 搜索接口不吃完结和标签，所以这两样交给 [Pager] 的 filter 在本地筛；页数、总数
+     * 仍按服务端那套走，一页筛得只剩几条时会自己接着往下翻，不会一屏见底。
      */
     private fun pagerFor(keyword: String, sort: String?): Pager<ComicSummary> {
         val want = finished.value
-        return Pager(
-            load = { page ->
-                val paged = pica.comics.advancedSearch(keyword = keyword, sort = sort, page = page)
-                if (want == null) {
-                    paged
-                } else {
-                    paged.copy(docs = paged.docs.filter { it.finished == want })
+        val wantedTags = tags
+        val filter: ((ComicSummary) -> Boolean)? = when {
+            want == null && wantedTags.isEmpty() -> null
+            else -> { comic ->
+                val finishedOk = want == null || comic.finished == want
+                val tagsOk = wantedTags.all { tag ->
+                    comic.tags.any { it.equals(tag, ignoreCase = true) }
                 }
-            },
+                finishedOk && tagsOk
+            }
+        }
+        return Pager(
+            load = { page -> pica.comics.advancedSearch(keyword = keyword, sort = sort, page = page) },
             itemKey = { it.id },
+            filter = filter,
         )
     }
 
@@ -270,7 +288,11 @@ fun SearchContent(
                     }
                     if (pager != null && pager.total > 0) {
                         Text(
-                            text = "${compactCount(pager.total)} 本",
+                            text = if (state.tags.isEmpty()) {
+                                "${compactCount(pager.total)} 本"
+                            } else {
+                                "已筛 ${pager.items.size} 本"
+                            },
                             style = MaterialTheme.typography.labelMedium,
                             color = colors.onSurfaceVariant,
                         )
@@ -283,7 +305,7 @@ fun SearchContent(
                         PicaGlyph(
                             icon = PicaIcon.Filter,
                             modifier = Modifier.size(22.dp),
-                            tint = if (state.finished == ComicFinished.All) {
+                            tint = if (state.finished == ComicFinished.All && state.tags.isEmpty()) {
                                 colors.onBackground
                             } else {
                                 colors.primary
@@ -406,7 +428,7 @@ fun SearchContent(
 
                         pager.loading -> LoadingBlock("正在搜…")
                         // 本地筛掉了也是这个空态，说清楚是筛选的问题还是词的问题。
-                        state.finished == ComicFinished.All -> EmptyBlock("没搜到，换个词试试")
+                        state.finished == ComicFinished.All && state.tags.isEmpty() -> EmptyBlock("没搜到，换个词试试")
                         else -> EmptyBlock("这个筛选下没搜到，换个条件试试")
                     }
                 }
@@ -434,13 +456,28 @@ fun SearchContent(
     }
 
     if (showFilter) {
+        // 候选标签拿这次结果里出现过的凑，跟本子列表一个路子。
+        val tagSuggestions = remember(showFilter, pager) {
+            pager?.items.orEmpty()
+                .flatMap { it.tags }
+                .filter { it.isNotBlank() }
+                .groupingBy { it }
+                .eachCount()
+                .entries
+                .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+                .map { it.key }
+                .take(40)
+        }
         ComicFilterDialog(
             sort = state.sort,
             finished = state.finished,
-            onApply = { newSort, newFinished ->
+            tags = state.tags,
+            tagSuggestions = tagSuggestions,
+            onApply = { newSort, newFinished, newTags ->
                 showFilter = false
                 state.onSortChange(newSort)
                 state.onFinishedChange(newFinished)
+                state.onTagsChange(newTags)
             },
             onDismiss = { showFilter = false },
         )
