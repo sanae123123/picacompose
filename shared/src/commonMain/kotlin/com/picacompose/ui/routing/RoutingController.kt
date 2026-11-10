@@ -6,7 +6,9 @@ import androidx.compose.runtime.setValue
 import com.picacompose.data.LineRouter
 import com.picacompose.data.PicaLine
 import com.picacompose.data.RouteStore
+import com.picacompose.data.LinePreferences
 import com.picacompose.data.applyPicaRoute
+import com.picacompose.data.dohAddressesIfEnabled
 import com.picacompose.picaapi.fetchBootstrap
 import com.picacompose.picaapi.pinnedEngine
 import io.ktor.client.HttpClient
@@ -30,7 +32,10 @@ data class LineProbe(
  * 实际只打两次点：系统解析、下发 IP。线路 2/3 走同一批 IP，只是通道号不同，
  * 所以共用同一个数值。
  */
-class RoutingController(private val store: RouteStore = RouteStore()) {
+class RoutingController(
+    private val store: RouteStore = RouteStore(),
+    private val preferences: LinePreferences = LinePreferences(),
+) {
 
     var loading by mutableStateOf(true)
         private set
@@ -58,16 +63,20 @@ class RoutingController(private val store: RouteStore = RouteStore()) {
         val savedIps = ips
 
         // 拉列表和测速并行跑：系统解析不需要 IP 池，用上次存的池也能先测起来，
-        // 冷启动就少等一个来回。
-        val (info, systemMs, savedPinnedMs) = coroutineScope {
+        // 冷启动就少等一个来回。DoH 开着时也会跟着一起问。
+        val (fetched, systemMs, savedPinnedMs) = coroutineScope {
             val bootstrap = async { fetchBootstrap() }
+            val doh = async { dohAddressesIfEnabled(preferences) }
             val system = async { measure(PicaLine.System, emptyList()) }
             val pinned = async { if (savedIps.isEmpty()) null else measure(PicaLine.PinnedFast, savedIps) }
-            Triple(bootstrap.await(), system.await(), pinned.await())
+            Triple(
+                (doh.await() + bootstrap.await()?.addresses.orEmpty()).distinct(),
+                system.await(),
+                pinned.await(),
+            )
         }
 
-        val fetched = info?.addresses.orEmpty()
-        val poolChanged = info != null && fetched != savedIps
+        val poolChanged = fetched.isNotEmpty() && fetched != savedIps
         ips = fetched.ifEmpty { savedIps }
 
         // 首次启动（或服务端换了 IP 池）才需要用新池补测一次，平时直接复用并行结果。

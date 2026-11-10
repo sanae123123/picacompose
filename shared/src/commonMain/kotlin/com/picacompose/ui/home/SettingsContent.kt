@@ -42,6 +42,7 @@ fun SettingsContent(onSignOut: () -> Unit) {
     // 开关的界面状态：改完立刻落盘，下次冷启动按新的来。
     var autoProbe by remember { mutableStateOf(preferences.autoProbe) }
     var fastEntry by remember { mutableStateOf(preferences.fastEntry) }
+    var doh by remember { mutableStateOf(preferences.doh) }
 
     PageScaffold(
         header = { PageHeader(title = "设置") },
@@ -106,6 +107,18 @@ fun SettingsContent(onSignOut: () -> Unit) {
                         else -> "系统解析"
                     },
                 )
+                Spacer(Modifier.height(4.dp))
+                SwitchRow(
+                    icon = PicaIcon.Shield,
+                    title = "DoH 解析",
+                    summary = "启动时用 DNS over HTTPS 再解析一遍接口域名，绕开被污染的 DNS。" +
+                        "默认关，打开后每次启动多问一次 DoH（和 /init 并行，不会多等一个来回）。",
+                    checked = doh,
+                    onCheckedChange = { on ->
+                        doh = on
+                        preferences.doh = on
+                    },
+                )
             }
             Spacer(Modifier.height(14.dp))
         }
@@ -122,7 +135,8 @@ fun SettingsContent(onSignOut: () -> Unit) {
                 text = "记住账号只保存 token 和账号名，下次打开直接恢复会话；" +
                     "退出登录会清掉 token，账号名留着方便下次登录。线路的开关改完下次打开生效：" +
                     "自动测速关掉后不会再有后台测速，也不会自己换线路，网络变了要手动去线路页重选；" +
-                    "快速进入关掉后每次启动会多等一次测速。",
+                    "快速进入关掉后每次启动会多等一次测速；DoH 打开后拿到的地址会优先用于连线路，" +
+                    "问到的是被污染的地址时连不上会自己退回下发 IP。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

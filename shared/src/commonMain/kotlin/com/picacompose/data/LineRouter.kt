@@ -52,6 +52,7 @@ object LineRouter {
     private var probeJob: Job? = null
     private val switchLock = Mutex()
     private val store = RouteStore()
+    private val preferences = LinePreferences()
 
     /** 当前客户端是按哪条线路、哪批 IP 建的，用来避免拿一模一样的组合反复重建。 */
     private var appliedLine: PicaLine? = null
@@ -157,11 +158,13 @@ object LineRouter {
     private suspend fun probeAll(savedIps: List<String>): ProbeResult = coroutineScope {
         // 拉列表和测速并行：系统解析不用 IP 池，先测起来。
         val bootstrap = async { fetchBootstrap() }
+        // DoH 开着就多问一路：它给的地址是没被污染的那份，排在 /init 下发的地址前面。
+        val doh = async { dohAddressesIfEnabled(preferences) }
         val systemJob = async { measure(null) }
         val savedPinJob = async { if (savedIps.isEmpty()) null else measure(savedIps) }
 
         val info = bootstrap.await()
-        val fetched = info?.addresses.orEmpty()
+        val fetched = (doh.await() + info?.addresses.orEmpty()).distinct()
         val ips = fetched.ifEmpty { savedIps }
         val system = systemJob.await()
         val savedPin = savedPinJob.await()
