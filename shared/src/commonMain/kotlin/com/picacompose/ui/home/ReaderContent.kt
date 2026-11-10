@@ -38,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -80,6 +81,7 @@ import com.picacompose.ui.components.url
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.exp
 
 /** 提前把后面几张图抓下来，手指划过去时是现成的。 */
@@ -123,6 +125,8 @@ fun ReaderContent(
     var offset by remember { mutableStateOf(Offset.Zero) }
     var viewport by remember { mutableStateOf(IntSize.Zero) }
     var flingJob by remember { mutableStateOf<Job?>(null) }
+    // 只在「有没有放大」翻转时才重组，缩放过程中每帧都读 scale 会把整个列表重组一遍。
+    val zoomed by remember { derivedStateOf { scale > 1f } }
     val scope = rememberCoroutineScope()
     val platformContext = LocalPlatformContext.current
 
@@ -249,7 +253,9 @@ fun ReaderContent(
                             zoomed = { scale > 1f },
                             onStart = { flingJob?.cancel() },
                             onZoom = { zoom, pan, centroid ->
-                                val next = (scale * zoom).coerceIn(1f, MAX_ZOOM)
+                                // 两指斜着划时指间距会抖，很小的缩放变化直接忽略，免得画面来回弹。
+                                val steady = if (abs(zoom - 1f) < 0.008f) 1f else zoom
+                                val next = (scale * steady).coerceIn(1f, MAX_ZOOM)
                                 val center = Offset(viewport.width / 2f, viewport.height / 2f)
                                 // 手指按在哪儿就以哪儿为轴放大，不然老往屏幕中间跑。
                                 val moved = offset + pan * scale - (centroid - center) * (next - scale)
@@ -286,7 +292,12 @@ fun ReaderContent(
                         detectTapGestures(onTap = { chrome = !chrome })
                     },
             ) {
-                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                // 放大时把列表自己的滚动关掉：不然它和我们的平移抢手势，边角上会弹一下。
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    userScrollEnabled = !zoomed,
+                ) {
                     items(pager.items, key = { it.id }) { page ->
                         val url = page.media.url()
                         if (url != null) {
@@ -608,9 +619,17 @@ private suspend fun PointerInputScope.detectReaderGestures(
 
             val change = pressed.first()
             val delta = change.positionChange()
-            moved += delta
-            if (!dragging && moved.getDistance() > viewConfiguration.touchSlop) dragging = true
-            if (dragging) {
+            if (!dragging) {
+                moved += delta
+                if (moved.getDistance() > viewConfiguration.touchSlop) {
+                    dragging = true
+                    change.consume()
+                    tracker.addPosition(change.uptimeMillis, change.position)
+                    // 起手那几像素之前没消费，这里一次补上，画面才不会跳一下。
+                    onDrag(moved)
+                    moved = Offset.Zero
+                }
+            } else {
                 change.consume()
                 tracker.addPosition(change.uptimeMillis, change.position)
                 onDrag(delta)
