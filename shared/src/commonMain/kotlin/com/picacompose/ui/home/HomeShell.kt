@@ -612,6 +612,7 @@ fun HomeShell(
                                 OverlayPage.MyComments -> MyCommentsContent(
                                     pager = myCommentPager,
                                     listState = myCommentListState,
+                                    selfName = profile.name,
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
                                     commentRowModifier = { key ->
                                         with(shared) { overlayBounds(key, contentScope) }

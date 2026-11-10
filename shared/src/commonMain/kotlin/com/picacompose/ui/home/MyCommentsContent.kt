@@ -44,6 +44,8 @@ fun MyCommentsContent(
     onOpenComic: (comicId: String, title: String, key: String) -> Unit = { _, _, _ -> },
     commentRowModifier: @Composable (String) -> Modifier = { Modifier },
     modifier: Modifier = Modifier,
+    /** 当前账号的昵称，评论行显示的名字（接口不返回作者，只能拿自己的）。 */
+    selfName: String? = null,
 ) {
     val scope = rememberCoroutineScope()
     val colors = MaterialTheme.colorScheme
@@ -112,6 +114,7 @@ fun MyCommentsContent(
             val key = "myc-${comment.id}"
             MyCommentCard(
                 comment = comment,
+                selfName = selfName,
                 modifier = commentRowModifier(key),
                 onOpenComic = { comicId, title -> onOpenComic(comicId, title, key) },
             )
@@ -126,11 +129,12 @@ fun MyCommentsContent(
  * 一条历史评论：所在本子的标题 + 评论本体。
  *
  * 评论本体直接用 [CommentRow]，楼中楼的展开、点赞都跟详情页一致；
- * `MyComment` 里没有作者信息（本来就是自己发的），这里补个「我」把头像位占住。
+ * `MyComment` 里没有作者信息（本来就是自己发的），所以头像那一列不显示、名字用当前账号的昵称。
  */
 @Composable
 private fun MyCommentCard(
     comment: MyComment,
+    selfName: String?,
     onOpenComic: (comicId: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -177,15 +181,16 @@ private fun MyCommentCard(
             }
         }
         CommentRow(
-            // 自己的评论没有用户名，补一个占位名，卡片布局和详情页保持一致。
-            comment = comment.asComment(),
+            // 名字用当前账号的昵称；头像不显示（历史评论接口不带作者，加载不出来只会剩个空框）。
+            comment = comment.asComment(selfName),
             onReply = null,
+            showAvatar = false,
         )
     }
 }
 
-/** `MyComment` → 评论行要的那份 `Comment`，字段一一对上，作者填「我」。 */
-private fun MyComment.asComment(): Comment = Comment(
+/** `MyComment` → 评论行要的那份 `Comment`，字段一一对上，作者名用当前账号的昵称。 */
+private fun MyComment.asComment(selfName: String?): Comment = Comment(
     id = id,
     content = content,
     createdAt = createdAt,
@@ -193,5 +198,5 @@ private fun MyComment.asComment(): Comment = Comment(
     childsCount = childsCount,
     isLiked = isLiked,
     hide = hide,
-    user = UserBasic(name = "我"),
+    user = UserBasic(name = selfName?.takeIf { it.isNotBlank() } ?: "绅士"),
 )

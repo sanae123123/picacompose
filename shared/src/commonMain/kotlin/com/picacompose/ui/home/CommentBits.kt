@@ -564,6 +564,8 @@ fun CommentRow(
     comment: Comment,
     onReply: ((CommentReplyTarget) -> Unit)? = null,
     pinned: Boolean = false,
+    /** 自己的评论没有头像可拿（历史评论接口不带作者），关掉就只排名字和正文，不留空头像框。 */
+    showAvatar: Boolean = true,
 ) {
     val colors = MaterialTheme.colorScheme
     val avatar = comment.user?.avatar.url()
@@ -615,28 +617,30 @@ fun CommentRow(
                     ),
             ) {
                 val user = comment.user
-                if (avatar != null) {
-                    UserAvatar(
-                        avatarUrl = avatar,
-                        frameUrl = user?.character,
-                        size = 38.dp,
-                        contentDescription = user?.name,
-                        modifier = Modifier.then(
-                            if (user != null) Modifier.clickable { introUser = user } else Modifier,
-                        ),
-                    )
-                } else {
-                    Surface(
-                        shape = RoundedCornerShape(19.dp),
-                        color = colors.surfaceVariant,
-                        modifier = Modifier
-                            .size(38.dp)
-                            .then(
+                if (showAvatar) {
+                    if (avatar != null) {
+                        UserAvatar(
+                            avatarUrl = avatar,
+                            frameUrl = user?.character,
+                            size = 38.dp,
+                            contentDescription = user?.name,
+                            modifier = Modifier.then(
                                 if (user != null) Modifier.clickable { introUser = user } else Modifier,
                             ),
-                    ) {}
+                        )
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(19.dp),
+                            color = colors.surfaceVariant,
+                            modifier = Modifier
+                                .size(38.dp)
+                                .then(
+                                    if (user != null) Modifier.clickable { introUser = user } else Modifier,
+                                ),
+                        ) {}
+                    }
+                    Spacer(Modifier.width(12.dp))
                 }
-                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.Top) {
                         // 名字放不下就折行，称号跟着掉到下一行，不截成省略号。
@@ -729,7 +733,8 @@ fun CommentRow(
                     pager = replyPager,
                     root = comment,
                     onReply = onReply,
-                    modifier = Modifier.padding(start = 50.dp, top = 12.dp),
+                    // 没有头像那列时就不留那 50dp 的缩进。
+                    modifier = Modifier.padding(start = if (showAvatar) 50.dp else 0.dp, top = 12.dp),
                 )
             }
         }
