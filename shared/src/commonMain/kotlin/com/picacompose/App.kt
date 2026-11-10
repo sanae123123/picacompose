@@ -46,6 +46,7 @@ import com.picacompose.ui.routing.RoutingScreen
 import com.picacompose.ui.theme.PicaTheme
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.HttpTimeoutConfig
 
 /** 启动时要停在哪儿：先试着恢复上次的登录，恢复了就直接进首页。 */
 private enum class Screen { Restoring, Login, Home }
@@ -194,7 +195,7 @@ private fun InstallImageLoader() {
         { context: PlatformContext ->
             ImageLoader.Builder(context).components {
                 add(ImageRetryInterceptor())
-                if (fetcher != null) add(fetcher)
+                add(fetcher)
             }.build()
         }
     }
@@ -202,20 +203,27 @@ private fun InstallImageLoader() {
 }
 
 /**
- * 走 DoH 的图片 fetcher；DoH 关着或者平台没有 DNS 钩子时返回 null，用 Coil 默认的客户端。
+ * 图片专用的 Ktor 客户端：DoH 开着就走 DoH 引擎，关着就走平台默认引擎。
  *
- * 图床的超时比接口宽松：一屏图一起加载，掐太紧会误伤本来就慢的图。
+ * 关键是**一定有超时**。Coil 默认那个客户端是 Ktor 现搭的，超时按引擎默认来；
+ * 移动网络下连接被挂住的时候（图床在切节点、或者半路丢包），请求会一直不返回，
+ * 界面就永远停在 Loading，连错误都拿不到 —— 看起来就是「一直转圈」。
+ * 官方客户端用 OkHttp，自带 10 秒连接超时，所以同样的网络它要么出图要么报错。
+ *
+ * 图床的时限比接口宽松：一屏图一起加载，掐太紧会误伤本来就慢的图。
  */
 @OptIn(ExperimentalCoilApi::class)
-private fun imageFetcher(preferences: LinePreferences): NetworkFetcher.Factory? {
-    if (!preferences.doh) return null
-    val engine = dohEngine() ?: return null
-    val client = HttpClient(engine) {
-        install(HttpTimeout) {
-            requestTimeoutMillis = 20_000
-            connectTimeoutMillis = 8_000
-            socketTimeoutMillis = 20_000
-        }
+private fun imageFetcher(preferences: LinePreferences): NetworkFetcher.Factory {
+    val engine = if (preferences.doh) dohEngine() else null
+    val timeouts: HttpTimeoutConfig.() -> Unit = {
+        requestTimeoutMillis = 60_000
+        connectTimeoutMillis = 10_000
+        socketTimeoutMillis = 20_000
+    }
+    val client = if (engine != null) {
+        HttpClient(engine) { install(HttpTimeout) { timeouts() } }
+    } else {
+        HttpClient { install(HttpTimeout) { timeouts() } }
     }
     return KtorNetworkFetcherFactory(httpClient = client)
 }

@@ -6,6 +6,7 @@ import coil3.request.ErrorResult
 import coil3.request.ImageResult
 import coil3.request.SuccessResult
 import kotlinx.coroutines.delay
+import kotlin.time.TimeSource
 
 /**
  * 图片加载失败时再打一枪。
@@ -24,8 +25,14 @@ import kotlinx.coroutines.delay
 internal class ImageRetryInterceptor : Interceptor {
 
     override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
+        val start = TimeSource.Monotonic.markNow()
         val result = chain.proceed()
-        if (result is SuccessResult) return result
+        val elapsed = start.elapsedNow().inWholeMilliseconds
+        if (result is SuccessResult) {
+            // 慢图不报错，但慢到十几秒基本就等着用户看转圈了，留一行日志好对照。
+            if (elapsed >= SLOW_MS) log("slow ${elapsed}ms ${chain.request.data}")
+            return result
+        }
         val error = result as? ErrorResult ?: return result
         val url = chain.request.data as? String ?: return error
         val code = (error.throwable as? HttpException)?.response?.code
@@ -42,6 +49,7 @@ internal class ImageRetryInterceptor : Interceptor {
             val alt = attempt(chain) { chain.request.newBuilder().data(candidate).build() }
             if (alt is SuccessResult) return alt
         }
+        log("failed ${elapsed}ms $url -> ${error.throwable}")
         return error
     }
 
@@ -54,6 +62,9 @@ internal class ImageRetryInterceptor : Interceptor {
 
     private companion object {
         const val RETRY_DELAY_MS = 350L
+
+        /** 超过这个耗时就算慢图，只记日志不重试。 */
+        const val SLOW_MS = 5_000L
     }
 }
 
@@ -74,4 +85,9 @@ internal fun alternateImageUrls(url: String): List<String> {
     if (tail.isEmpty()) return emptyList()
     val base = if (server.contains("/static")) server else "$server/static"
     return listOf("$base/$tail")
+}
+
+/** 只在 logcat 里留痕：图片这条链路出问题时，光看界面分不清是解析、连接还是解码卡住。 */
+private fun log(message: String) {
+    println("PicaImage: $message")
 }
