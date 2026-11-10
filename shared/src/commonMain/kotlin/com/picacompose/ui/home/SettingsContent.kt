@@ -197,7 +197,9 @@ fun SettingsContent(onSignOut: () -> Unit) {
                     "接口域名也在 Cloudflare 后面，所以同一份顺序也管接口 —— 优选出来的地址排前面，" +
                     "线路钉住的 IP 跟着兜底。候选里带 IPv6 地址，设备有 v6 出口就会一起测、一起用；" +
                     "全测不出来就退回官方池和内置种子地址，不会把能用的清空。" +
-                    "上面的「图片 IP 优选」可以整个关掉：关了就不再后台测速，只用 /init 下发的地址加内置种子。",
+                    "上面的「图片 IP 优选」可以整个关掉：关了就不再后台测速，只用 /init 下发的地址加内置种子。" +
+                    "只要手上有优选池，就不会再自动测线路、也不会自己换线路；请求连不上时先在池子里换一台地址，" +
+                    "连着换三台都不行才重新测一遍线路。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

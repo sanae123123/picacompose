@@ -1,5 +1,6 @@
 package com.picacompose.data
 
+import com.picacompose.picaapi.ImageIps
 import com.picacompose.picaapi.dohEngine
 import com.picacompose.picaapi.fetchBootstrap
 import com.picacompose.picaapi.pinnedEngine
@@ -23,6 +24,9 @@ data class LineStatus(
     val line: PicaLine,
     val latencyMs: Long?,
 )
+
+/** 池子里最多连续轮几台；轮完还不通，才回去测线路 / 换线路。 */
+private const val MAX_POOL_ROTATIONS = 3
 
 /** 后台测速的产物。 */
 private data class ProbeResult(
@@ -70,6 +74,9 @@ object LineRouter {
     private val store = RouteStore()
     private val preferences = LinePreferences()
 
+    /** 这次故障里已经在池子里轮过几台了（换到线路那一步会清零）。 */
+    private var poolRotations = 0
+
     /** 当前客户端是按哪条线路、哪批 IP 建的，用来避免拿一模一样的组合反复重建。 */
     private var appliedLine: PicaLine? = null
     private var appliedIps: List<String> = emptyList()
@@ -99,6 +106,13 @@ object LineRouter {
             return
         }
         if (probeJob?.isActive == true) return
+        // 手上已经有一份可用的优选池：不测速、也不自己换线路了。
+        // 接口和图片都从池子里取地址，出问题在池子里轮换（见 [recover]），扰动的只是地址。
+        if (ImageIps.hasUsablePool) {
+            poolRotations = 0
+            scope.launch { dohAddressesIfEnabled(preferences, ips) }
+            return
+        }
         probeJob = scope.launch {
             val result = runCatching { probeAll(ips) }.getOrNull() ?: return@launch
             storeResult(result)
@@ -148,10 +162,21 @@ object LineRouter {
      * 测速还没跑完就先等它（最多一个超时周期）；没有更好的选择时返回 false。
      */
     suspend fun recover(): Boolean {
+        // 有优选池就先在池子里换一台：不动线路、不重建客户端，下一批请求自然走新地址。
+        if (ImageIps.hasUsablePool && poolRotations < MAX_POOL_ROTATIONS) {
+            poolRotations += 1
+            ImageIps.rotate()
+            appliedIps = ImageIps.ordered()
+            return true
+        }
         // 先等测速收尾，再拿锁：测速自己也要切换线路，锁里等它就成了死锁。
         probeJob?.takeIf { it.isActive }?.join()
         return switchLock.withLock {
             if (lastSwitch?.let { it.elapsedNow() < 6.seconds } == true) return@withLock false
+
+            // 池子轮完也不通，多半是换了网络：现测一遍线路再挑。
+            if (ranked.isEmpty()) refreshProbes()
+            poolRotations = 0
 
             val current = store.savedLine
             // 只从后台列表里「写得通」的线路里挑，挂掉一次就被标成不通的线路不会再拿去试。

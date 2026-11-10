@@ -59,6 +59,10 @@ object ImageIps {
         official = ips.mapNotNull { it.trim().takeIf(String::isNotEmpty) }.distinct()
     }
 
+    /** 从哪一位开始用（[rotate] 挪过的位数）；不是原子量，偶发丢一次也无所谓。 */
+    @Volatile
+    private var turn: Int = 0
+
     /** 优选测完，让它顶到官方源前面。 */
     fun activatePreferred() {
         preferredActive = true
@@ -67,6 +71,7 @@ object ImageIps {
     /** 冷启动 / 线路切换后回到「官方源优先」，等新一轮优选。 */
     fun preferOfficialFirst() {
         preferredActive = false
+        turn = 0
     }
 
     /** 开关拨一下立刻生效，不用重建客户端（DNS 每次 lookup 都现取）。 */
@@ -75,11 +80,29 @@ object ImageIps {
         if (!value) preferredActive = false
     }
 
-    /** 当前该用的顺序：关掉优选只剩官方源 + 种子；开着则冷启动官方源优先、测完优选优先。 */
-    fun ordered(): List<String> = when {
-        !enabled -> (official + SEEDS_V4 + SEEDS_V6).distinct()
-        preferredActive -> (preferred + official + SEEDS_V4 + SEEDS_V6).distinct()
-        else -> (official + preferred + SEEDS_V4 + SEEDS_V6).distinct()
+    /** 池子里有没有可用的优选地址：开关打开、而且真的测出过东西。 */
+    val hasUsablePool: Boolean get() = enabled && preferred.isNotEmpty()
+
+    /** 故障时在池子里往后挪一位：下一次连接从另一台开始试，不换线路。 */
+    fun rotate() {
+        turn += 1
+    }
+
+    /**
+     * 当前该用的顺序：关掉优选只剩官方源 + 种子；开着则冷启动官方源优先、测完优选优先。
+     *
+     * [turn] 是连接出问题后挪的位数 —— 只在 [rotate] 时变，正常请求每次都是同一个顺序，
+     * 免得连接随机跳来跳去把缓存打散。
+     */
+    fun ordered(): List<String> {
+        val base = when {
+            !enabled -> (official + SEEDS_V4 + SEEDS_V6).distinct()
+            preferredActive -> (preferred + official + SEEDS_V4 + SEEDS_V6).distinct()
+            else -> (official + preferred + SEEDS_V4 + SEEDS_V6).distinct()
+        }
+        if (base.size <= 1) return base
+        val offset = ((turn % base.size) + base.size) % base.size
+        return if (offset == 0) base else base.drop(offset) + base.take(offset)
     }
 
     /** 后台测速的候选：几层全都要测，才能知道哪台最快（v6 没出口的自然测不过）。 */
