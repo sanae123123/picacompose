@@ -128,13 +128,16 @@ fun HomeShell(
     var comicLabel by rememberSaveable { mutableStateOf("") }
     var comicKey by rememberSaveable { mutableStateOf("comicsPage") }
     var comicSort by rememberSaveable { mutableStateOf<String?>(null) }
-    val comicPager = remember(comicTitle, comicSort) {
+    // 完结筛选是枚举，rememberSaveable 能直接存；换排序 / 换筛选都会换一个 pager，从头拉。
+    var comicFinished by rememberSaveable { mutableStateOf(ComicFinished.All) }
+    val comicPager = remember(comicTitle, comicSort, comicFinished) {
         Pager(
             load = { page ->
                 pica.comics.list(
                     page = page,
                     category = comicTitle.ifBlank { null },
                     sort = comicSort,
+                    finished = comicFinished.value,
                 )
             },
             itemKey = { it.id },
@@ -368,6 +371,7 @@ fun HomeShell(
                                             comicTitle = category.title
                                             comicLabel = category.title
                                             comicSort = null
+                                            comicFinished = ComicFinished.All
                                             comicKey = categoryTileKey(category)
                                             overlayOrdinal = OverlayPage.Comics.ordinal
                                         },
@@ -375,6 +379,7 @@ fun HomeShell(
                                             comicTitle = ""
                                             comicLabel = "最新更新"
                                             comicSort = "dd"
+                                            comicFinished = ComicFinished.All
                                             comicKey = "latestTile"
                                             overlayOrdinal = OverlayPage.Comics.ordinal
                                         },
@@ -498,6 +503,8 @@ fun HomeShell(
                                     listState = comicListState,
                                     sort = comicSort,
                                     onSortChange = { comicSort = it },
+                                    finished = comicFinished,
+                                    onFinishedChange = { comicFinished = it },
                                     // 每一行各自挂一个变形源，点开就从那一行长成整屏。
                                     comicRowModifier = { key ->
                                         with(shared) { overlayBounds(key, contentScope) }

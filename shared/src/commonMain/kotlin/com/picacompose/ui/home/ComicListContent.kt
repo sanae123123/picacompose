@@ -1,5 +1,10 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.rememberDialogPop
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -61,6 +66,9 @@ fun ComicListContent(
     modifier: Modifier = Modifier,
     sort: String? = null,
     onSortChange: (String?) -> Unit = {},
+    /** 完结筛选，点了筛选弹窗里的「应用」才变。 */
+    finished: ComicFinished = ComicFinished.All,
+    onFinishedChange: (ComicFinished) -> Unit = {},
     /** 点一本就打开详情页；第二个参数是这一行的变形 key。 */
     onOpenComic: (ComicSummary, String) -> Unit = { _, _ -> },
     /** 给每一行挂变形源：详情页的 key 和它配对，点开从这一行长成整屏。 */
@@ -70,6 +78,7 @@ fun ComicListContent(
     val scope = rememberCoroutineScope()
     var menuOpen by remember { mutableStateOf(false) }
     var showJump by remember { mutableStateOf(false) }
+    var showFilter by remember { mutableStateOf(false) }
 
     LaunchedEffect(pager) {
         // 换排序会换一个 pager，回到顶部重新看。
@@ -114,6 +123,21 @@ fun ComicListContent(
                         text = "${compactCount(pager.total)} 本",
                         style = MaterialTheme.typography.labelMedium,
                         color = colors.onSurfaceVariant,
+                    )
+                }
+                // 筛选：排序方式 + 完结状态，点开弹窗配。开了筛选就把图标点亮。
+                IconButton(
+                    onClick = { showFilter = true },
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    PicaGlyph(
+                        icon = PicaIcon.Filter,
+                        modifier = Modifier.size(22.dp),
+                        tint = if (finished == ComicFinished.All) {
+                            colors.onBackground
+                        } else {
+                            colors.primary
+                        },
                     )
                 }
                 // 汉堡菜单：跳页 + 排序方式。
@@ -208,6 +232,101 @@ fun ComicListContent(
             onJumped = { scope.launch { listState.scrollToItem(0) } },
         )
     }
+
+    if (showFilter) {
+        ComicFilterDialog(
+            sort = sort,
+            finished = finished,
+            onApply = { newSort, newFinished ->
+                showFilter = false
+                onSortChange(newSort)
+                onFinishedChange(newFinished)
+            },
+            onDismiss = { showFilter = false },
+        )
+    }
+}
+
+/**
+ * 筛选弹窗：排序方式和完结状态。
+ *
+ * 里面是草稿，点「应用」才真的换条件（每点一下就重拉一遍列表太浪费请求）。
+ */
+@Composable
+private fun ComicFilterDialog(
+    sort: String?,
+    finished: ComicFinished,
+    onApply: (String?, ComicFinished) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val pop = rememberDialogPop(onDismiss)
+    var draftSort by remember { mutableStateOf(sort) }
+    var draftFinished by remember { mutableStateOf(finished) }
+
+    AlertDialog(
+        onDismissRequest = pop::dismiss,
+        modifier = pop.modifier,
+        title = { Text(text = "筛选", style = MaterialTheme.typography.titleMedium) },
+        text = {
+            Column {
+                Text(
+                    text = "排序方式",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ComicSort.entries.forEach { option ->
+                        FilterChip(
+                            selected = draftSort == option.value,
+                            onClick = { draftSort = option.value },
+                            label = {
+                                Text(text = option.label, style = MaterialTheme.typography.bodySmall)
+                            },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "完结状态",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ComicFinished.entries.forEach { option ->
+                        FilterChip(
+                            selected = draftFinished == option,
+                            onClick = { draftFinished = option },
+                            label = {
+                                Text(text = option.label, style = MaterialTheme.typography.bodySmall)
+                            },
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onApply(draftSort, draftFinished) }) { Text("应用") }
+        },
+        dismissButton = {
+            TextButton(onClick = pop::dismiss) { Text("取消") }
+        },
+    )
+}
+
+/** 完结筛选：`f` 参数，null 是不筛。 */
+enum class ComicFinished(val label: String, val value: Boolean?) {
+    All("全部", null),
+    Finished("已完结", true),
+    Ongoing("连载中", false),
 }
 
 /** 排序方式：`s` 参数跟官方一致，默认就是服务端原来的顺序。搜索页也用这一套。 */
