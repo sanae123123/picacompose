@@ -32,28 +32,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.picacompose.data.LineRouter
 import com.picacompose.data.PicaLine
 import com.picacompose.ui.components.PicaBackdrop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * 冷启动第一屏：自动测速选线路。
+ * 冷启动第一屏：选线路。
  *
- * 选完停 1 秒多再自动进去，留一点时间让人看清选了哪条；想换就点别的卡片，点了立刻进。
+ * - [manual] = false（开着自动测速）：进来先测一遍，最快的默认选中，过一秒自动进。
+ * - [manual] = true（关掉自动测速）：不测速、也不自动挑，就摆着几条线路等人点一条再进。
  */
 @Composable
-fun RoutingScreen(onReady: () -> Unit) {
+fun RoutingScreen(manual: Boolean = false, onReady: () -> Unit) {
     val controller = remember { RoutingController() }
     val scope = rememberCoroutineScope()
     var entering by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        controller.run()
-        delay(1_100)
-        if (!entering) {
-            entering = true
-            onReady()
+        if (manual) {
+            // 手动模式只把线路和下发 IP 准备好，测速留给「测速一次」按钮。
+            controller.runManual()
+        } else {
+            controller.run()
+            delay(1_100)
+            if (!entering) {
+                entering = true
+                onReady()
+            }
         }
     }
 
@@ -61,7 +68,12 @@ fun RoutingScreen(onReady: () -> Unit) {
         if (entering) return
         entering = true
         scope.launch {
-            if (line != null) controller.choose(line)
+            if (line != null) {
+                // 手动模式：进来时客户端还没建过，哪怕点的是上次那条也得建一次。
+                if (manual) controller.chooseExplicit(line) else controller.choose(line)
+                // 手动选的这条也要挂上故障兜底：之后连不上只在地址池里换，不再自己测线换线。
+                if (manual) LineRouter.start(scope, line, controller.ips, probe = false)
+            }
             onReady()
         }
     }
@@ -83,7 +95,11 @@ fun RoutingScreen(onReady: () -> Unit) {
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "启动时会先拉一次线路列表，这里已经自动测好速，最快的那条默认选中，过一秒自动进去。",
+                    text = if (manual) {
+                        "自动测速关着，这里不会测速也不会自动挑。点哪条就用哪条，进主界面后才开始加载。"
+                    } else {
+                        "启动时会先拉一次线路列表，这里已经自动测好速，最快的那条默认选中，过一秒自动进去。"
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -95,6 +111,7 @@ fun RoutingScreen(onReady: () -> Unit) {
                         chosen = controller.chosen == probe.line,
                         last = controller.lastLine == probe.line,
                         loading = controller.loading,
+                        idle = manual,
                         onClick = { enter(probe.line) },
                     )
                     Spacer(Modifier.height(12.dp))
@@ -133,7 +150,7 @@ fun RoutingScreen(onReady: () -> Unit) {
                         },
                         enabled = !controller.loading,
                     ) {
-                        Text("重新测速")
+                        Text(if (manual) "测速一次" else "重新测速")
                     }
                 }
             }
@@ -147,6 +164,8 @@ private fun LineCard(
     chosen: Boolean,
     last: Boolean,
     loading: Boolean,
+    /** 手动模式：还没测过的时候右边什么都别显示，别写成「测速中」。 */
+    idle: Boolean,
     onClick: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -194,6 +213,7 @@ private fun LineCard(
             }
             Spacer(Modifier.size(12.dp))
             when {
+                idle && !probe.done -> Unit
                 !probe.done -> Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(14.dp),

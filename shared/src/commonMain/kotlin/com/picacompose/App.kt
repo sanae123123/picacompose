@@ -91,13 +91,8 @@ fun App() {
             // 没存过线路就只剩选择页可选，连「不测速」也用不了：得先有一条线路才能建客户端。
             if (cachedLine == null) return@LaunchedEffect
             when {
-                // 关掉自动测速：按上次的线路建好客户端直接进；不测速，但断线时还能重建这条线。
-                !autoProbe -> {
-                    runCatching { applyPicaRoute(cachedLine, store.savedIps) }
-                    LineRouter.start(scope, cachedLine, store.savedIps, probe = false)
-                    routeReady = true
-                    routed = true
-                }
+                // 关掉自动测速：停在线路页让人手动点一条（进去之后也不测速、不自己换线）。
+                !autoProbe -> routeReady = true
 
                 // 要测速但不要后台测：交给线路选择页，测完自动进（那边会自己建客户端）。
                 !fastEntry -> routeReady = true
@@ -117,7 +112,11 @@ fun App() {
                 RestoreScreen()
             } else {
                 Crossfade(targetState = routed) { ready ->
-                    if (ready) MainScreens() else RoutingScreen(onReady = { routed = true })
+                    if (ready) {
+                        MainScreens()
+                    } else {
+                        RoutingScreen(manual = !autoProbe, onReady = { routed = true })
+                    }
                 }
             }
             PicaToastHost(

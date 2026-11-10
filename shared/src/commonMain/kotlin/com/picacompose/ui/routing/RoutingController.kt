@@ -111,6 +111,39 @@ class RoutingController(
         loading = false
     }
 
+    /**
+     * 手动模式（设置里关掉自动测速）：只把线路列表和下发 IP 准备好，不测速、也不自动选。
+     *
+     * 上次用的线路会标出来，等人自己点。
+     */
+    suspend fun runManual() {
+        loading = true
+        note = null
+        probes = PicaLine.entries.map { LineProbe(it) }
+        val savedIps = ips
+        val fetched = coroutineScope {
+            val bootstrap = async { fetchBootstrap() }
+            val doh = async { dohAddressesIfEnabled(preferences, savedIps) }
+            (doh.await() + bootstrap.await()?.addresses.orEmpty()).distinct()
+        }
+        ips = fetched.ifEmpty { savedIps }
+        if (ips.isEmpty()) note = "没拿到下发 IP，线路 2 / 3 只能走系统解析。"
+        chosen = store.savedLine
+        loading = false
+    }
+
+    /**
+     * 手动模式里点了一条：不管是不是上次同一条，都按它把客户端建一次。
+     *
+     * [choose] 会在「点的就是已选那条」时直接返回，而手动模式进来时客户端还没建过。
+     */
+    suspend fun chooseExplicit(line: PicaLine) {
+        applyPicaRoute(line, ips)
+        store.save(line, ips, probes.firstOrNull { it.line == line }?.latencyMs)
+        chosen = line
+        loading = false
+    }
+
     /** 用户手动点了一条：立刻按它重建客户端，不再等自动选。 */
     suspend fun choose(line: PicaLine) {
         if (chosen == line) return
