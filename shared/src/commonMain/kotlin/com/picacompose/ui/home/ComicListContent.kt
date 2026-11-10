@@ -210,8 +210,8 @@ fun ComicListContent(
     }
 }
 
-/** 排序方式：`s` 参数跟官方一致，默认就是服务端原来的顺序。 */
-private enum class ComicSort(val label: String, val value: String?) {
+/** 排序方式：`s` 参数跟官方一致，默认就是服务端原来的顺序。搜索页也用这一套。 */
+internal enum class ComicSort(val label: String, val value: String?) {
     Default("默认", null),
     Newest("最新", "dd"),
     Oldest("最早", "da"),

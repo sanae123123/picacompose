@@ -2,6 +2,7 @@ package com.picacompose.ui.home
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,6 +23,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -57,7 +61,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
- * 搜索页的状态：输入框里的字、已提交的关键词、结果分页、热搜词。
+ * 搜索页的状态：输入框里的字、已提交的关键词、排序、结果分页、热搜词。
  *
  * 放在 [HomeShell] 里，退出搜索页去翻详情、再退回来时结果和滚动位置都还在。
  */
@@ -69,6 +73,10 @@ class SearchState {
 
     /** 已经搜过的关键词，空表示还没搜过。 */
     var keyword by mutableStateOf("")
+        private set
+
+    /** 排序方式，null 就是服务端原来的顺序（和本子列表那套一样）。 */
+    var sort by mutableStateOf<String?>(null)
         private set
 
     /** 当前关键词的结果分页；null 是还没搜。 */
@@ -107,11 +115,21 @@ class SearchState {
         query = next
         if (next == keyword && pager != null) return
         keyword = next
-        pager = Pager(
-            load = { page -> pica.comics.advancedSearch(keyword = next, page = page) },
-            itemKey = { it.id },
-        )
+        pager = pagerFor(next, sort)
     }
+
+    /** 换排序：同一个关键词按新顺序重搜一遍，没搜过就只记下来。 */
+    fun onSortChange(value: String?) {
+        if (value == sort) return
+        sort = value
+        if (keyword.isBlank()) return
+        pager = pagerFor(keyword, value)
+    }
+
+    private fun pagerFor(keyword: String, sort: String?): Pager<ComicSummary> = Pager(
+        load = { page -> pica.comics.advancedSearch(keyword = keyword, sort = sort, page = page) },
+        itemKey = { it.id },
+    )
 
     /** 热搜词只问一次，没拿到就不摆那一块，不挡搜索。 */
     suspend fun ensureHotKeywords() {
@@ -125,9 +143,10 @@ class SearchState {
 fun rememberSearchState(): SearchState = remember { SearchState() }
 
 /**
- * 搜索页：顶上一条搜索框，按关键词搜本子（走 `POST comics/advanced-search`）。
+ * 搜索页：顶栏和本子列表一样（返回 / 标题 / 共几本 / 汉堡菜单），下面一条搜索框。
  *
- * 还没搜的时候摆一排热搜词，点一个直接搜；结果沿用分类列表那一行本子，滚到底接着续页。
+ * 汉堡里能跳页、能换排序；没搜的时候摆一排热搜词，点一个直接搜。
+ * 结果沿用分类列表那一行本子，滚到底接着续页。
  */
 @Composable
 fun SearchContent(
@@ -139,9 +158,12 @@ fun SearchContent(
     onOpenComic: (ComicSummary, String) -> Unit = { _, _ -> },
     comicRowModifier: @Composable (String) -> Modifier = { Modifier },
 ) {
+    val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = remember { FocusRequester() }
+    var menuOpen by remember { mutableStateOf(false) }
+    var showJump by remember { mutableStateOf(false) }
     val pager = state.pager
 
     LaunchedEffect(state) { state.ensureHotKeywords() }
@@ -153,7 +175,7 @@ fun SearchContent(
         runCatching { focus.requestFocus() }
     }
 
-    // 换关键词就回顶部、拉第一页；同一个 pager 不重拉。
+    // 换关键词 / 换排序就回顶部、拉第一页；同一个 pager 不重拉。
     LaunchedEffect(pager) {
         if (pager == null) return@LaunchedEffect
         listState.scrollToItem(0)
@@ -181,20 +203,89 @@ fun SearchContent(
     }
 
     Column(modifier.fillMaxSize().imePadding()) {
+        // 顶栏：和本子列表同一套 —— 返回 + 标题 + 共几本 + 汉堡菜单。
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 8.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+                .padding(start = 8.dp, end = 12.dp, top = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                 PicaGlyph(
                     icon = PicaIcon.Back,
                     modifier = Modifier.size(22.dp),
-                    tint = MaterialTheme.colorScheme.onBackground,
+                    tint = colors.onBackground,
                 )
             }
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(6.dp))
+            Box(Modifier.weight(1f)) { PageHeader(title = "搜索") }
+            if (pager != null && pager.total > 0) {
+                Text(
+                    text = "${compactCount(pager.total)} 本",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 4.dp),
+                )
+            }
+            // 汉堡菜单：跳页 + 排序方式，和本子列表里那颗一样。
+            Box {
+                IconButton(
+                    onClick = { menuOpen = true },
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    PicaGlyph(
+                        icon = PicaIcon.Menu,
+                        modifier = Modifier.size(22.dp),
+                        tint = colors.onBackground,
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = { menuOpen = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("跳页") },
+                        enabled = pager != null,
+                        leadingIcon = {
+                            PicaGlyph(PicaIcon.ArrowRight, Modifier.size(18.dp), colors.onSurfaceVariant)
+                        },
+                        onClick = {
+                            menuOpen = false
+                            showJump = true
+                        },
+                    )
+                    HorizontalDivider()
+                    Text(
+                        text = "排序方式",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp),
+                    )
+                    ComicSort.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.label) },
+                            trailingIcon = {
+                                if (option.value == state.sort) {
+                                    PicaGlyph(PicaIcon.Check, Modifier.size(18.dp), colors.primary)
+                                }
+                            },
+                            onClick = {
+                                menuOpen = false
+                                state.onSortChange(option.value)
+                            },
+                        )
+                    }
+                }
+            }
+        }
+
+        // 搜索框：回车 / 键盘上的搜索键 / 右边那颗「搜索」都行。
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 20.dp, top = 2.dp, bottom = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             OutlinedTextField(
                 value = state.query,
                 onValueChange = state::onQueryChange,
@@ -207,7 +298,7 @@ fun SearchContent(
                     PicaGlyph(
                         icon = PicaIcon.Search,
                         modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = colors.onSurfaceVariant,
                     )
                 },
                 trailingIcon = {
@@ -216,7 +307,7 @@ fun SearchContent(
                             PicaGlyph(
                                 icon = PicaIcon.Close,
                                 modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = colors.onSurfaceVariant,
                             )
                         }
                     }
@@ -225,6 +316,7 @@ fun SearchContent(
                 keyboardActions = KeyboardActions(onSearch = { submit(null) }),
                 colors = searchFieldColors(),
             )
+            Spacer(Modifier.width(4.dp))
             TextButton(onClick = { submit(null) }) {
                 Text("搜索", style = MaterialTheme.typography.labelLarge)
             }
@@ -242,6 +334,14 @@ fun SearchContent(
             )
         }
     }
+
+    if (showJump && pager != null) {
+        PagerJumpDialog(
+            pager = pager,
+            onDismiss = { showJump = false },
+            onJumped = { scope.launch { listState.scrollToItem(0) } },
+        )
+    }
 }
 
 /** 还没搜时的那一块：热搜词 + 一句提示。 */
@@ -257,7 +357,7 @@ private fun HotKeywordPanel(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 22.dp),
     ) {
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(16.dp))
         if (state.hotKeywords.isNotEmpty()) {
             Text(
                 text = "大家都在搜",
