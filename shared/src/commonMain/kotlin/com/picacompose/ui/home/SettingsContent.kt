@@ -85,11 +85,14 @@ fun SettingsContent(onSignOut: () -> Unit) {
                 SwitchRow(
                     icon = PicaIcon.Speed,
                     title = "自动测速",
-                    summary = "启动时测一遍线路，挑最快的用；关掉就用上次的线路，不测也不自动换。",
+                    summary = "启动时测一遍线路，挑最快的用；关掉就用上次的线路，不测也不自动换" +
+                        "（当场就会停掉正在跑的测速，不用重启）。",
                     checked = autoProbe,
                     onCheckedChange = { on ->
                         autoProbe = on
                         preferences.autoProbe = on
+                        // 关掉之后别再让后台测速跑完顺手把线路切了。
+                        if (!on) LineRouter.stop()
                     },
                 )
                 // 子开关：父开关关掉时置灰，但值留着，父开关开回来还是原来的选择。
@@ -115,6 +118,7 @@ fun SettingsContent(onSignOut: () -> Unit) {
                     icon = PicaIcon.Gear,
                     title = "测速",
                     value = when {
+                        !autoProbe -> "自动测速已关"
                         latency != null -> "$latency ms"
                         ipCount > 0 -> "$ipCount 个下发 IP"
                         else -> "系统解析"
@@ -152,7 +156,10 @@ fun SettingsContent(onSignOut: () -> Unit) {
                         useImageIps = on
                         preferences.imageIps = on
                         ImageIps.updateEnabled(on)
-                        if (!on) ImageIps.preferOfficialFirst()
+                        if (!on) {
+                            ImageIps.preferOfficialFirst()
+                            ImageIpsStatus.off()
+                        }
                     },
                 )
                 DetailRow(

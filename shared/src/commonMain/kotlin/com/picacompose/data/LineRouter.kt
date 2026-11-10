@@ -150,6 +150,16 @@ object LineRouter {
         store.save(line, ips, candidates.toMap()[line])
     }
 
+    /**
+     * 设置里把「自动测速」关掉时立刻调一次：停掉正在跑的测速，之后的故障兜底也不再测线 / 换线。
+     *
+     * 开关本身是下次冷启动才读的，但「别测了」这件事不用等重启。
+     */
+    fun stop() {
+        probeJob?.cancel()
+        probeJob = null
+    }
+
     /** 传输层失败时调（由 [picaNetworkFailureHandler] 转进来）。 */
     fun onNetworkFailure() {
         val scope = scope ?: return
@@ -162,6 +172,12 @@ object LineRouter {
      * 测速还没跑完就先等它（最多一个超时周期）；没有更好的选择时返回 false。
      */
     suspend fun recover(): Boolean {
+        // 「自动测速」关着：不测线路、也不换线路，最多在现有地址里挪一台。
+        if (!preferences.autoProbe) {
+            if (ImageIps.ordered().size <= 1) return false
+            ImageIps.rotate()
+            return true
+        }
         // 有优选池就先在池子里换一台：不动线路、不重建客户端，下一批请求自然走新地址。
         if (ImageIps.hasUsablePool && poolRotations < MAX_POOL_ROTATIONS) {
             poolRotations += 1
@@ -215,6 +231,7 @@ object LineRouter {
 
     /** 换完线路后的重测：只更新后台列表和存盘，不动当前线路。 */
     private suspend fun refreshProbes() {
+        if (!preferences.autoProbe) return
         val result = runCatching { probeAll(knownIps) }.getOrNull() ?: return
         storeResult(result)
     }

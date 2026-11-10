@@ -126,7 +126,7 @@ private const val POOL_SIZE = 10
 private const val FAST_MS = 500L
 
 /** 开关关着时每隔一会儿看一眼，拨开了就能接着测。 */
-private const val IDLE_MS = 30 * 1000L
+private const val IDLE_MS = 10 * 1000L
 
 /** 进主界面之后才开扫，让首屏那几张图先跑完。 */
 private const val START_DELAY_MS = 3_000L
