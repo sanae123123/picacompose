@@ -163,3 +163,7 @@ val url = pica.imageUrl(pages.pages.docs.first().media)
 
 - 版本号集中在 `gradle/libs.versions.toml`，升级只改这一处。
 - `shared` 里预置了一个计数器页面，只用来做冒烟验证，业务代码直接替换 `CounterScreen()` 即可。
+
+## 许可
+
+MIT，见 [LICENSE](LICENSE)。
