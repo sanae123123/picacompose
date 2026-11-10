@@ -54,7 +54,7 @@ import com.picacompose.ui.components.url
 private val urlPattern = Regex("""https?://[^\s"'<>，。、）】]+""")
 
 /**
- * 公告弹窗：首图 + 标题 + 正文一起滚，底下「公告列表 / 確定」。
+ * 公告弹窗：首图 + 标题 + 正文一起滚，底下「公告列表 / 确定」。
  *
  * 只有用户自己点「公告」才打开，不会自己冒出来。
  */
@@ -115,7 +115,7 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
                     )
                     Spacer(Modifier.height(10.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = pop::dismiss) { Text("確定") }
+                        TextButton(onClick = pop::dismiss) { Text("确定") }
                     }
                 }
 
@@ -165,7 +165,7 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
                             horizontalArrangement = Arrangement.End,
                         ) {
                             TextButton(onClick = { showList = true }) { Text("公告列表") }
-                            TextButton(onClick = pop::dismiss) { Text("確定") }
+                            TextButton(onClick = pop::dismiss) { Text("确定") }
                         }
                     }
                 }
@@ -236,7 +236,7 @@ private fun AnnouncementList(
                 .padding(end = 12.dp),
             horizontalArrangement = Arrangement.End,
         ) {
-            TextButton(onClick = onClose) { Text("關閉") }
+            TextButton(onClick = onClose) { Text("关闭") }
         }
     }
 }

@@ -71,7 +71,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
- * 官方 App 的「嗶咔留言版」挂在这条占位漫画上（标题「愛嗶咔請留言」）。
+ * 官方 App 的「哔咔留言板」挂在这条占位漫画上（标题「爱哔咔请留言」）。
  *
  * 留言板没做独立接口，就是评论区换了个漫画 id；所以留言板和以后漫画详情页的
  * 评论区共用本文件这套实现，别各写一份。

@@ -1,6 +1,6 @@
 package com.picacompose.data
 
-/** 一本本子读到哪儿了：第幾話、第几页（都从 1 / 0 数，page 是列表下标）。 */
+/** 一本本子读到哪儿了：第几话、第几页（都从 1 / 0 数，page 是列表下标）。 */
 data class ReadingProgress(
     val comicId: String,
     val order: Int,
@@ -13,7 +13,7 @@ data class ReadingProgress(
  * 阅读进度的持久化：一本一条，键是 `read.<comicId>`。
  *
  * 另外维护一个索引 `read.index`（逗号分隔的本子 id，最近读的排在最后），
- * 以后做「最近閱讀」直接拿 [all] 就行。存储和登录状态是同一套 [KeyValueStore]。
+ * 以后做「最近阅读」直接拿 [all] 就行。存储和登录状态是同一套 [KeyValueStore]。
  */
 class ReadingProgressStore(private val kv: KeyValueStore = platformKeyValueStore()) {
 

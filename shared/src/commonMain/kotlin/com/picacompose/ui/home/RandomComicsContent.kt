@@ -61,12 +61,12 @@ private val BOTTOM_PULL_THRESHOLD = 88.dp
 private const val SWAP_TIMEOUT_MS = 8_000L
 
 /**
- * 「隨機本子」分区。
+ * 「随机本子」分区。
  *
  * 官方这里是 4 个哨兵分区之一：磁贴写死 index 7，扇进 `ComicListFragment("CATEGORY_RANDOM")`，
  * 由 fragment 的 `cR()` 分支走 `GET comics/random`。所以这块和普通分类列表不一样——
  * 接口一次给一批，没有分页、没有排序菜单、也没有翻页栏，想换一批只能重新请求。
- * 这里照这个行为做：一屏列表 + 右上角「換一批」。
+ * 这里照这个行为做：一屏列表 + 右上角「换一批」。
  *
  * 到底部再往上推一把也能换一批：推的过程里底下浮出一个小圈随手指走，
  * 够远了就换——新一批整块从下面滑上来。
@@ -208,10 +208,10 @@ fun RandomComicsContent(
                         }
                         Spacer(Modifier.width(6.dp))
                         Box(Modifier.weight(1f)) {
-                            PageHeader(title = "隨機本子")
+                            PageHeader(title = "随机本子")
                         }
                         Text(
-                            text = "換一批",
+                            text = "换一批",
                             style = MaterialTheme.typography.labelMedium,
                             color = colors.primary,
                             modifier = Modifier
@@ -248,7 +248,7 @@ fun RandomComicsContent(
                 if (!list.isNullOrEmpty() && !loading && error == null) {
                     item(key = "random-footer") {
                         Text(
-                            text = "就这些——想换一批，点上面「換一批」，或者滑到底再往上推一把",
+                            text = "就这些——想换一批，点上面「换一批」，或者滑到底再往上推一把",
                             style = MaterialTheme.typography.labelSmall,
                             color = colors.onSurfaceVariant,
                             modifier = Modifier.padding(vertical = 18.dp),

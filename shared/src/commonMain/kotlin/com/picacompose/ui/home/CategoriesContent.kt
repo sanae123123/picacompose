@@ -35,10 +35,10 @@ import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.url
 
 /**
- * 分类页：照官方版式来 —— 上面一块「熱門分類」写死磁贴，下面「全部分類」走接口。
+ * 分类页：照官方版式来 —— 上面一块「热门分类」写死磁贴，下面「全部分类」走接口。
  *
- * 磁贴图和顺序都对齐官方 App：顺序是 支持嗶咔 / 排行榜 / 遊戲推薦 / 點擊救嗶咔 /
- * 小程式 / 留言版 / 最新更新 / 隨機本子；除「點擊救嗶咔」用广告图外，其余是官方资源包
+ * 磁贴图和顺序都对齐官方 App：顺序是 支持哔咔 / 排行榜 / 游戏推荐 / 点击救哔咔 /
+ * 小程序 / 留言板 / 最新更新 / 随机本子；除「点击救哔咔」用广告图外，其余是官方资源包
  * 里那套 cat_*.jpg，直接打进 App（见 composeResources/drawable）。
  */
 /**
@@ -60,7 +60,7 @@ internal fun categoryTileKey(category: Category): String {
  */
 internal const val FALLBACK_ADS_BASE = "https://pica-ad-api.diwodiwo.xyz"
 
-/** 「支持嗶咔」打开的地址：`KEY_AD_URL_BASE + /android/font`，深色主题带 `?color=black`。 */
+/** 「支持哔咔」打开的地址：`KEY_AD_URL_BASE + /android/font`，深色主题带 `?color=black`。 */
 internal fun supportPicaUrl(adsBase: String?, dark: Boolean): String {
     val base = adsBase?.trimEnd('/')?.takeIf { it.startsWith("http") } ?: FALLBACK_ADS_BASE
     return "$base/android/font" + if (dark) "?color=black" else ""
@@ -72,10 +72,10 @@ class CategoriesState {
         private set
     var error by mutableStateOf<String?>(null)
         private set
-    /** 「點擊救嗶咔」磁贴的广告封面。 */
+    /** 「点击救哔咔」磁贴的广告封面。 */
     var adCover by mutableStateOf<String?>(null)
         private set
-    /** 「支持嗶咔」内嵌页的域名：官方开屏时从 waka init 拿到，这里跟着广告封面一起问一次。 */
+    /** 「支持哔咔」内嵌页的域名：官方开屏时从 waka init 拿到，这里跟着广告封面一起问一次。 */
     var adsBase by mutableStateOf<String?>(null)
         private set
     private var started = false
@@ -102,7 +102,7 @@ class CategoriesState {
         if (adStarted) return
         adStarted = true
         adCover = runCatching { pica.meta.banners().firstOrNull()?.thumb.url() }.getOrNull()
-        // 广告域名跟封面一起问：开「支持嗶咔」时就不用现等。
+        // 广告域名跟封面一起问：开「支持哔咔」时就不用现等。
         adsBase = runCatching { pica.meta.adsBaseUrl() }.getOrNull()
     }
 }
@@ -129,18 +129,18 @@ fun CategoriesContent(
     onOpenCategory: (Category) -> Unit = {},
     /** 最新更新：官方是同一个列表 Fragment，只是不带分类、固定 s=dd。 */
     onOpenLatest: () -> Unit = {},
-    /** 隨機本子：走 `GET comics/random`，一次一批，无分页。 */
+    /** 随机本子：走 `GET comics/random`，一次一批，无分页。 */
     onOpenRandom: () -> Unit = {},
-    /** 支持嗶咔：原版是整屏内嵌网页（`/android/font`），这里走同一个内置浏览器。 */
+    /** 支持哔咔：原版是整屏内嵌网页（`/android/font`），这里走同一个内置浏览器。 */
     onOpenSupport: () -> Unit = {},
-    /** 點擊救嗶咔 / 嗶咔小程式：弹嗶咔的開屏廣告。 */
+    /** 点击救哔咔 / 哔咔小程序：弹哔咔的开屏广告。 */
     onOpenSplashAd: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     // 数据放在外层（[CategoriesState]），整页开开关关、栏与栏之间来回切都不重拉。
     LaunchedEffect(state) { state.ensureLoaded() }
 
-    // 官方的「點擊救嗶咔」磁贴是轮播的广告图，这里取第一批广告的封面。
+    // 官方的「点击救哔咔」磁贴是轮播的广告图，这里取第一批广告的封面。
     LaunchedEffect(state) { state.ensureAdCover() }
 
     PageScaffold(
@@ -149,25 +149,25 @@ fun CategoriesContent(
         onRefresh = { state.load() },
     ) {
         item {
-            SectionTitle("熱門分類")
+            SectionTitle("热门分类")
             Spacer(Modifier.height(12.dp))
             val hotTiles = listOf(
                 HotTile(
-                    label = "支持嗶咔",
+                    label = "支持哔咔",
                     art = "support",
                     modifier = supportTileModifier,
                     onClick = onOpenSupport,
                 ),
                 HotTile(
-                    label = "嗶咔排行榜",
+                    label = "哔咔排行榜",
                     art = "leaderboard",
                     modifier = leaderboardTileModifier,
                     onClick = onOpenLeaderboard,
                 ),
-                HotTile("遊戲推薦", art = "game", onClick = onOpenGames),
-                HotTile("點擊救嗶咔", url = state.adCover, onClick = onOpenSplashAd),
-                HotTile("嗶咔小程式", art = "love_pica", onClick = onOpenSplashAd),
-                HotTile("嗶咔留言版", art = "forum", modifier = forumTileModifier, onClick = onOpenForum),
+                HotTile("游戏推荐", art = "game", onClick = onOpenGames),
+                HotTile("点击救哔咔", url = state.adCover, onClick = onOpenSplashAd),
+                HotTile("哔咔小程序", art = "love_pica", onClick = onOpenSplashAd),
+                HotTile("哔咔留言板", art = "forum", modifier = forumTileModifier, onClick = onOpenForum),
                 HotTile(
                     label = "最新更新",
                     art = "latest",
@@ -175,7 +175,7 @@ fun CategoriesContent(
                     onClick = onOpenLatest,
                 ),
                 HotTile(
-                    label = "隨機本子",
+                    label = "随机本子",
                     art = "random",
                     modifier = randomTileModifier,
                     onClick = onOpenRandom,
@@ -195,7 +195,7 @@ fun CategoriesContent(
             Spacer(Modifier.height(10.dp))
         }
         item {
-            SectionTitle("全部分類")
+            SectionTitle("全部分类")
             Spacer(Modifier.height(12.dp))
         }
         val list = state.categories
@@ -243,7 +243,7 @@ private fun SectionTitle(text: String) {
     )
 }
 
-/** 「熱門分類」里的一块磁贴，图是官方的方形图，标题在下面。 */
+/** 「热门分类」里的一块磁贴，图是官方的方形图，标题在下面。 */
 private data class HotTile(
     val label: String,
     val art: String? = null,

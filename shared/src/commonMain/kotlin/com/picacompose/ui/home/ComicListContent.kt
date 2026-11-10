@@ -210,13 +210,13 @@ fun ComicListContent(
     }
 }
 
-/** 排序方式：`s` 参数跟官方一致，默認就是服务端原来的顺序。 */
+/** 排序方式：`s` 参数跟官方一致，默认就是服务端原来的顺序。 */
 private enum class ComicSort(val label: String, val value: String?) {
-    Default("默認", null),
+    Default("默认", null),
     Newest("最新", "dd"),
     Oldest("最早", "da"),
-    MostLiked("最多愛心", "ld"),
-    MostViewed("最多瀏覽", "vd"),
+    MostLiked("最多爱心", "ld"),
+    MostViewed("最多浏览", "vd"),
 }
 
 /** 单列里的一条：左边封面，右边标题 / 作者 / 数据，够一屏塞五六条。随机页也用它。 */
@@ -249,10 +249,10 @@ internal fun ComicListRow(
                     contentDescription = comic.title,
                     modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
                 )
-                // 读过就标一下读到第幾話，一眼知道这本翻到哪儿了。
+                // 读过就标一下读到第几话，一眼知道这本翻到哪儿了。
                 if (progress != null && progress.order > 0) {
                     Text(
-                        text = "看到第 ${progress.order} 話",
+                        text = "看到第 ${progress.order} 话",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White,
                         maxLines = 1,
@@ -289,17 +289,17 @@ internal fun ComicListRow(
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "${compactCount(comic.totalLikes)} 讚",
+                        text = "${compactCount(comic.totalLikes)} 赞",
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.onSurfaceVariant,
                     )
                     Text(
-                        text = "${compactCount(comic.totalViews)} 瀏覽",
+                        text = "${compactCount(comic.totalViews)} 浏览",
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.onSurfaceVariant,
                     )
                     Text(
-                        text = "${comic.pagesCount} 頁",
+                        text = "${comic.pagesCount} 页",
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.onSurfaceVariant,
                     )
@@ -322,7 +322,7 @@ internal fun ComicListRow(
                 if (comic.finished) {
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "已完結",
+                        text = "已完结",
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.onSurfaceVariant,
                     )

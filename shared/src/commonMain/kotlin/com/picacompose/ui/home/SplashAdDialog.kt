@@ -35,12 +35,12 @@ import com.picacompose.picaapi.model.Banner
 import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.url
 
-private const val AD_LINK_TITLE = "廣告"
+private const val AD_LINK_TITLE = "广告"
 
 /**
- * 嗶咔的開屏廣告：拉 `GET banners` 里 `type=ads` 的那条，整屏铺开。
+ * 哔咔的开屏广告：拉 `GET banners` 里 `type=ads` 的那条，整屏铺开。
  *
- * 官方是启动时弹、看完自动关；这边不倒数也不强留，右上角「關閉」/返回键随时走，
+ * 官方是启动时弹、看完自动关；这边不倒数也不强留，右上角「关闭」/返回键随时走，
  * 点图才去广告链接。
  */
 @Composable
@@ -79,13 +79,13 @@ fun SplashAdDialog(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        text = "廣告沒拉到",
+                        text = "广告没拉到",
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
                     )
                     Spacer(Modifier.height(14.dp))
                     Text(
-                        text = "關閉",
+                        text = "关闭",
                         style = MaterialTheme.typography.labelLarge,
                         color = Color.White,
                         modifier = Modifier
@@ -109,7 +109,7 @@ fun SplashAdDialog(
                             },
                     )
                     Text(
-                        text = "廣告",
+                        text = "广告",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Black,
                         modifier = Modifier
@@ -124,7 +124,7 @@ fun SplashAdDialog(
             }
 
             Text(
-                text = "關閉",
+                text = "关闭",
                 style = MaterialTheme.typography.labelMedium,
                 color = Color.White,
                 modifier = Modifier

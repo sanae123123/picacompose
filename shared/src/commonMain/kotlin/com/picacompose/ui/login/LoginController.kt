@@ -122,6 +122,18 @@ class LoginController(
         }
     }
 
+    /**
+     * 重新拉一次资料。
+     *
+     * 登录时拉的那份会一直用到下次登录，里面的 `isPunched`、`exp` 早就过期了；
+     * 进「我的」页时重拉一次，签到状态才是服务器上的真实值。
+     */
+    suspend fun refreshProfile(): UserProfile? {
+        val fresh = runCatching { client.users.profile() }.getOrNull() ?: return null
+        profile = fresh
+        return fresh
+    }
+
     fun signOut() {
         client.updateToken("")
         session.clearToken()

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -42,6 +43,7 @@ import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.UserIntroDialog
 import com.picacompose.ui.components.UserAvatar
+import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.UserTitleBadge
 import com.picacompose.ui.components.genderLabel
 import com.picacompose.ui.components.userDetailLine
@@ -49,15 +51,24 @@ import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.url
 import kotlinx.coroutines.launch
 
+/** 签到结果的一张小卡片文案。 */
+private data class PunchNotice(val title: String, val message: String)
+
 /** 我的：头像 + 简介 + 资料明细 + 签到 + 退出登录。 */
 @Composable
-fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
+fun MineContent(
+    profile: UserProfile,
+    onSignOut: () -> Unit,
+    onRefreshProfile: suspend () -> Unit = {},
+) {
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
     // 签到成功后本地的 isPunched 会立刻翻，不等下次拉 profile。
     var checkedIn by remember(profile) { mutableStateOf(profile.isPunched) }
     var punching by remember { mutableStateOf(false) }
     var punchError by remember { mutableStateOf<String?>(null) }
+    // 签到结果弹窗：成功了要有反馈，不然点完图标什么都没发生。
+    var punchNotice by remember { mutableStateOf<PunchNotice?>(null) }
 
     val slogan = profile.slogan?.trim().orEmpty()
     val avatarUrl = profile.avatar.url()
@@ -147,11 +158,21 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
                                     try {
                                         pica.users.punchIn()
                                         checkedIn = true
+                                        punchNotice = PunchNotice(
+                                            title = "签到成功",
+                                            message = "今天的签到已经记下了，明天再来。",
+                                        )
+                                        // 经验 / 等级 / 签到状态一起刷新，别让这一页停在旧数据上。
+                                        onRefreshProfile()
                                     } catch (e: Exception) {
                                         // 可能是「今天已经签过了」而本地状态过期，问一次服务器再决定。
                                         val fresh = runCatching { pica.users.profile() }.getOrNull()
                                         if (fresh?.isPunched == true) {
                                             checkedIn = true
+                                            punchNotice = PunchNotice(
+                                                title = "今天已经签过了",
+                                                message = "服务器那边显示今天已经签到，不用再点啦。",
+                                            )
                                         } else {
                                             punchError = e.message ?: "签到失败，稍后再试"
                                         }
@@ -209,6 +230,27 @@ fun MineContent(profile: UserProfile, onSignOut: () -> Unit) {
                 Text("退出登录", style = MaterialTheme.typography.labelLarge)
             }
         }
+    }
+
+    punchNotice?.let { notice ->
+        val pop = rememberDialogPop(onDismiss = { punchNotice = null })
+        AlertDialog(
+            onDismissRequest = pop::dismiss,
+            modifier = pop.modifier,
+            title = {
+                Text(text = notice.title, style = MaterialTheme.typography.titleMedium)
+            },
+            text = {
+                Text(
+                    text = notice.message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceVariant,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = pop::dismiss) { Text("好") }
+            },
+        )
     }
 
     if (showSlogan) {

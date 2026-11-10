@@ -109,7 +109,7 @@ fun WebPageContent(
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text("後退") },
+                        text = { Text("后退") },
                         enabled = controller.canGoBack,
                         onClick = {
                             menuOpen = false

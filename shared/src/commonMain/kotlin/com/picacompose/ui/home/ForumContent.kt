@@ -35,7 +35,7 @@ import com.picacompose.ui.components.PicaIcon
 import kotlinx.coroutines.launch
 
 /**
- * 「嗶咔留言版」页：官方就是拿占位漫画的评论区当留言板，这里也一样。
+ * 「哔咔留言板」页：官方就是拿占位漫画的评论区当留言板，这里也一样。
  *
  * 列表、行、输入条都在 [CommentBits] 里，漫画详情页的评论区直接复用同一套。
  * pager 和 listState 由 [HomeShell] 持有，退出再进来不重拉第一页。
@@ -73,7 +73,7 @@ fun ForumContent(
                     }
                     Spacer(Modifier.width(6.dp))
                     Box(Modifier.weight(1f)) {
-                        PageHeader(title = "嗶咔留言版")
+                        PageHeader(title = "哔咔留言板")
                     }
                     // 工具栏右上角：评论翻到几页之后，直接输页码跳。
                     Text(

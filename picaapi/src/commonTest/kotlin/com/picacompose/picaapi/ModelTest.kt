@@ -95,12 +95,12 @@ class ModelTest {
         val apps = json.decodeFromString(
             Envelope.serializer(PicaAppsData.serializer()),
             """
-            {"code":200,"message":"success","data":{"apps":[{"title":"嗶咔AI互動小說",
+            {"code":200,"message":"success","data":{"apps":[{"title":"哔咔AI互动小说",
             "url":"https://example.com","icon":"https://example.com/i.jpg","showTitleBar":false,
             "description":"说明"}]}}
             """.trimIndent(),
         ).data!!.apps
-        assertEquals("嗶咔AI互動小說", apps.single().title)
+        assertEquals("哔咔AI互动小说", apps.single().title)
         assertTrue(!apps.single().showTitleBar)
     }
 

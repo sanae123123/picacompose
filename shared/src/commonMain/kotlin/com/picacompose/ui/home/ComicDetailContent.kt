@@ -48,10 +48,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
-/** 详情页的分区：章節列表和評論區各占一半的用处。 */
+/** 详情页的分区：章节列表和评论区各占一半的用处。 */
 internal enum class DetailTab(val label: String) {
-    Chapters("章節"),
-    Comments("評論"),
+    Chapters("章节"),
+    Comments("评论"),
 }
 
 /**
@@ -94,7 +94,7 @@ class ComicDetailState(comicId: String) {
     var progress by mutableStateOf(progressStore.load(comicId))
         private set
 
-    /** 阅读器报进度时记一下：第幾話、第几页。 */
+    /** 阅读器报进度时记一下：第几话、第几页。 */
     fun recordProgress(order: Int, page: Int, pages: Int) {
         if (order <= 0) return
         val next = ReadingProgress(
@@ -140,9 +140,9 @@ fun rememberComicDetailState(comicId: String): ComicDetailState =
     remember(comicId) { ComicDetailState(comicId) }
 
 /**
- * 本子详情页：上面是封面和资料，下面切「章節 / 評論」。
+ * 本子详情页：上面是封面和资料，下面切「章节 / 评论」。
  *
- * 章節列表和评论区都是分页的，各自滚到底续页；评论区整套复用 [CommentBits]，
+ * 章节列表和评论区都是分页的，各自滚到底续页；评论区整套复用 [CommentBits]，
  * 置顶评论、回复、跳页都跟着一起有。
  */
 @Composable
@@ -151,10 +151,10 @@ fun ComicDetailContent(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     seedTitle: String? = null,
-    /** 章節行的变形源 key，点开时从那一行撑开成阅读器。 */
+    /** 章节行的变形源 key，点开时从那一行撑开成阅读器。 */
     episodeRowModifier: @Composable (String) -> Modifier = { Modifier },
     onOpenEpisode: (Episode, String) -> Unit = { _, _ -> },
-    /** 「繼續閱讀」：上次读到第幾話、第几页。 */
+    /** 「继续阅读」：上次读到第几话、第几页。 */
     onResume: (order: Int, page: Int) -> Unit = { _, _ -> },
 ) {
     val colors = MaterialTheme.colorScheme
@@ -165,7 +165,7 @@ fun ComicDetailContent(
     LaunchedEffect(state) { state.ensureLoaded() }
     LaunchedEffect(state.reloadTick) { if (state.reloadTick > 0) state.load() }
 
-    // 章節第一次进来看第一页；切走再切回来不重拉。
+    // 章节第一次进来看第一页；切走再切回来不重拉。
     LaunchedEffect(state.episodePager, tab) {
         if (tab == DetailTab.Chapters && state.episodePager.items.isEmpty()) {
             state.episodePager.loadNext()
@@ -180,7 +180,7 @@ fun ComicDetailContent(
     var replyTarget by remember { mutableStateOf<CommentReplyTarget?>(null) }
     var showJump by remember { mutableStateOf(false) }
 
-    // 章節滚到底续页。
+    // 章节滚到底续页。
     LaunchedEffect(listState, state.episodePager, tab) {
         if (tab != DetailTab.Chapters) return@LaunchedEffect
         snapshotFlow {
@@ -276,7 +276,7 @@ fun ComicDetailContent(
                                     .onFailure {
                                         state.liked = !next
                                         state.likedCount = base
-                                        state.actionError = "讚沒點上，等一下再點一次"
+                                        state.actionError = "赞没点上，等一下再点一次"
                                     }
                             }
                         },
@@ -291,7 +291,7 @@ fun ComicDetailContent(
                                     }
                                     .onFailure {
                                         state.favourited = !next
-                                        state.actionError = "收藏沒成功，等一下再點一次"
+                                        state.actionError = "收藏没成功，等一下再点一次"
                                     }
                             }
                         },
@@ -303,7 +303,7 @@ fun ComicDetailContent(
                 }
 
                 state.loading -> item(key = "detail-loading") {
-                    LoadingBlock("正在拉詳情…")
+                    LoadingBlock("正在拉详情…")
                 }
             }
 
@@ -316,12 +316,12 @@ fun ComicDetailContent(
                             if (savedProgress != null) {
                                 onResume(savedProgress.order, savedProgress.page)
                             } else {
-                                // 还没读过：从第一話开始。章節没拉下来就先拉一页再开，
+                                // 还没读过：从第一话开始。章节没拉下来就先拉一页再开，
                                 // 免得猜个序号结果是空的。
                                 scope.launch {
                                     val pager = state.episodePager
                                     if (pager.items.isEmpty()) pager.loadNext()
-                                    // 章節是倒序给的，第一話在最后一页里。
+                                    // 章节是倒序给的，第一话在最后一页里。
                                     if (pager.lastPage > 1) pager.jumpTo(pager.lastPage)
                                     pager.items.minOfOrNull { it.order }
                                         ?.let { onResume(it, 0) }
@@ -351,8 +351,8 @@ fun ComicDetailContent(
                                         scope.launch { state.episodePager.retry() }
                                     }
 
-                                state.episodePager.loading -> LoadingBlock("正在拉章節…")
-                                else -> EmptyBlock("这本还没有章節")
+                                state.episodePager.loading -> LoadingBlock("正在拉章节…")
+                                else -> EmptyBlock("这本还没有章节")
                             }
                         }
                     }
@@ -390,7 +390,7 @@ fun ComicDetailContent(
         // 评论区固定在底下，跟留言板一致。
         if (tab == DetailTab.Comments) {
             CommentComposer(
-                placeholder = "說點什麼…",
+                placeholder = "说点什么…",
                 onSend = { content ->
                     pica.comments.post(state.comicId, content)
                     state.commentFeed.pager.reloadFirstPage()
@@ -416,7 +416,7 @@ fun ComicDetailContent(
     }
 }
 
-/** 「繼續閱讀」：记住上次读到第幾話第几页，点一下接着看；没读过就从第一話开始。 */
+/** 「继续阅读」：记住上次读到第几话第几页，点一下接着看；没读过就从第一话开始。 */
 @Composable
 private fun ResumeCard(
     progress: ReadingProgress?,
@@ -434,18 +434,18 @@ private fun ResumeCard(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = if (progress == null) "開始閱讀" else "繼續閱讀",
+                    text = if (progress == null) "开始阅读" else "继续阅读",
                     style = MaterialTheme.typography.labelLarge,
                     color = colors.onSecondaryContainer,
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = if (progress == null) {
-                        "從第一話開始看"
+                        "从第一话开始看"
                     } else {
                         buildString {
-                            append("上次讀到 第 ${progress.order} 話")
-                            if (progress.page > 0) append(" · 第 ${progress.page + 1} 頁")
+                            append("上次读到 第 ${progress.order} 话")
+                            if (progress.page > 0) append(" · 第 ${progress.page + 1} 页")
                         }
                     },
                     style = MaterialTheme.typography.bodySmall,
@@ -453,7 +453,7 @@ private fun ResumeCard(
                 )
             }
             Text(
-                text = if (progress == null) "開始" else "接着看",
+                text = if (progress == null) "开始" else "接着看",
                 style = MaterialTheme.typography.labelLarge,
                 color = colors.onSecondaryContainer,
             )
@@ -510,9 +510,9 @@ private fun DetailHero(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = buildList {
-                        add(if (detail.finished) "已完結" else "連載中")
-                        add("${detail.episodesCount} 話")
-                        add("${compactCount(detail.totalViews)} 瀏覽")
+                        add(if (detail.finished) "已完结" else "连载中")
+                        add("${detail.episodesCount} 话")
+                        add("${compactCount(detail.totalViews)} 浏览")
                     }.joinToString(" · "),
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.onSurfaceVariant,
@@ -539,7 +539,7 @@ private fun DetailHero(
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             ActionPill(
                 icon = PicaIcon.Like,
-                label = "讚 ${compactCount(likesCount)}",
+                label = "赞 ${compactCount(likesCount)}",
                 active = liked,
                 onClick = onLike,
             )
@@ -628,7 +628,7 @@ private suspend fun postWithRetry(block: suspend () -> String?): Result<String?>
 private fun String?.isCancelAction(): Boolean =
     this?.trim()?.lowercase()?.startsWith("un") == true
 
-/** 章節一行：序號 + 標題 + 更新日期。 */
+/** 章节一行：序号 + 标题 + 更新日期。 */
 @Composable
 private fun EpisodeRow(
     episode: Episode,
@@ -651,13 +651,13 @@ private fun EpisodeRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "第 ${episode.order} 話",
+                text = "第 ${episode.order} 话",
                 style = MaterialTheme.typography.labelMedium,
                 color = colors.primary,
                 modifier = Modifier.width(64.dp),
             )
             Text(
-                text = episode.title.ifBlank { "第 ${episode.order} 話" },
+                text = episode.title.ifBlank { "第 ${episode.order} 话" },
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.onSurface,
                 maxLines = 1,
@@ -667,7 +667,7 @@ private fun EpisodeRow(
             if (resumed) {
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "讀到這裡",
+                    text = "读到这里",
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.primary,
                 )

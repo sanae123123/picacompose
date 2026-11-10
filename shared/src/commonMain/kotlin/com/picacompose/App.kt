@@ -73,7 +73,11 @@ private fun MainScreens() {
                 )
 
                 Screen.Home -> controller.profile?.let { profile ->
-                    HomeShell(profile = profile, onSignOut = controller::signOut)
+                    HomeShell(
+                        profile = profile,
+                        onSignOut = controller::signOut,
+                        onRefreshProfile = { controller.refreshProfile() },
+                    )
                 }
             }
         }

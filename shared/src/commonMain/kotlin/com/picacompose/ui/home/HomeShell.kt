@@ -63,7 +63,7 @@ private val OverlayPage.sharedKey: String
         // 详情页的 key 跟着点的那一本走，这里只是兜底。
         OverlayPage.Detail -> "comicDetail"
         OverlayPage.Random -> "randomTile"
-        // 阅读器的 key 跟着点的那一話走，这里只是兜底。
+        // 阅读器的 key 跟着点的那一话走，这里只是兜底。
         OverlayPage.Reader -> "episode"
         OverlayPage.None -> "mainShell"
     }
@@ -79,7 +79,11 @@ private val OverlayPage.sharedKey: String
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
+fun HomeShell(
+    profile: UserProfile,
+    onSignOut: () -> Unit,
+    onRefreshProfile: suspend () -> Unit = {},
+) {
     val scope = rememberCoroutineScope()
     val darkTheme = isSystemInDarkTheme()
     val tabs = HomeTab.entries
@@ -90,13 +94,18 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { savedIndex = it }
     }
+    // 登录时拉到的那份资料会一直用到下次登录，签到状态早就过期了；
+    // 每次进「我的」都重拉一次，才不会出现「刚签到过、再进来又显示未签到」。
+    LaunchedEffect(tab) {
+        if (tab == HomeTab.Mine) onRefreshProfile()
+    }
     // 叠在主页上的两级整页：消息（从首页卡片开）、留言板（从分类磁贴开）。
     var overlayOrdinal by rememberSaveable { mutableStateOf(OverlayPage.None.ordinal) }
     // 分类里 isWeb 的条目：点开哪个就把它的标题 / 地址 / 变形 key 记下来。
     var webKey by rememberSaveable { mutableStateOf("webPage") }
     var webTitle by rememberSaveable { mutableStateOf("") }
     var webUrl by rememberSaveable { mutableStateOf("") }
-    // 嗶咔的開屏廣告：分类页那几块磁贴点开弹一次。
+    // 哔咔的开屏广告：分类页那几块磁贴点开弹一次。
     var splashAdOpen by rememberSaveable { mutableStateOf(false) }
     // 本子列表：查询用的分类名（「最新更新」是空的）、显示用的标题、变形 key，
     // 以及它自己的分页和滚动位置。
@@ -130,7 +139,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
     val detailState = remember(detailComicId) {
         if (detailComicId.isBlank()) null else ComicDetailState(detailComicId)
     }
-    // 阅读器：从章節那一行撑开成整屏，读的是哪一話也记下来。
+    // 阅读器：从章节那一行撑开成整屏，读的是哪一话也记下来。
     var readerOrder by rememberSaveable { mutableIntStateOf(0) }
     var readerKey by rememberSaveable { mutableStateOf("episode") }
     // 阅读器从第几页开始（上次读到哪儿）。
@@ -230,7 +239,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
             ) { page ->
                 val contentScope = this
                 if (page == OverlayPage.None) {
-                    // 主界面：消息卡和留言版磁贴各自挂上变形源，等被点的时候长成整页。
+                    // 主界面：消息卡和留言板磁贴各自挂上变形源，等被点的时候长成整页。
                     val messagesSource = with(shared) {
                         overlayBounds(OverlayPage.Messages.sharedKey, contentScope)
                     }
@@ -332,11 +341,11 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         onOpenForum = {
                                             overlayOrdinal = OverlayPage.Forum.ordinal
                                         },
-                                        // 「支持嗶咔」也走统一的内置浏览器，key 用它自己那块磁贴，
+                                        // 「支持哔咔」也走统一的内置浏览器，key 用它自己那块磁贴，
                                         // 点下去从磁贴长成整屏，不再另开一层弹窗。
                                         onOpenSupport = {
                                             webKey = "supportTile"
-                                            webTitle = "支持嗶咔"
+                                            webTitle = "支持哔咔"
                                             webUrl = supportPicaUrl(
                                                 adsBase = categoriesState.adsBase,
                                                 dark = darkTheme,
@@ -353,7 +362,11 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                     )
 
                                     HomeTab.Game -> GamesContent(pager = gamePager, listState = gameListState)
-                                    HomeTab.Mine -> MineContent(profile = profile, onSignOut = onSignOut)
+                                    HomeTab.Mine -> MineContent(
+                                        profile = profile,
+                                        onSignOut = onSignOut,
+                                        onRefreshProfile = onRefreshProfile,
+                                    )
                                     HomeTab.Settings -> SettingsContent(onSignOut = onSignOut)
                                 }
                             }
@@ -468,13 +481,13 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         state = state,
                                         seedTitle = detailTitle,
                                         onBack = { overlayOrdinal = detailReturnOrdinal },
-                                        // 章節行也挂变形源：点开从那一行撑成整屏阅读器。
+                                        // 章节行也挂变形源：点开从那一行撑成整屏阅读器。
                                         episodeRowModifier = { key ->
                                             with(shared) { overlayBounds(key, contentScope) }
                                         },
                                         onOpenEpisode = { episode, key ->
                                             readerOrder = episode.order
-                                            // 点的正是上次读的那一話就接着看，别从头再来。
+                                            // 点的正是上次读的那一话就接着看，别从头再来。
                                             val saved = state.progress
                                             readerPage = if (saved != null && saved.order == episode.order) {
                                                 saved.page
@@ -484,7 +497,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                             readerKey = key
                                             overlayOrdinal = OverlayPage.Reader.ordinal
                                         },
-                                        // 「繼續閱讀」：没有对应的章節行，直接用兜底的 key，纯淡入。
+                                        // 「继续阅读」：没有对应的章节行，直接用兜底的 key，纯淡入。
                                         onResume = { order, page ->
                                             readerOrder = order
                                             readerPage = page
@@ -505,7 +518,7 @@ fun HomeShell(profile: UserProfile, onSignOut: () -> Unit) {
                                         onDismiss = {
                                             overlayOrdinal = OverlayPage.Detail.ordinal
                                         },
-                                        // 读到哪一页就记到本子上，详情页那张「繼續閱讀」跟着变。
+                                        // 读到哪一页就记到本子上，详情页那张「继续阅读」跟着变。
                                         onProgress = { order, page, pages ->
                                             state.recordProgress(order, page, pages)
                                         },

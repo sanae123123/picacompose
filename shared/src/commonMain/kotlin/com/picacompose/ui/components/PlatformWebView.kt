@@ -11,7 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 
 /**
- * 网页视图的外部控制器：顶栏的「刷新」「後退」按它下发，页面能不能后退由平台回填。
+ * 网页视图的外部控制器：顶栏的「刷新」「后退」按它下发，页面能不能后退由平台回填。
  *
  * 用请求计数而不是直接调方法，是因为真正的 WebView 活在平台那一侧，
  * 这里只能通过状态变化通知它。

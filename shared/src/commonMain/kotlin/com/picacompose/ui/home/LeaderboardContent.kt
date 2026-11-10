@@ -52,11 +52,11 @@ import kotlinx.coroutines.launch
 
 /** 排行榜的两个大 tab。 */
 private enum class LeaderboardTab(val label: String) {
-    Popular("最熱門"),
-    Knight("騎士榜"),
+    Popular("最热门"),
+    Knight("骑士榜"),
 }
 
-/** 最熱門里的时间范围，`tt` 是接口参数。 */
+/** 最热门里的时间范围，`tt` 是接口参数。 */
 private enum class PopularRange(val label: String, val tt: String) {
     Day("本日", "H24"),
     Week("本周", "D7"),
@@ -64,7 +64,7 @@ private enum class PopularRange(val label: String, val tt: String) {
 }
 
 /**
- * 排行榜：最熱門（本日 / 本周 / 本月）+ 騎士榜。
+ * 排行榜：最热门（本日 / 本周 / 本月）+ 骑士榜。
  *
  * 两个榜单都是一口气给全（40 本 / 50 人），接口没有分页，所以这边也按一页处理；
  * 三个时间的分页器各留一份，来回切不会重拉。
@@ -171,7 +171,7 @@ fun LeaderboardContent(
                 state = popularState,
                 itemKey = { it.id },
                 onRetry = { scope.launch { popularPager.retry() } },
-                loadingText = "正在拉最熱門…",
+                loadingText = "正在拉最热门…",
                 emptyText = "这个榜单是空的",
                 modifier = Modifier.weight(1f),
             ) { comic, rank ->
@@ -189,7 +189,7 @@ fun LeaderboardContent(
                 state = knightState,
                 itemKey = { it.id },
                 onRetry = { scope.launch { knightPager.retry() } },
-                loadingText = "正在拉騎士榜…",
+                loadingText = "正在拉骑士榜…",
                 emptyText = "骑士榜是空的",
                 modifier = Modifier.weight(1f),
             ) { user, rank ->
@@ -283,7 +283,7 @@ private fun <T> RankList(
     }
 }
 
-/** 最熱門的一条：名次 + 封面 + 标题 / 作者 / 浏览点赞。 */
+/** 最热门的一条：名次 + 封面 + 标题 / 作者 / 浏览点赞。 */
 @Composable
 private fun ComicRankRow(
     rank: Int,
@@ -329,7 +329,7 @@ private fun ComicRankRow(
                 }
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "${compactCount(comic.totalViews)} 瀏覽 · ${compactCount(comic.totalLikes)} 讚",
+                    text = "${compactCount(comic.totalViews)} 浏览 · ${compactCount(comic.totalLikes)} 赞",
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.onSurfaceVariant,
                 )
@@ -338,7 +338,7 @@ private fun ComicRankRow(
     }
 }
 
-/** 騎士榜的一条：名次 + 带框头像 + 昵称称号 + 等级 / 上传数。 */
+/** 骑士榜的一条：名次 + 带框头像 + 昵称称号 + 等级 / 上传数。 */
 @Composable
 private fun KnightRankRow(
     rank: Int,
@@ -379,7 +379,7 @@ private fun KnightRankRow(
                     text = listOfNotNull(
                         genderLabel(user.gender),
                         "Lv.${user.level}",
-                        "上傳 ${compactCount(user.comicsUploaded)} 本",
+                        "上传 ${compactCount(user.comicsUploaded)} 本",
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.onSurfaceVariant,
@@ -389,12 +389,12 @@ private fun KnightRankRow(
     }
 }
 
-/** 数字太大就折成「1.2萬」「3.4億」，榜单里好读。 */
+/** 数字太大就折成「1.2万」「3.4亿」，榜单里好读。 */
 internal fun compactCount(value: Int): String {
     if (value < 10_000) return value.toString()
     return if (value >= 100_000_000) {
-        "${value / 100_000_000}.${(value % 100_000_000) / 10_000_000}億"
+        "${value / 100_000_000}.${(value % 100_000_000) / 10_000_000}亿"
     } else {
-        "${value / 10_000}.${(value % 10_000) / 1_000}萬"
+        "${value / 10_000}.${(value % 10_000) / 1_000}万"
     }
 }

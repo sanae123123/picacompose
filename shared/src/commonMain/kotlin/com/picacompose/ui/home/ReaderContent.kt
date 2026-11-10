@@ -70,9 +70,9 @@ private const val PRELOAD_AHEAD = 4
 /**
  * 阅读器：整屏黑底，图片一张挨一张竖着排，滚到底自动续页。
  *
- * 点一下画面收起 / 放出上下两条工具条；工具条上能返回详情、翻上一話 / 下一話、看进度。
- * 它是整页而不是弹窗：从章節那一行撑开成整屏（和别的整页共用同一套变形），
- * 退回去时详情页的状态提到外层存着，章節列表还停在刚才点的那一行。
+ * 点一下画面收起 / 放出上下两条工具条；工具条上能返回详情、翻上一话 / 下一话、看进度。
+ * 它是整页而不是弹窗：从章节那一行撑开成整屏（和别的整页共用同一套变形），
+ * 退回去时详情页的状态提到外层存着，章节列表还停在刚才点的那一行。
  */
 @Composable
 fun ReaderContent(
@@ -82,7 +82,7 @@ fun ReaderContent(
     startOrder: Int,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
-    /** 上次读到的那一页（换一話就从头看）。 */
+    /** 上次读到的那一页（换一话就从头看）。 */
     startPage: Int = 0,
     /** 读到哪里就报一下，外面存起来。 */
     onProgress: (order: Int, page: Int, pages: Int) -> Unit = { _, _, _ -> },
@@ -94,7 +94,7 @@ fun ReaderContent(
             itemKey = { it.id },
         )
     }
-    // 换一話就从头看；同一話重新进来时滚回上次那一页。
+    // 换一话就从头看；同一话重新进来时滚回上次那一页。
     val listState = remember(order) { LazyListState() }
     var chrome by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
@@ -107,7 +107,7 @@ fun ReaderContent(
         if (pager.items.isEmpty()) {
             val resumeTo = if (resuming && order == startOrder) startPage else 0
             if (resumeTo > 0) {
-                // 接着上次读的那一話：先把前面几页补齐，再滚到那一页。
+                // 接着上次读的那一话：先把前面几页补齐，再滚到那一页。
                 var guard = 0
                 while (pager.items.size <= resumeTo && pager.hasMore && guard < 40) {
                     pager.loadNext()
@@ -235,7 +235,7 @@ fun ReaderContent(
                     Spacer(Modifier.width(6.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            text = title.ifBlank { "第 $order 話" },
+                            text = title.ifBlank { "第 $order 话" },
                             style = MaterialTheme.typography.titleSmall,
                             color = Color.White,
                             maxLines = 1,
@@ -274,14 +274,14 @@ fun ReaderContent(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     EpisodeButton(
-                        label = "上一話",
+                        label = "上一话",
                         enabled = prevOrder != null,
                         modifier = Modifier.weight(1f),
                     ) {
                         prevOrder?.let { order = it }
                     }
                     EpisodeButton(
-                        label = "下一話",
+                        label = "下一话",
                         enabled = nextOrder != null,
                         modifier = Modifier.weight(1f),
                     ) {
@@ -389,7 +389,7 @@ private fun ChromeButton(onClick: () -> Unit, content: @Composable () -> Unit) {
     }
 }
 
-/** 底部翻話按钮：能翻就白底字，不能翻就灰掉。 */
+/** 底部翻话按钮：能翻就白底字，不能翻就灰掉。 */
 @Composable
 private fun EpisodeButton(
     label: String,
@@ -452,7 +452,7 @@ private fun ReaderState(
             )
 
             else -> Text(
-                text = "这話没有图片",
+                text = "这话没有图片",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.8f),
             )
