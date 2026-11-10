@@ -135,6 +135,13 @@ class ComicDetailState(comicId: String) {
         catchingLoad { pica.comics.detail(comicId) }
             .onSuccess {
                 detail = it
+                // 进过详情页就算浏览过一次，记住封面和作者，我的页「浏览历史」列表要用。
+                progressStore.recordOpen(
+                    comicId = comicId,
+                    title = it.title,
+                    cover = it.thumb.url(),
+                    author = it.author,
+                )
                 liked = it.isLiked
                 likedCount = it.likesCount
                 favourited = it.isFavourite

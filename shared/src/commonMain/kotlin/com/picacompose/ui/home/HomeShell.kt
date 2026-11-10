@@ -59,6 +59,7 @@ import kotlin.math.abs
 /** 从按钮长出来的整屏页面。 */
 private enum class OverlayPage {
     None, Messages, Forum, Leaderboard, Web, Comics, Detail, Random, Reader, Search,
+    Favorites, MyComments, ReadHistory,
 }
 
 /** 变形动画要配对用的 key：源（按钮/卡片）和目标（整页）必须一致。 */
@@ -77,6 +78,9 @@ private val OverlayPage.sharedKey: String
         OverlayPage.Reader -> "episode"
         // 搜索是从分类页顶栏那颗按钮打开的，没有对应的源，纯淡入。
         OverlayPage.Search -> "searchPage"
+        OverlayPage.Favorites -> "favoritesCard"
+        OverlayPage.MyComments -> "myCommentsCard"
+        OverlayPage.ReadHistory -> "readHistoryCard"
         OverlayPage.None -> "mainShell"
     }
 
@@ -188,6 +192,22 @@ fun HomeShell(
         )
     }
     val messageListState = rememberLazyListState()
+    // 我的页那三张入口卡打开的整页：分页和滚动位置都提上来，退出去再进来不用重拉。
+    val favouritePager = remember {
+        Pager(
+            load = { page -> pica.comics.favourites(page = page) },
+            itemKey = { it.id },
+        )
+    }
+    val favouriteListState = rememberLazyListState()
+    val myCommentPager = remember {
+        Pager(
+            load = { page -> pica.comments.myComments(page = page) },
+            itemKey = { it.id },
+        )
+    }
+    val myCommentListState = rememberLazyListState()
+    val historyListState = rememberLazyListState()
     // 留言板挂在分类页里，同样提上来：退出去再进来不重拉第一页。
     val forumFeed = rememberCommentFeed(FORUM_COMIC_ID)
     val forumListState = rememberLazyListState()
@@ -242,6 +262,19 @@ fun HomeShell(
             OverlayPage.Forum -> forumListState.scrollToItem(0)
             OverlayPage.Comics -> if (!fromDetail) comicListState.scrollToItem(0)
             OverlayPage.Search -> if (!fromDetail) searchListState.scrollToItem(0)
+            // 收藏和历史评论是会被别处改动的内容（收藏了新的、发了新评论），每次打开重拉第一页；
+            // 从详情页退回来不算打开，保持刚才滚到的地方。
+            OverlayPage.Favorites -> if (!fromDetail) {
+                favouriteListState.scrollToItem(0)
+                favouritePager.reloadFirstPage()
+            }
+
+            OverlayPage.MyComments -> if (!fromDetail) {
+                myCommentListState.scrollToItem(0)
+                myCommentPager.reloadFirstPage()
+            }
+
+            OverlayPage.ReadHistory -> if (!fromDetail) historyListState.scrollToItem(0)
             OverlayPage.None, OverlayPage.Leaderboard, OverlayPage.Web,
             OverlayPage.Detail, OverlayPage.Random, OverlayPage.Reader -> Unit
         }
@@ -427,6 +460,25 @@ fun HomeShell(
                                         profile = profile,
                                         onSignOut = onSignOut,
                                         onRefreshProfile = onRefreshProfile,
+                                        onOpenFavourites = {
+                                            overlayOrdinal = OverlayPage.Favorites.ordinal
+                                        },
+                                        onOpenComments = {
+                                            overlayOrdinal = OverlayPage.MyComments.ordinal
+                                        },
+                                        onOpenHistory = {
+                                            overlayOrdinal = OverlayPage.ReadHistory.ordinal
+                                        },
+                                        // 三张卡各挂一个变形源，点开就从那一块长成整屏。
+                                        favouritesModifier = with(shared) {
+                                            overlayBounds(OverlayPage.Favorites.sharedKey, contentScope)
+                                        },
+                                        commentsModifier = with(shared) {
+                                            overlayBounds(OverlayPage.MyComments.sharedKey, contentScope)
+                                        },
+                                        historyModifier = with(shared) {
+                                            overlayBounds(OverlayPage.ReadHistory.sharedKey, contentScope)
+                                        },
                                     )
                                     HomeTab.Settings -> SettingsContent(onSignOut = onSignOut)
                                 }
@@ -537,6 +589,53 @@ fun HomeShell(
                                         detailTitle = comic.title
                                         detailKey = key
                                         detailReturnOrdinal = OverlayPage.Search.ordinal
+                                        overlayOrdinal = OverlayPage.Detail.ordinal
+                                    },
+                                )
+
+                                OverlayPage.Favorites -> FavouritesContent(
+                                    pager = favouritePager,
+                                    listState = favouriteListState,
+                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                    comicRowModifier = { key ->
+                                        with(shared) { overlayBounds(key, contentScope) }
+                                    },
+                                    onOpenComic = { comic, key ->
+                                        detailComicId = comic.id
+                                        detailTitle = comic.title
+                                        detailKey = key
+                                        detailReturnOrdinal = OverlayPage.Favorites.ordinal
+                                        overlayOrdinal = OverlayPage.Detail.ordinal
+                                    },
+                                )
+
+                                OverlayPage.MyComments -> MyCommentsContent(
+                                    pager = myCommentPager,
+                                    listState = myCommentListState,
+                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                    commentRowModifier = { key ->
+                                        with(shared) { overlayBounds(key, contentScope) }
+                                    },
+                                    onOpenComic = { comicId, title, key ->
+                                        detailComicId = comicId
+                                        detailTitle = title
+                                        detailKey = key
+                                        detailReturnOrdinal = OverlayPage.MyComments.ordinal
+                                        overlayOrdinal = OverlayPage.Detail.ordinal
+                                    },
+                                )
+
+                                OverlayPage.ReadHistory -> ReadHistoryContent(
+                                    listState = historyListState,
+                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                    comicRowModifier = { key ->
+                                        with(shared) { overlayBounds(key, contentScope) }
+                                    },
+                                    onOpenComic = { comicId, title, key ->
+                                        detailComicId = comicId
+                                        detailTitle = title
+                                        detailKey = key
+                                        detailReturnOrdinal = OverlayPage.ReadHistory.ordinal
                                         overlayOrdinal = OverlayPage.Detail.ordinal
                                     },
                                 )

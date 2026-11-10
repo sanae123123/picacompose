@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.picacompose.data.pica
+import com.picacompose.data.readingProgressStore
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.UserIntroDialog
@@ -61,6 +62,13 @@ fun MineContent(
     profile: UserProfile,
     onSignOut: () -> Unit,
     onRefreshProfile: suspend () -> Unit = {},
+    onOpenFavourites: () -> Unit = {},
+    onOpenComments: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
+    /** 三张卡各挂一个变形源，点开时从小卡片长成整页（key 和整页那边配对）。 */
+    favouritesModifier: Modifier = Modifier,
+    commentsModifier: Modifier = Modifier,
+    historyModifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -221,6 +229,33 @@ fun MineContent(
             Spacer(Modifier.height(14.dp))
         }
         item {
+            // 三张入口卡：收藏、历史评论、浏览历史，各自长成整页。
+            PicaCard {
+                MineEntryRow(
+                    icon = PicaIcon.Star,
+                    title = "我的收藏",
+                    summary = "收藏过的本子都在这儿",
+                    modifier = favouritesModifier,
+                    onClick = onOpenFavourites,
+                )
+                MineEntryRow(
+                    icon = PicaIcon.Notice,
+                    title = "历史评论",
+                    summary = "我发过的评论，点一条回到那本本子",
+                    modifier = commentsModifier,
+                    onClick = onOpenComments,
+                )
+                MineEntryRow(
+                    icon = PicaIcon.Eye,
+                    title = "浏览历史",
+                    summary = historySummary(),
+                    modifier = historyModifier,
+                    onClick = onOpenHistory,
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+        }
+        item {
             OutlinedButton(
                 onClick = onSignOut,
                 shape = CircleShape,
@@ -268,6 +303,62 @@ fun MineContent(
             ),
             onDismiss = { showSlogan = false },
         )
+    }
+}
+
+/** 「浏览历史」那行的副标题：本机记了多少本。 */
+private fun historySummary(): String {
+    val count = readingProgressStore.all().size
+    return if (count > 0) "最近翻过 $count 本" else "还没翻过本子"
+}
+
+/**
+ * 我的页里的一张入口卡：图标 + 标题 + 说明 + 右箭头，整行可点。
+ *
+ * [modifier] 用来挂共享元素变形源，所以不能省。
+ */
+@Composable
+private fun MineEntryRow(
+    icon: PicaIcon,
+    title: String,
+    summary: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = colors.surface,
+        tonalElevation = 1.dp,
+        modifier = modifier.fillMaxWidth().padding(vertical = 5.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PicaGlyph(icon, Modifier.size(20.dp), colors.primary)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.onSurface,
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            PicaGlyph(PicaIcon.ArrowRight, Modifier.size(18.dp), colors.onSurfaceVariant)
+        }
     }
 }
 
