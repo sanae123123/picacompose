@@ -102,6 +102,9 @@ class PicaClient(
     private val gameApi = GameApi(this)
     private val utilsApi = UtilsApi(this)
 
+    /** 当前生效的图片服务器（`/init` 下发的那一个），换线路重建客户端时要带过去。 */
+    val currentImageServer: String? get() = imageServer.value
+
     /** 图片地址拼接，自动带上配置里的 imageServer。 */
     fun imageUrl(thumbnail: Thumbnail?): String? = PicaImage.url(thumbnail, imageServer.value)
 

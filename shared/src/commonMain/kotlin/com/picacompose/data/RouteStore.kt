@@ -22,6 +22,14 @@ class RouteStore(private val kv: KeyValueStore = platformKeyValueStore()) {
     val savedLatencyMs: Long?
         get() = kv.get(KEY_LATENCY)?.toLongOrNull()
 
+    /** 上次 `/init` 下发的图片服务器，图片加载失败时拿它当兜底地址。 */
+    val savedImageServer: String?
+        get() = kv.get(KEY_IMAGE_SERVER)?.takeIf { it.isNotBlank() }
+
+    fun saveImageServer(value: String?) {
+        kv.put(KEY_IMAGE_SERVER, value?.takeIf { it.isNotBlank() })
+    }
+
     fun save(line: PicaLine?, ips: List<String>, latencyMs: Long?) {
         kv.put(KEY_LINE, line?.channel?.toString())
         kv.put(KEY_IPS, ips.takeIf { it.isNotEmpty() }?.joinToString(","))
@@ -32,5 +40,6 @@ class RouteStore(private val kv: KeyValueStore = platformKeyValueStore()) {
         const val KEY_LINE = "route.line"
         const val KEY_IPS = "route.dnsIps"
         const val KEY_LATENCY = "route.latencyMs"
+        const val KEY_IMAGE_SERVER = "route.imageServer"
     }
 }

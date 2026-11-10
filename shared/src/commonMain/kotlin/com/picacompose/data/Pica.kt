@@ -37,6 +37,8 @@ suspend fun applyPicaRoute(line: PicaLine, ips: List<String>) {
             appChannel = line.channel,
             authorization = old.token.value,
             timeOffsetSeconds = old.serverTimeOffsetSeconds,
+            // /init 下发的图床换线时要带过去，不然新客户端会退回只用 fileServer。
+            imageServer = old.currentImageServer ?: RouteStore().savedImageServer,
         ),
         engine = engine,
         onTransportFailure = { picaNetworkFailureHandler?.invoke() },

@@ -44,6 +44,7 @@ import com.picacompose.data.pica
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.BackHandlerCompat
 import com.picacompose.data.NoticeUnread
+import com.picacompose.data.RouteStore
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.overlayBounds
@@ -96,6 +97,12 @@ fun HomeShell(
 ) {
     val scope = rememberCoroutineScope()
     val darkTheme = isSystemInDarkTheme()
+    // 官方 App 启动时会拉一次 /init，里面带图片服务器地址。我们只在图片加载失败时拿它兜底，
+    // 所以存下来备用就行，顺便和官方一样让接口客户端拿到最新的图床。
+    LaunchedEffect(Unit) {
+        runCatching { pica.meta.init() }
+            .onSuccess { RouteStore().saveImageServer(it.imageServer) }
+    }
     val tabs = HomeTab.entries
     var savedIndex by rememberSaveable { mutableStateOf(0) }
     val pagerState = rememberPagerState(initialPage = savedIndex, pageCount = { tabs.size })
