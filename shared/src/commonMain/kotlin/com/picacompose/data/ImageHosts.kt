@@ -72,7 +72,7 @@ internal suspend fun keepImageIpsFresh() {
             continue
         }
         ImageIps.updateEnabled(true)
-        // 上次测出来的最快三台排在最前面：这一轮一开跑就先测它们，很快就能先用上，
+        // 上次测出来的最快五台排在最前面：这一轮一开跑就先测它们，很快就能先用上，
         // 剩下的官方段地址照旧在后面一起扫。
         val lastFast = store.savedImageIps.ifEmpty { ImageIps.preferred }.take(TOP_PRIORITY)
         val candidates = (lastFast + CloudflareIps.sample()).distinct()
@@ -129,7 +129,7 @@ private const val POOL_SIZE = 10
 private const val FAST_MS = 500L
 
 /** 上一次的结果里，最快的那几台下一轮排在最前面先测。 */
-private const val TOP_PRIORITY = 3
+private const val TOP_PRIORITY = 5
 
 /** 开关关着时每隔一会儿看一眼，拨开了就能接着测。 */
 private const val IDLE_MS = 10 * 1000L
