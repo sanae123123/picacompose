@@ -223,8 +223,9 @@ fun EditProfileContent(
             PicaCard {
                 OutlinedTextField(
                     value = name,
+                    // 不在客户端截：以前偷偷截到 20 字，用户看不见截断，保存下去就把原昵称盖了。
                     onValueChange = {
-                        name = it.take(20)
+                        name = it
                         edited = true
                     },
                     label = { Text("昵称") },
@@ -242,8 +243,9 @@ fun EditProfileContent(
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = slogan,
+                    // 同上：长简介原样提交，能存多少让服务端说了算（存不下会弹窗报原因）。
                     onValueChange = {
-                        slogan = it.take(120)
+                        slogan = it
                         edited = true
                     },
                     label = { Text("签名") },
