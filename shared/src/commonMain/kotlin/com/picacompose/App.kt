@@ -79,6 +79,7 @@ fun App() {
         LaunchedEffect(cachedLine) {
             picaNetworkFailureHandler = LineRouter::onNetworkFailure
             LineRouter.onNotice = PicaToast::show
+            LinePreferences.onDohDisabled = PicaToast::show
             // 没存过线路就只剩选择页可选，连「不测速」也用不了：得先有一条线路才能建客户端。
             if (cachedLine == null) return@LaunchedEffect
             when {

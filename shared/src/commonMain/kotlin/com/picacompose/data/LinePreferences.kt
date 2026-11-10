@@ -1,5 +1,8 @@
 package com.picacompose.data
 
+import com.picacompose.picaapi.DohAnswer
+import com.picacompose.picaapi.dohAnswer
+
 /**
  * 线路开关，存在本机。
  *
@@ -32,14 +35,42 @@ class LinePreferences(private val kv: KeyValueStore = platformKeyValueStore()) {
             kv.put(KEY_DOH, if (value) "1" else "0")
         }
 
-    private companion object {
-        const val KEY_AUTO_PROBE = "route.autoProbe"
-        const val KEY_FAST_ENTRY = "route.fastEntry"
-        const val KEY_DOH = "route.doh"
+    companion object {
+        /**
+         * DoH 一个可信地址都解析不出来、被自动关掉时想跟用户说一句（App 接到 toast 上）。
+         *
+         * 开关在设置页里能手动开回来；这里只负责「别让它一直躺在一个坏掉的状态上」。
+         */
+        var onDohDisabled: ((String) -> Unit)? = null
+
+        private const val KEY_AUTO_PROBE = "route.autoProbe"
+        private const val KEY_FAST_ENTRY = "route.fastEntry"
+        private const val KEY_DOH = "route.doh"
     }
 }
 
-/** 开关打开时才去问一次 DoH；关着或者没问出来都是空列表，调用方不用自己判。 */
-internal suspend fun dohAddressesIfEnabled(preferences: LinePreferences): List<String> =
-    if (!preferences.doh) emptyList() else runCatching { com.picacompose.picaapi.dohAddresses() }
-        .getOrDefault(emptyList())
+/**
+ * 开关打开时才去问一次 DoH；关着或者没问出来都是空列表，调用方不用自己判。
+ *
+ * 一个可信地址都没拿到就把开关自动关掉：留着它只会让每次冷启动白等一遍 DoH，
+ * 然后还是退回系统 DNS。只有国内兜底端点答上来时，那份地址可能是被污染过的，
+ * 能和已知 IP 池（[knownIps]）对上才敢用。
+ */
+internal suspend fun dohAddressesIfEnabled(
+    preferences: LinePreferences,
+    knownIps: List<String> = emptyList(),
+): List<String> {
+    if (!preferences.doh) return emptyList()
+    val answer = runCatching { dohAnswer() }.getOrNull() ?: DohAnswer()
+    val usable = when {
+        answer.addresses.isEmpty() -> emptyList()
+        answer.trusted -> answer.addresses
+        answer.addresses.any { it in knownIps } -> answer.addresses
+        else -> emptyList()
+    }
+    if (usable.isEmpty()) {
+        preferences.doh = false
+        LinePreferences.onDohDisabled?.invoke("DoH 解析不通，已自动关掉这个开关，这次按系统 DNS 走")
+    }
+    return usable
+}

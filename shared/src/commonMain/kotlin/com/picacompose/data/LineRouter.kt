@@ -93,7 +93,11 @@ object LineRouter {
         knownIps = ips
         appliedLine = line
         appliedIps = ips
-        if (!probe) return
+        if (!probe) {
+            // 自动测速关着也得把 DoH 查一次：不然开关坏了会一直坏着，每次启动都白等一遍。
+            scope.launch { dohAddressesIfEnabled(preferences, ips) }
+            return
+        }
         if (probeJob?.isActive == true) return
         probeJob = scope.launch {
             val result = runCatching { probeAll(ips) }.getOrNull() ?: return@launch
@@ -194,7 +198,7 @@ object LineRouter {
         // 拉列表和测速并行：系统解析不用 IP 池，先测起来。
         val bootstrap = async { fetchBootstrap() }
         // DoH 开着就多问一路：它给的地址是没被污染的那份，排在 /init 下发的地址前面。
-        val doh = async { dohAddressesIfEnabled(preferences) }
+        val doh = async { dohAddressesIfEnabled(preferences, savedIps) }
         val systemJob = async { measure(null) }
         val savedPinJob = async { if (savedIps.isEmpty()) null else measure(savedIps) }
 

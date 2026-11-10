@@ -67,7 +67,7 @@ class RoutingController(
         // 冷启动就少等一个来回。DoH 开着时也会跟着一起问。
         val (fetched, systemMs, savedPinnedMs) = coroutineScope {
             val bootstrap = async { fetchBootstrap() }
-            val doh = async { dohAddressesIfEnabled(preferences) }
+            val doh = async { dohAddressesIfEnabled(preferences, savedIps) }
             val system = async { measure(PicaLine.System, emptyList()) }
             val pinned = async { if (savedIps.isEmpty()) null else measure(PicaLine.PinnedFast, savedIps) }
             Triple(

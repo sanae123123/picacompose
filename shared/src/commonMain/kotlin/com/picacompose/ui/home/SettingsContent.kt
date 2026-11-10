@@ -120,8 +120,9 @@ fun SettingsContent(onSignOut: () -> Unit) {
                 SwitchRow(
                     icon = PicaIcon.Shield,
                     title = "DoH 解析",
-                    summary = "启动时用 DNS over HTTPS 再解析一遍接口域名，绕开被污染的 DNS。" +
-                        "默认关，打开后每次启动多问一次 DoH（和 /init 并行，不会多等一个来回）。",
+                    summary = "用 DNS over HTTPS 解析所有域名（接口、图片），绕开被污染的 DNS。" +
+                        "默认关；打了之后每次启动多问一次 DoH（和 /init 并行，不会多等一个来回）。" +
+                        "解析不通会自动关掉这个开关，不会让应用变成连不上。",
                     checked = doh,
                     onCheckedChange = { on ->
                         doh = on
@@ -144,8 +145,9 @@ fun SettingsContent(onSignOut: () -> Unit) {
                 text = "记住账号只保存 token 和账号名，下次打开直接恢复会话；" +
                     "退出登录会清掉 token，账号名留着方便下次登录。线路的开关改完下次打开生效：" +
                     "自动测速关掉后不会再有后台测速，也不会自己换线路，网络变了要手动去线路页重选；" +
-                    "快速进入关掉后每次启动会多等一次测速；DoH 打开后拿到的地址会优先用于连线路，" +
-                    "问到的是被污染的地址时连不上会自己退回下发 IP。",
+                    "快速进入关掉后每次启动会多等一次测速；DoH 打开后接口和图片都走 DoH 解析，" +
+                    "只有一个可信地址都拿不到时会自动关掉开关并退回系统 DNS（设置页的开关也会变回关），" +
+                    "单个端点挂掉会在几路端点之间自动换到还能用的那一路。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

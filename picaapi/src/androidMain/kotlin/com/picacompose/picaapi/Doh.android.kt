@@ -50,11 +50,12 @@ private class DohDns(pinnedIps: List<String>) : Dns {
         }
     }
 
-    /** 端点按可信度排，第一个给出答案的算数。 */
+    /** 端点按可信度排，第一个给出答案的算数；上次好用的那一路排最前面。 */
     @OptIn(ExperimentalEncodingApi::class)
     private fun lookupDoh(hostname: String): List<String> {
         val query = Base64.UrlSafe.encode(dnsQueryPacket(hostname))
-        for (endpoint in DOH_ENDPOINTS) {
+        val endpoints = (listOfNotNull(DohState.preferredEndpoint) + DOH_ENDPOINTS).distinct()
+        for (endpoint in endpoints) {
             val ips = runCatching { getDohAnswers("$endpoint?dns=$query") }.getOrDefault(emptyList())
             if (ips.isNotEmpty()) return ips
         }

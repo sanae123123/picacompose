@@ -81,6 +81,24 @@ internal val DOH_ENDPOINTS = listOf(
     "https://1.12.12.12/dns-query",
 )
 
+/** 前几路算可信：只有它们给的地址才敢直接进 IP 池。 */
+private const val TRUSTED_ENDPOINTS = 2
+
+/** DoH 自己的小状态，Android 那边的 DNS 钩子也会读。 */
+internal object DohState {
+    /** 上一次答上来的可信端点，下次先问它 —— 某一路挂了就自动换到还能用的那一路。 */
+    @Volatile
+    var preferredEndpoint: String? = null
+}
+
+/** 一次 DoH 解析的结果。 */
+data class DohAnswer(
+    /** 解析出来的地址；全都不通就是空的。 */
+    val addresses: List<String> = emptyList(),
+    /** 地址是不是可信端点给的；只有国内兜底答上来时为 false，那一份可能被污染。 */
+    val trusted: Boolean = false,
+)
+
 private val dohClient by lazy {
     HttpClient {
         expectSuccess = false
@@ -104,12 +122,19 @@ private const val DEFAULT_API_HOST = "picaapi.picacomic.com"
  * 国内那两个解析器对某些域名给的地址是被污染过的，所以排在后面，只有前面都连不上才用。
  */
 @OptIn(ExperimentalEncodingApi::class)
-suspend fun dohAddresses(host: String = DEFAULT_API_HOST): List<String> = coroutineScope {
+suspend fun dohAnswer(host: String = DEFAULT_API_HOST): DohAnswer = coroutineScope {
     val query = Base64.UrlSafe.encode(dnsQueryPacket(host))
-    val jobs = DOH_ENDPOINTS.map { endpoint ->
-        async { runCatching { dohLookup(endpoint, query) }.getOrDefault(emptyList()) }
+    // 上次好用的那路排最前面，其它的照旧一起发，谁先答上来用谁。
+    val endpoints = (listOfNotNull(DohState.preferredEndpoint) + DOH_ENDPOINTS).distinct()
+    val jobs = endpoints.map { endpoint ->
+        async { endpoint to runCatching { dohLookup(endpoint, query) }.getOrDefault(emptyList()) }
     }
-    jobs.map { it.await() }.firstOrNull { it.isNotEmpty() }.orEmpty()
+    val answers = jobs.map { it.await() }
+    val first = answers.firstOrNull { it.second.isNotEmpty() } ?: return@coroutineScope DohAnswer()
+    val index = DOH_ENDPOINTS.indexOf(first.first)
+    val trusted = index in 0 until TRUSTED_ENDPOINTS
+    if (trusted) DohState.preferredEndpoint = first.first
+    DohAnswer(addresses = first.second, trusted = trusted)
 }
 
 private suspend fun dohLookup(endpoint: String, encodedQuery: String): List<String> {
