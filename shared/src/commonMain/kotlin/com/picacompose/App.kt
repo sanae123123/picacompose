@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.picacompose.data.LinePreferences
 import com.picacompose.data.LineRouter
 import com.picacompose.data.RouteStore
 import com.picacompose.data.applyPicaRoute
@@ -42,10 +43,12 @@ private enum class Screen { Restoring, Login, Home }
 /**
  * 应用根组件，Android / iOS / Desktop 共用这一份 UI。
  *
- * 冷启动顺序：
- * - 上次选过线路：直接按它建好客户端进主界面，测速丢到后台做完；期间只要有请求连不上，
- *   立刻换成后台测出来能通的那条（见 [LineRouter]）。
- * - 没记录（首次启动、或上次选的下发线路没留 IP 池）：停在线路选择页测速。
+ * 冷启动顺序（设置里的两个开关决定走哪条）：
+ * - 自动测速 + 快速进入（默认）：直接按上次的线路建好客户端进主界面，测速丢到后台做完；
+ *   期间只要有请求连不上，立刻换成后台测出来能通的那条（见 [LineRouter]）。
+ * - 自动测速开、快速进入关：停在线路选择页把速测完再进。
+ * - 自动测速关：按上次的线路直接进，不测速、也不会自动换线。
+ * - 没记录（首次启动、或上次选的下发线路没留 IP 池）：只能停在线路选择页选一条。
  *
  * 之后才是恢复登录态 → 登录页或首页。
  */
@@ -53,6 +56,10 @@ private enum class Screen { Restoring, Login, Home }
 fun App() {
     PicaTheme {
         val store = remember { RouteStore() }
+        // 开关在设置页里改，下一次冷启动才生效，所以这里只在进 App 时读一次。
+        val preferences = remember { LinePreferences() }
+        val autoProbe = remember { preferences.autoProbe }
+        val fastEntry = remember { preferences.fastEntry }
         // 下发线路没存 IP 池时会退化成系统解析，那种情况不如老老实实测一次。
         val cachedLine = remember {
             store.savedLine?.takeIf { !it.pinnedDns || store.savedIps.isNotEmpty() }
@@ -65,11 +72,28 @@ fun App() {
         LaunchedEffect(cachedLine) {
             picaNetworkFailureHandler = LineRouter::onNetworkFailure
             LineRouter.onNotice = PicaToast::show
+            // 没存过线路就只剩选择页可选，连「不测速」也用不了：得先有一条线路才能建客户端。
             if (cachedLine == null) return@LaunchedEffect
-            runCatching { applyPicaRoute(cachedLine, store.savedIps) }
-            LineRouter.start(scope, cachedLine, store.savedIps)
-            routeReady = true
-            routed = true
+            when {
+                // 关掉自动测速：按上次的线路建好客户端直接进；不测速，但断线时还能重建这条线。
+                !autoProbe -> {
+                    runCatching { applyPicaRoute(cachedLine, store.savedIps) }
+                    LineRouter.start(scope, cachedLine, store.savedIps, probe = false)
+                    routeReady = true
+                    routed = true
+                }
+
+                // 要测速但不要后台测：交给线路选择页，测完自动进（那边会自己建客户端）。
+                !fastEntry -> routeReady = true
+
+                // 默认：先按上次的线路进主界面，测速丢后台。
+                else -> {
+                    runCatching { applyPicaRoute(cachedLine, store.savedIps) }
+                    LineRouter.start(scope, cachedLine, store.savedIps)
+                    routeReady = true
+                    routed = true
+                }
+            }
         }
 
         Box(Modifier.fillMaxSize()) {

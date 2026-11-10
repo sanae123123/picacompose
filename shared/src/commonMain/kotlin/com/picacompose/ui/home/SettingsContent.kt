@@ -1,33 +1,47 @@
 package com.picacompose.ui.home
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.picacompose.data.LinePreferences
 import com.picacompose.data.RouteStore
 import com.picacompose.data.SessionStore
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 
-/** 设置：先把当前的几个状态摆出来，开关等做完了再加。 */
+/** 设置：账号状态、线路开关、版本信息，最后是退出登录。 */
 @Composable
 fun SettingsContent(onSignOut: () -> Unit) {
     val session = remember { SessionStore() }
     val savedAccount = session.savedAccount
     val rememberOn = session.savedToken != null
     val route = remember { RouteStore() }
+    val preferences = remember { LinePreferences() }
     val line = route.savedLine
     val latency = route.savedLatencyMs
     val ipCount = route.savedIps.size
+    // 开关的界面状态：改完立刻落盘，下次冷启动按新的来。
+    var autoProbe by remember { mutableStateOf(preferences.autoProbe) }
+    var fastEntry by remember { mutableStateOf(preferences.fastEntry) }
 
     PageScaffold(
         header = { PageHeader(title = "设置") },
@@ -54,6 +68,30 @@ fun SettingsContent(onSignOut: () -> Unit) {
         }
         item {
             PicaCard {
+                SwitchRow(
+                    icon = PicaIcon.Speed,
+                    title = "自动测速",
+                    summary = "启动时测一遍线路，挑最快的用；关掉就用上次的线路，不测也不自动换。",
+                    checked = autoProbe,
+                    onCheckedChange = { on ->
+                        autoProbe = on
+                        preferences.autoProbe = on
+                    },
+                )
+                // 子开关：父开关关掉时置灰，但值留着，父开关开回来还是原来的选择。
+                SwitchRow(
+                    icon = PicaIcon.Bolt,
+                    title = "快速进入并后台测速",
+                    summary = "先按上次的线路进主界面，测速在后台跑；关掉就停在线路选择页，等测完再进。",
+                    checked = fastEntry,
+                    enabled = autoProbe,
+                    indent = true,
+                    onCheckedChange = { on ->
+                        fastEntry = on
+                        preferences.fastEntry = on
+                    },
+                )
+                Spacer(Modifier.height(6.dp))
                 DetailRow(
                     icon = PicaIcon.ArrowRight,
                     title = "线路",
@@ -82,8 +120,9 @@ fun SettingsContent(onSignOut: () -> Unit) {
         item {
             Text(
                 text = "记住账号只保存 token 和账号名，下次打开直接恢复会话；" +
-                    "退出登录会清掉 token，账号名留着方便下次登录。线路每次冷启动都会重新测速，" +
-                    "换网络后不用手动改。",
+                    "退出登录会清掉 token，账号名留着方便下次登录。线路的开关改完下次打开生效：" +
+                    "自动测速关掉后不会再有后台测速，也不会自己换线路，网络变了要手动去线路页重选；" +
+                    "快速进入关掉后每次启动会多等一次测速。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -100,5 +139,55 @@ fun SettingsContent(onSignOut: () -> Unit) {
                 Text("退出登录", style = MaterialTheme.typography.labelLarge)
             }
         }
+    }
+}
+
+/** 设置页的一行开关：左边图标 + 标题 + 说明，右边 Material 3 的 Switch。 */
+@Composable
+private fun SwitchRow(
+    icon: PicaIcon,
+    title: String,
+    summary: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
+    /** 子开关往右缩一点，视觉上挂在上面那个开关下面。 */
+    indent: Boolean = false,
+) {
+    val colors = MaterialTheme.colorScheme
+    val alpha = if (enabled) 1f else 0.45f
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = if (indent) 22.dp else 0.dp)
+            .clickable(enabled = enabled) { onCheckedChange(!checked) }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PicaGlyph(
+            icon = icon,
+            modifier = Modifier.size(18.dp),
+            tint = colors.onSurfaceVariant.copy(alpha = alpha),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurface.copy(alpha = alpha),
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = summary,
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant.copy(alpha = alpha),
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled,
+        )
     }
 }

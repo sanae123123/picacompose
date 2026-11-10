@@ -60,12 +60,23 @@ object LineRouter {
     /** 上一次换线路的时刻：真断网时所有线路都不通，别让两条线路来回跳。 */
     private var lastSwitch: TimeMark? = null
 
-    /** 复用上次线路进主界面时调一次：测速放到后台跑，不挡启动。 */
-    fun start(scope: CoroutineScope, line: PicaLine, ips: List<String>) {
+    /**
+     * 复用上次线路进主界面时调一次：测速放到后台跑，不挡启动。
+     *
+     * [probe] 传 false 就是设置里关掉了「自动测速」：只挂上故障兜底（连不上时用现有 IP 池
+     * 把当前线路重建一次），不测速，也不会自己换到别的线路上。
+     */
+    fun start(
+        scope: CoroutineScope,
+        line: PicaLine,
+        ips: List<String>,
+        probe: Boolean = true,
+    ) {
         this.scope = scope
         knownIps = ips
         appliedLine = line
         appliedIps = ips
+        if (!probe) return
         if (probeJob?.isActive == true) return
         probeJob = scope.launch {
             val result = runCatching { probeAll(ips) }.getOrNull() ?: return@launch

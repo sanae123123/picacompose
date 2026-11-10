@@ -20,6 +20,8 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.ThumbUp
@@ -41,6 +43,8 @@ import androidx.compose.material.icons.rounded.Notifications as RoundedNotificat
 import androidx.compose.material.icons.rounded.Person as RoundedPerson
 import androidx.compose.material.icons.rounded.Search as RoundedSearch
 import androidx.compose.material.icons.rounded.Settings as RoundedSettings
+import androidx.compose.material.icons.rounded.Bolt as RoundedBolt
+import androidx.compose.material.icons.rounded.Speed as RoundedSpeed
 import androidx.compose.material.icons.rounded.SportsEsports as RoundedSportsEsports
 import androidx.compose.material.icons.rounded.Star as RoundedStar
 import androidx.compose.material.icons.rounded.ThumbUp as RoundedThumbUp
@@ -61,7 +65,7 @@ import androidx.compose.ui.unit.dp
  */
 enum class PicaIcon {
     Mail, Back, Lock, Person, Eye, EyeOff, ArrowRight, Logout, Home, Grid, Gamepad, Gear, CheckIn, Notice, Like,
-    Menu, Check, Sort, Star, Close, Search, Filter,
+    Menu, Check, Sort, Star, Close, Search, Filter, Speed, Bolt,
 }
 
 private fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
@@ -87,6 +91,8 @@ private fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
     PicaIcon.Close -> if (filled) Icons.Rounded.RoundedClose else Icons.Outlined.Close
     PicaIcon.Search -> if (filled) Icons.Rounded.RoundedSearch else Icons.Outlined.Search
     PicaIcon.Filter -> if (filled) Icons.Rounded.RoundedFilterList else Icons.Outlined.FilterList
+    PicaIcon.Speed -> if (filled) Icons.Rounded.RoundedSpeed else Icons.Outlined.Speed
+    PicaIcon.Bolt -> if (filled) Icons.Rounded.RoundedBolt else Icons.Outlined.Bolt
 }
 
 @Composable
