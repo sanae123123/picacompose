@@ -101,4 +101,5 @@ expect suspend fun probeImageIps(
     limit: Int = 10,
     thresholdMs: Long = 500,
     onProgress: ((tested: Int, total: Int, fastestMs: Long?) -> Unit)? = null,
+    onHit: ((ip: String, latencyMs: Long) -> Unit)? = null,
 ): List<String>

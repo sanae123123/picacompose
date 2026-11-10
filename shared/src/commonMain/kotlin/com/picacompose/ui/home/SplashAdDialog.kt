@@ -51,7 +51,7 @@ fun SplashAdDialog(
     var ad by remember { mutableStateOf<Banner?>(null) }
     var loading by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
-        runCatching { pica.meta.banners() }
+        catchingLoad { pica.meta.banners() }
             .onSuccess { list ->
                 // 先挑广告那几条；接口哪天混了别的类型，也有得显示。
                 ad = list.firstOrNull { it.type == "ads" } ?: list.firstOrNull()

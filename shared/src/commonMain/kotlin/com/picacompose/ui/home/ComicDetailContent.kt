@@ -51,6 +51,7 @@ import com.picacompose.ui.components.UserProfileDialog
 import com.picacompose.ui.components.UserTitleBadge
 import com.picacompose.ui.components.levelStartExp
 import com.picacompose.ui.components.url
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -120,13 +121,18 @@ class ComicDetailState(comicId: String) {
     suspend fun ensureLoaded() {
         if (started) return
         started = true
-        load()
+        try {
+            load()
+        } catch (e: CancellationException) {
+            started = false
+            throw e
+        }
     }
 
     suspend fun load() {
         loading = true
         error = null
-        runCatching { pica.comics.detail(comicId) }
+        catchingLoad { pica.comics.detail(comicId) }
             .onSuccess {
                 detail = it
                 liked = it.isLiked

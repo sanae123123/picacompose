@@ -6,7 +6,10 @@ import androidx.compose.runtime.setValue
 import com.picacompose.picaapi.CloudflareIps
 import com.picacompose.picaapi.ImageIps
 import com.picacompose.picaapi.probeImageIps
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * 图片服务器（`/init` 下发的那个）。
@@ -71,14 +74,40 @@ internal suspend fun keepImageIpsFresh() {
         ImageIps.updateEnabled(true)
         val candidates = CloudflareIps.sample()
         ImageIpsStatus.start(candidates.size)
-        val best = runCatching {
-            probeImageIps(
-                candidates = candidates,
-                limit = POOL_SIZE,
-                thresholdMs = FAST_MS,
-                onProgress = { tested, _, fastest -> ImageIpsStatus.progress(tested, fastest) },
-            )
-        }.getOrDefault(emptyList())
+        // 边测边用：先测出够快的几台就立刻顶上，不用等 200 多台全扫完。
+        val best = coroutineScope {
+            val hits = Channel<Pair<String, Long>>(Channel.UNLIMITED)
+            val applier = launch {
+                val usable = ArrayList<Pair<String, Long>>()
+                for (hit in hits) {
+                    usable.add(hit)
+                    val top = usable.sortedBy { it.second }
+                        .take(POOL_SIZE)
+                        .map { it.first }
+                    ImageIps.updatePreferred(top)
+                    ImageIps.activatePreferred()
+                    ImageIpsStatus.progress(
+                        tested = ImageIpsStatus.tested,
+                        fastestMs = usable.minOf { it.second },
+                        live = top,
+                    )
+                }
+            }
+            val result = runCatching {
+                probeImageIps(
+                    candidates = candidates,
+                    limit = POOL_SIZE,
+                    thresholdMs = FAST_MS,
+                    onProgress = { tested, _, fastest ->
+                        ImageIpsStatus.progress(tested = tested, fastestMs = fastest)
+                    },
+                    onHit = { ip, ms -> hits.trySend(ip to ms) },
+                )
+            }.getOrDefault(emptyList())
+            hits.close()
+            applier.join()
+            result
+        }
         if (best.isNotEmpty()) {
             // 测完就把官方源让到后面：优选结果是现测的，比下发的那几台更贴近当前网络。
             ImageIps.updatePreferred(best)

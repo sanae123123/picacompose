@@ -74,7 +74,7 @@ class HomeFeedState {
         // 已经拉到了就不动，免得每次回到首页都闪一下 loading。
         if (collections != null) return
         error = null
-        runCatching { pica.comics.collections() }
+        catchingLoad { pica.comics.collections() }
             .onSuccess { collections = it }
             .onFailure { error = it.message ?: "推荐没拉到" }
     }

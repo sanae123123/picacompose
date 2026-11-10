@@ -229,6 +229,8 @@ private fun imageIpsPhaseText(): String = when (ImageIpsStatus.phase) {
 /** 池子里现在有什么：优选结果、候选数量，或者退回官方源时的说明。 */
 private fun imageIpsPoolText(): String = when {
     ImageIpsStatus.phase == ImageIpsStatus.Phase.Off -> "只用 /init 下发的地址"
+    ImageIpsStatus.phase == ImageIpsStatus.Phase.Scanning && ImageIpsStatus.pool.isNotEmpty() ->
+        "先用着 ${ImageIpsStatus.pool.size} 台 · ${ImageIpsStatus.fastestMs ?: 0}ms"
     ImageIpsStatus.pool.isEmpty() -> "官方源 + 内置种子"
     else -> ImageIpsStatus.fastestMs
         ?.let { "${it}ms 最快 · ${ImageIpsStatus.pool.size} 台" }

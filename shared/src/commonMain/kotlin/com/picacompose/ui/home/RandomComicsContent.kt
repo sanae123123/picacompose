@@ -100,7 +100,7 @@ fun RandomComicsContent(
 
     suspend fun fetch(): List<ComicSummary>? =
         withTimeoutOrNull(SWAP_TIMEOUT_MS) {
-            runCatching { pica.comics.random() }.getOrNull()
+            catchingLoad { pica.comics.random() }.getOrNull()
         }
 
     suspend fun loadFirst() {

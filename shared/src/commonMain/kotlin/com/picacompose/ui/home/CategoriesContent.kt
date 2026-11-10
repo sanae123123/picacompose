@@ -26,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -88,7 +89,7 @@ class CategoriesState {
     suspend fun load() {
         categories = null
         error = null
-        runCatching { pica.meta.categories() }
+        catchingLoad { pica.meta.categories() }
             .onSuccess { categories = it }
             .onFailure { error = it.message ?: "分类没拉到" }
     }
@@ -97,7 +98,13 @@ class CategoriesState {
     suspend fun ensureLoaded() {
         if (started) return
         started = true
-        load()
+        try {
+            load()
+        } catch (e: CancellationException) {
+            // 页面被销毁中途取消：不算拉过，下次进来还能再拉。
+            started = false
+            throw e
+        }
     }
 
     private var adStarted = false
@@ -105,9 +112,18 @@ class CategoriesState {
     suspend fun ensureAdCover() {
         if (adStarted) return
         adStarted = true
-        adCover = runCatching { pica.meta.banners().firstOrNull()?.thumb.url() }.getOrNull()
+        try {
+            loadAdCover()
+        } catch (e: CancellationException) {
+            adStarted = false
+            throw e
+        }
+    }
+
+    private suspend fun loadAdCover() {
+        adCover = catchingLoad { pica.meta.banners().firstOrNull()?.thumb.url() }.getOrNull()
         // 广告域名跟封面一起问：开「支持哔咔」时就不用现等。
-        adsBase = runCatching { pica.meta.adsBaseUrl() }.getOrNull()
+        adsBase = catchingLoad { pica.meta.adsBaseUrl() }.getOrNull()
     }
 }
 

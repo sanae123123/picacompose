@@ -60,9 +60,13 @@ internal object ImageIpsStatus {
         fastestMs = null
     }
 
-    fun progress(tested: Int, fastestMs: Long?) {
+    /**
+     * 扫描进度。[live] 是已经测出来、正在被用的那几台 —— 边测边用，不用等全扫完。
+     */
+    fun progress(tested: Int, fastestMs: Long?, live: List<String>? = null) {
         this.tested = tested
         if (fastestMs != null) this.fastestMs = fastestMs
+        if (live != null && live.isNotEmpty()) this.pool = live
     }
 
     fun finish(pool: List<String>) {

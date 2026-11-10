@@ -75,7 +75,7 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
     LaunchedEffect(index) { scrollState.scrollTo(0) }
 
     LaunchedEffect(Unit) {
-        runCatching { pica.meta.announcements(page = 1).docs }
+        catchingLoad { pica.meta.announcements(page = 1).docs }
             .onSuccess { announcements = it }
             .onFailure { error = it.message ?: "公告没拉到" }
     }

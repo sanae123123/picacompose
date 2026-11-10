@@ -167,7 +167,7 @@ fun MineContent(
                                         onRefreshProfile()
                                     } catch (e: Exception) {
                                         // 可能是「今天已经签过了」而本地状态过期，问一次服务器再决定。
-                                        val fresh = runCatching { pica.users.profile() }.getOrNull()
+                                        val fresh = catchingLoad { pica.users.profile() }.getOrNull()
                                         if (fresh?.isPunched == true) {
                                             checkedIn = true
                                             punchNotice = PunchNotice(

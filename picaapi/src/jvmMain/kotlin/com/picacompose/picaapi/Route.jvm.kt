@@ -17,4 +17,5 @@ actual suspend fun probeImageIps(
     limit: Int,
     thresholdMs: Long,
     onProgress: ((tested: Int, total: Int, fastestMs: Long?) -> Unit)?,
+    onHit: ((ip: String, latencyMs: Long) -> Unit)?,
 ): List<String> = emptyList()

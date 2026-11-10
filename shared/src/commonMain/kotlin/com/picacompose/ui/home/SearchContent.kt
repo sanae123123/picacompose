@@ -169,7 +169,7 @@ class SearchState {
     suspend fun ensureHotKeywords() {
         if (hotStarted) return
         hotStarted = true
-        hotKeywords = runCatching { pica.meta.keywords() }.getOrDefault(emptyList())
+        hotKeywords = catchingLoad { pica.meta.keywords() }.getOrDefault(emptyList())
     }
 }
 

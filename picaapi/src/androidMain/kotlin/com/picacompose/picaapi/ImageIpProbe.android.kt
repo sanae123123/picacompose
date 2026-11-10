@@ -54,6 +54,7 @@ actual suspend fun probeImageIps(
     limit: Int,
     thresholdMs: Long,
     onProgress: ((tested: Int, total: Int, fastestMs: Long?) -> Unit)?,
+    onHit: ((ip: String, latencyMs: Long) -> Unit)?,
 ): List<String> = withContext(Dispatchers.IO) {
     val gate = Semaphore(PROBE_PARALLELISM)
     val unique = candidates.distinct()
@@ -64,7 +65,11 @@ actual suspend fun probeImageIps(
             async {
                 val elapsed = gate.withPermit { probeOne(ip) }
                 val tested = done.incrementAndGet()
-                if (elapsed != null) fastest.updateAndGet { old -> minOf(old, elapsed) }
+                if (elapsed != null) {
+                    fastest.updateAndGet { old -> minOf(old, elapsed) }
+                    // 一测到够快的就先交给上面用着，剩下的继续测。
+                    if (elapsed <= thresholdMs) onHit?.invoke(ip, elapsed)
+                }
                 onProgress?.invoke(
                     tested,
                     unique.size,

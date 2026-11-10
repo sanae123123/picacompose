@@ -48,15 +48,19 @@ class Pager<T>(
         if (loadedPage > 0 && loadedPage >= lastPage) return
         loading = true
         error = null
-        runCatching { load(loadedPage + 1) }
-            .onSuccess { paged ->
-                items = merged(items + paged.docs)
-                loadedPage = paged.page.takeIf { it > 0 } ?: (loadedPage + 1)
-                lastPage = paged.pages.coerceAtLeast(loadedPage)
-                total = paged.total
-            }
-            .onFailure { error = it.message ?: "列表没拉到" }
-        loading = false
+        try {
+            catchingLoad { load(loadedPage + 1) }
+                .onSuccess { paged ->
+                    items = merged(items + paged.docs)
+                    loadedPage = paged.page.takeIf { it > 0 } ?: (loadedPage + 1)
+                    lastPage = paged.pages.coerceAtLeast(loadedPage)
+                    total = paged.total
+                }
+                .onFailure { error = it.message ?: "列表没拉到" }
+        } finally {
+            // 页面被销毁导致取消时也得放掉，不然下次进来一直被挡住。
+            loading = false
+        }
     }
 
     /** 按 [itemKey] 去重，保留先出现的那条；没配 key 就原样返回。 */
@@ -78,14 +82,17 @@ class Pager<T>(
         if (loading) return
         loading = true
         error = null
-        runCatching { load(1) }
-            .onSuccess { paged ->
-                items = merged(paged.docs)
-                loadedPage = 1
-                lastPage = paged.pages.coerceAtLeast(1)
-            }
-            .onFailure { error = it.message ?: "列表没拉到" }
-        loading = false
+        try {
+            catchingLoad { load(1) }
+                .onSuccess { paged ->
+                    items = merged(paged.docs)
+                    loadedPage = 1
+                    lastPage = paged.pages.coerceAtLeast(1)
+                }
+                .onFailure { error = it.message ?: "列表没拉到" }
+        } finally {
+            loading = false
+        }
     }
 
     /**
@@ -97,14 +104,17 @@ class Pager<T>(
         if (loading || page < 1) return
         loading = true
         error = null
-        runCatching { load(page) }
-            .onSuccess { paged ->
-                items = merged(paged.docs)
-                loadedPage = page
-                lastPage = paged.pages.coerceAtLeast(page)
-            }
-            .onFailure { error = it.message ?: "那一页没拉到" }
-        loading = false
+        try {
+            catchingLoad { load(page) }
+                .onSuccess { paged ->
+                    items = merged(paged.docs)
+                    loadedPage = page
+                    lastPage = paged.pages.coerceAtLeast(page)
+                }
+                .onFailure { error = it.message ?: "那一页没拉到" }
+        } finally {
+            loading = false
+        }
     }
 
     /** 整个列表从头再来（下拉刷新 / 切线路后）。 */
