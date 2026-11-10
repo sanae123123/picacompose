@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,10 +40,16 @@ import com.picacompose.data.ReadingProgress
 import com.picacompose.data.pica
 import com.picacompose.data.readingProgressStore
 import com.picacompose.picaapi.model.ComicDetail
+import com.picacompose.picaapi.model.Creator
 import com.picacompose.picaapi.model.Episode
 import com.picacompose.ui.components.PicaGlyph
+import com.picacompose.ui.components.PicaImageViewer
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaImage
+import com.picacompose.ui.components.UserAvatar
+import com.picacompose.ui.components.UserProfileDialog
+import com.picacompose.ui.components.UserTitleBadge
+import com.picacompose.ui.components.levelStartExp
 import com.picacompose.ui.components.url
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -179,6 +186,9 @@ fun ComicDetailContent(
 
     var replyTarget by remember { mutableStateOf<CommentReplyTarget?>(null) }
     var showJump by remember { mutableStateOf(false) }
+    // 点封面开全屏看图；点上传骑士那一栏看用户简介（有 id 才拉得到资料）。
+    var coverViewer by remember { mutableStateOf<String?>(null) }
+    var showUploader by remember { mutableStateOf(false) }
 
     // 章节滚到底续页。
     LaunchedEffect(listState, state.episodePager, tab) {
@@ -258,6 +268,8 @@ fun ComicDetailContent(
                         likesCount = state.likedCount ?: loaded.likesCount,
                         favourited = state.favourited,
                         actionError = state.actionError,
+                        onOpenCover = { coverViewer = it },
+                        onOpenUploader = { showUploader = true },
                         onLike = {
                             // 先翻成点过的样子，服务端回话再确认；再点一次就是取消。
                             val base = state.likedCount ?: loaded.likesCount
@@ -407,6 +419,24 @@ fun ComicDetailContent(
         )
     }
 
+    coverViewer?.let { url ->
+        PicaImageViewer(url = url, onDismiss = { coverViewer = null })
+    }
+
+    if (showUploader) {
+        state.detail?.creator?.let { creator ->
+            UserProfileDialog(
+                userId = creator.id,
+                seedName = creator.name,
+                seedAvatarUrl = creator.avatar.url(),
+                seedTitle = creator.title,
+                seedLevel = creator.level,
+                seedExp = creator.exp,
+                onDismiss = { showUploader = false },
+            )
+        }
+    }
+
     replyTarget?.let { target ->
         CommentReplyDialog(
             target = target,
@@ -474,19 +504,23 @@ private fun DetailHero(
     likesCount: Int,
     favourited: Boolean,
     actionError: String?,
+    onOpenCover: (String) -> Unit,
+    onOpenUploader: () -> Unit,
     onLike: () -> Unit,
     onFavourite: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val cover = detail.thumb.url()
     Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             PicaImage(
-                url = detail.thumb.url(),
+                url = cover,
                 contentDescription = detail.title,
                 modifier = Modifier
                     .width(112.dp)
                     .aspectRatio(3f / 4f)
-                    .clip(RoundedCornerShape(12.dp)),
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(enabled = cover != null) { cover?.let(onOpenCover) },
             )
             Column(Modifier.weight(1f)) {
                 Text(
@@ -576,6 +610,86 @@ private fun DetailHero(
                     modifier = Modifier.padding(12.dp),
                 )
             }
+        }
+
+        detail.creator?.let { creator ->
+            Spacer(Modifier.height(12.dp))
+            UploaderCard(creator = creator, onClick = onOpenUploader)
+        }
+    }
+}
+
+/** 上传骑士：头像 + 昵称 + 称号 + 等级经验条，点一下看完整简介。 */
+@Composable
+private fun UploaderCard(
+    creator: Creator,
+    onClick: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val level = creator.level.coerceAtLeast(1)
+    val start = levelStartExp(level)
+    val next = levelStartExp(level + 1)
+    val fraction = ((creator.exp - start).toFloat() / (next - start).coerceAtLeast(1))
+        .coerceIn(0f, 1f)
+
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = colors.surface,
+        tonalElevation = 1.dp,
+        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).clickable(onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            UserAvatar(
+                avatarUrl = creator.avatar.url(),
+                frameUrl = null,
+                size = 44.dp,
+                contentDescription = creator.name.ifBlank { "上传骑士" },
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = creator.name.ifBlank { "匿名骑士" },
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colors.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (creator.verified) {
+                        Spacer(Modifier.width(4.dp))
+                        PicaGlyph(
+                            icon = PicaIcon.Check,
+                            modifier = Modifier.size(14.dp),
+                            tint = colors.primary,
+                        )
+                    }
+                    UserTitleBadge(creator.title, Modifier.padding(start = 6.dp))
+                }
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = "上传骑士 · Lv.$level · 经验 ${creator.exp}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(5.dp))
+                LinearProgressIndicator(
+                    progress = { fraction },
+                    modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                    color = colors.primary,
+                    trackColor = colors.surfaceVariant,
+                    drawStopIndicator = {},
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            PicaGlyph(
+                icon = PicaIcon.ArrowRight,
+                modifier = Modifier.size(16.dp),
+                tint = colors.onSurfaceVariant,
+            )
         }
     }
 }

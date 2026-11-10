@@ -58,3 +58,11 @@ fun userDetailLine(
     level?.let { "Lv.$it" },
     exp?.let { "经验 $it" },
 ).joinToString(" · ").takeIf { it.isNotBlank() }
+
+/**
+ * 等级 [level] 的起算经验。
+ *
+ * 官方没给公式，这是拿骑士榜上 50 个用户的 level / exp 对出来的：`100 * L * (L-1)`，
+ * 即 Lv2=200、Lv3=600、Lv4=1200……所有样本都落在 `[threshold(L), threshold(L+1))` 里。
+ */
+fun levelStartExp(level: Int): Int = 100 * level * (level - 1)

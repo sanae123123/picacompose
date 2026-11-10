@@ -46,6 +46,7 @@ import com.picacompose.ui.components.UserAvatar
 import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.UserTitleBadge
 import com.picacompose.ui.components.genderLabel
+import com.picacompose.ui.components.levelStartExp
 import com.picacompose.ui.components.userDetailLine
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.url
@@ -269,14 +270,6 @@ fun MineContent(
         )
     }
 }
-
-/**
- * 等级 L 的起算经验。
- *
- * 官方没给公式，这是拿骑士榜上 50 个用户的 level / exp 对出来的：`100 * L * (L-1)`，
- * 即 Lv2=200、Lv3=600、Lv4=1200……所有样本都落在 `[threshold(L), threshold(L+1))` 里。
- */
-private fun levelStartExp(level: Int): Int = 100 * level * (level - 1)
 
 /** 到下一等级的进度条。 */
 @Composable
