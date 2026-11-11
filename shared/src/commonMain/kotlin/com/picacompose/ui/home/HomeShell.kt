@@ -142,7 +142,8 @@ fun HomeShell(
     var comicTitle by rememberSaveable { mutableStateOf("") }
     var comicLabel by rememberSaveable { mutableStateOf("") }
     var comicKey by rememberSaveable { mutableStateOf("comicsPage") }
-    var comicSort by rememberSaveable { mutableStateOf<String?>(null) }
+    // 默认按最新排；服务端的原顺序在筛选里还留着（「默认」那一项）。
+    var comicSort by rememberSaveable { mutableStateOf<String?>("dd") }
     // 完结筛选是枚举，rememberSaveable 能直接存；换排序 / 换筛选都会换一个 pager，从头拉。
     var comicFinished by rememberSaveable { mutableStateOf(ComicFinished.All) }
     // 标签筛选：多个标签要求同时包含。服务端只认一个 `t`，所以第一个丢给接口，其余在本地筛。
@@ -183,7 +184,7 @@ fun HomeShell(
     val comicListState = rememberLazyListState()
     // 详情页里点标签打开的「同类本子」页：自己一套筛选条件，不和分类列表互相覆盖。
     var tagPageTagsRaw by rememberSaveable { mutableStateOf("") }
-    var tagPageSort by rememberSaveable { mutableStateOf<String?>(null) }
+    var tagPageSort by rememberSaveable { mutableStateOf<String?>("dd") }
     var tagPageFinished by rememberSaveable { mutableStateOf(ComicFinished.All) }
     var tagPageExcludedTagsRaw by rememberSaveable { mutableStateOf("") }
     val tagPageTags = remember(tagPageTagsRaw) {
@@ -481,7 +482,7 @@ fun HomeShell(
                                         onOpenCategory = { category ->
                                             comicTitle = category.title
                                             comicLabel = category.title
-                                            comicSort = null
+                                            comicSort = "dd"
                                             comicFinished = ComicFinished.All
                                             comicTagsRaw = ""
                                             comicExcludedTagsRaw = ""
@@ -809,7 +810,7 @@ fun HomeShell(
                                             if (clean.isNotBlank()) {
                                                 tagPageTagsRaw = clean
                                                 tagPageExcludedTagsRaw = ""
-                                                tagPageSort = null
+                                                tagPageSort = "dd"
                                                 tagPageFinished = ComicFinished.All
                                                 tagPageOriginComicId = detailComicId
                                                 tagPageReturnOrdinal = detailReturnOrdinal
