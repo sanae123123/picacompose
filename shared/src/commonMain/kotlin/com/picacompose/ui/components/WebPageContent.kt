@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import com.picacompose.ui.components.PicaDropdownMenu
+import com.picacompose.ui.components.PicaDropdownMenuItem
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
@@ -101,15 +101,15 @@ fun WebPageContent(
                 IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(40.dp)) {
                     PicaGlyph(PicaIcon.Menu, Modifier.size(22.dp), colors.onBackground)
                 }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
+                PicaDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    PicaDropdownMenuItem(
                         text = { Text("刷新") },
                         onClick = {
                             menuOpen = false
                             controller.reload()
                         },
                     )
-                    DropdownMenuItem(
+                    PicaDropdownMenuItem(
                         text = { Text("后退") },
                         enabled = controller.canGoBack,
                         onClick = {
@@ -117,7 +117,7 @@ fun WebPageContent(
                             controller.goBack()
                         },
                     )
-                    DropdownMenuItem(
+                    PicaDropdownMenuItem(
                         text = { Text("返回") },
                         onClick = {
                             menuOpen = false
@@ -125,7 +125,7 @@ fun WebPageContent(
                         },
                     )
                     HorizontalDivider()
-                    DropdownMenuItem(
+                    PicaDropdownMenuItem(
                         text = { Text("用默认浏览器打开") },
                         onClick = {
                             menuOpen = false

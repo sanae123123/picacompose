@@ -30,13 +30,10 @@ import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import com.picacompose.ui.components.PicaTextButton
 import com.picacompose.ui.components.PicaTextField
-import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -290,16 +287,6 @@ private fun RememberRow(controller: LoginController, modifier: Modifier = Modifi
     }
 }
 
-@Composable
-private fun picaFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = MiuixTheme.colorScheme.primary,
-    unfocusedBorderColor = MiuixTheme.colorScheme.dividerLine,
-    focusedContainerColor = Color.Transparent,
-    unfocusedContainerColor = Color.Transparent,
-    cursorColor = MiuixTheme.colorScheme.primary,
-    focusedLabelColor = MiuixTheme.colorScheme.primary,
-    unfocusedLabelColor = MiuixTheme.colorScheme.onSurfaceSecondary,
-)
 
 @Composable
 private fun ErrorBanner(message: String) {

@@ -12,10 +12,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import com.picacompose.ui.components.PicaDropdownMenu
+import com.picacompose.ui.components.PicaDropdownMenuItem
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import androidx.compose.material3.OutlinedButton
+import com.picacompose.ui.components.PicaOutlinedButton
 import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
@@ -232,12 +232,12 @@ fun SettingsContent(onSignOut: () -> Unit) {
                         value = imageQualityLabel(qualityIndex),
                         onClick = { qualityMenuOpen = true },
                     )
-                    DropdownMenu(
+                    PicaDropdownMenu(
                         expanded = qualityMenuOpen,
                         onDismissRequest = { qualityMenuOpen = false },
                     ) {
                         IMAGE_QUALITY_CHOICES.forEach { (index, label) ->
-                            DropdownMenuItem(
+                            PicaDropdownMenuItem(
                                 text = { Text(label) },
                                 onClick = {
                                     qualityMenuOpen = false
@@ -297,9 +297,8 @@ fun SettingsContent(onSignOut: () -> Unit) {
             Spacer(Modifier.height(14.dp))
         }
         item {
-            OutlinedButton(
+            PicaOutlinedButton(
                 onClick = onSignOut,
-                shape = RoundedCornerShape(999.dp),
                 modifier = Modifier.height(52.dp).fillMaxWidth(),
             ) {
                 PicaGlyph(PicaIcon.Logout, Modifier.size(18.dp))

@@ -21,7 +21,7 @@ import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import androidx.compose.material3.OutlinedButton
+import com.picacompose.ui.components.PicaOutlinedButton
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import com.picacompose.ui.components.PicaTextButton
@@ -272,9 +272,8 @@ fun MineContent(
             Spacer(Modifier.height(14.dp))
         }
         item {
-            OutlinedButton(
+            PicaOutlinedButton(
                 onClick = onSignOut,
-                shape = RoundedCornerShape(999.dp),
                 modifier = Modifier.height(52.dp).fillMaxWidth(),
             ) {
                 PicaGlyph(PicaIcon.Logout, Modifier.size(18.dp))

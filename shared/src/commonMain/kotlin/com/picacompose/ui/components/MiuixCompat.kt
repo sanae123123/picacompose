@@ -1,5 +1,6 @@
 package com.picacompose.ui.components
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,7 +9,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.text.KeyboardActions
@@ -169,5 +174,75 @@ fun PicaTextField(
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         visualTransformation = visualTransformation,
+    )
+}
+
+/** 下拉菜单：沿用 Material3 的弹出位置，容器换成 miuix 的卡片色。 */
+@Composable
+fun PicaDropdownMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val colors = MiuixTheme.colorScheme
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        containerColor = colors.surfaceVariant,
+        content = content,
+    )
+}
+
+/** 菜单项：文字和图标都按 miuix 的色板来。 */
+@Composable
+fun PicaDropdownMenuItem(
+    text: @Composable () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    leadingIcon: (@Composable () -> Unit)? = null,
+    trailingIcon: (@Composable () -> Unit)? = null,
+    enabled: Boolean = true,
+) {
+    val colors = MiuixTheme.colorScheme
+    DropdownMenuItem(
+        text = text,
+        onClick = onClick,
+        modifier = modifier,
+        leadingIcon = leadingIcon,
+        trailingIcon = trailingIcon,
+        enabled = enabled,
+        colors = MenuDefaults.itemColors(
+            textColor = colors.onSurface,
+            leadingIconColor = colors.onSurfaceSecondary,
+            trailingIconColor = colors.onSurfaceSecondary,
+            disabledTextColor = colors.disabledOnSurface,
+            disabledLeadingIconColor = colors.disabledOnSurface,
+            disabledTrailingIconColor = colors.disabledOnSurface,
+        ),
+    )
+}
+
+/** 描边按钮：白底、细边、主色文字，对应原来 Material3 的 OutlinedButton。 */
+@Composable
+fun PicaOutlinedButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val colors = MiuixTheme.colorScheme
+    Button(
+        onClick = onClick,
+        modifier = modifier.border(1.dp, colors.dividerLine, RoundedCornerShape(999.dp)),
+        enabled = enabled,
+        cornerRadius = 999.dp,
+        insideMargin = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+        colors = ButtonDefaults.buttonColors(
+            color = colors.surface,
+            disabledColor = colors.surface,
+            contentColor = colors.onSurface,
+            disabledContentColor = colors.disabledOnSurface,
+        ),
+        content = content,
     )
 }

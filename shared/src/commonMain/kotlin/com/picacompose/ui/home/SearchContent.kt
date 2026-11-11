@@ -20,17 +20,14 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import com.picacompose.ui.components.PicaDropdownMenu
+import com.picacompose.ui.components.PicaDropdownMenuItem
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import com.picacompose.ui.components.PicaTextButton
-import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -345,11 +342,11 @@ fun SearchContent(
                                 tint = colors.onBackground,
                             )
                         }
-                        DropdownMenu(
+                        PicaDropdownMenu(
                             expanded = menuOpen,
                             onDismissRequest = { menuOpen = false },
                         ) {
-                            DropdownMenuItem(
+                            PicaDropdownMenuItem(
                                 text = { Text("跳页") },
                                 enabled = pager != null,
                                 leadingIcon = {
@@ -372,7 +369,7 @@ fun SearchContent(
                                 modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp),
                             )
                             ComicSort.entries.forEach { option ->
-                                DropdownMenuItem(
+                                PicaDropdownMenuItem(
                                     text = { Text(option.label) },
                                     trailingIcon = {
                                         if (option.value == state.sort) {
@@ -565,11 +562,3 @@ private fun HotKeywordChip(text: String, onClick: () -> Unit) {
     }
 }
 
-@Composable
-private fun searchFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = MiuixTheme.colorScheme.primary,
-    unfocusedBorderColor = MiuixTheme.colorScheme.dividerLine,
-    focusedContainerColor = Color.Transparent,
-    unfocusedContainerColor = Color.Transparent,
-    cursorColor = MiuixTheme.colorScheme.primary,
-)

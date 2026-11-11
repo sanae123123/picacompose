@@ -27,12 +27,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import com.picacompose.ui.components.PicaDropdownMenu
+import com.picacompose.ui.components.PicaDropdownMenuItem
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.IconButton
 import com.picacompose.ui.components.PicaInputChip
-import androidx.compose.material3.OutlinedTextField
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
@@ -184,11 +183,11 @@ fun ComicListContent(
                             tint = colors.onBackground,
                         )
                     }
-                    DropdownMenu(
+                    PicaDropdownMenu(
                         expanded = menuOpen,
                         onDismissRequest = { menuOpen = false },
                     ) {
-                        DropdownMenuItem(
+                        PicaDropdownMenuItem(
                             text = { Text("跳页") },
                             leadingIcon = {
                                 PicaGlyph(PicaIcon.ArrowRight, Modifier.size(18.dp), colors.onSurfaceSecondary)
@@ -206,7 +205,7 @@ fun ComicListContent(
                             modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp),
                         )
                         ComicSort.entries.forEach { option ->
-                            DropdownMenuItem(
+                            PicaDropdownMenuItem(
                                 text = { Text(option.label) },
                                 trailingIcon = {
                                     if (option.value == sort) {

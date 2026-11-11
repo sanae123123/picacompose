@@ -36,7 +36,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import com.picacompose.ui.components.PicaAlertDialog
 import top.yukonga.miuix.kmp.basic.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -287,7 +286,6 @@ private fun listContentPadding(base: PaddingValues, hasHeader: Boolean): Padding
  *
  * [onRefresh] 是挂起函数，转圈一直转到它真的干完；传 null 就什么都不套。
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PullRefresh(
     onRefresh: (suspend () -> Unit)?,
