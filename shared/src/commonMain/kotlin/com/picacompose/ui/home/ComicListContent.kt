@@ -29,13 +29,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -88,7 +88,7 @@ fun ComicListContent(
     /** 给每一行挂变形源：详情页的 key 和它配对，点开从这一行长成整屏。 */
     comicRowModifier: @Composable (String) -> Modifier = { Modifier },
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
     var menuOpen by remember { mutableStateOf(false) }
     var showJump by remember { mutableStateOf(false) }
@@ -152,8 +152,8 @@ fun ComicListContent(
                 if (countText != null) {
                     Text(
                         text = countText,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = colors.onSurfaceSecondary,
                     )
                 }
                 // 筛选：排序方式 + 完结状态，点开弹窗配。开了筛选就把图标点亮。
@@ -190,7 +190,7 @@ fun ComicListContent(
                         DropdownMenuItem(
                             text = { Text("跳页") },
                             leadingIcon = {
-                                PicaGlyph(PicaIcon.ArrowRight, Modifier.size(18.dp), colors.onSurfaceVariant)
+                                PicaGlyph(PicaIcon.ArrowRight, Modifier.size(18.dp), colors.onSurfaceSecondary)
                             },
                             onClick = {
                                 menuOpen = false
@@ -200,8 +200,8 @@ fun ComicListContent(
                         HorizontalDivider()
                         Text(
                             text = "排序方式",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.onSurfaceVariant,
+                            style = MiuixTheme.textStyles.footnote2,
+                            color = colors.onSurfaceSecondary,
                             modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp),
                         )
                         ComicSort.entries.forEach { option ->
@@ -299,7 +299,7 @@ internal fun ComicFilterDialog(
     onApply: (String?, ComicFinished, List<String>, List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val pop = rememberDialogPop(onDismiss)
     var draftSort by remember { mutableStateOf(sort) }
     var draftFinished by remember { mutableStateOf(finished) }
@@ -327,7 +327,7 @@ internal fun ComicFilterDialog(
     AlertDialog(
         onDismissRequest = pop::dismiss,
         modifier = pop.modifier,
-        title = { Text(text = "筛选", style = MaterialTheme.typography.titleMedium) },
+        title = { Text(text = "筛选", style = MiuixTheme.textStyles.title4) },
         text = {
             Column(
                 Modifier
@@ -336,8 +336,8 @@ internal fun ComicFilterDialog(
             ) {
                 Text(
                     text = "排序方式",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = colors.onSurfaceSecondary,
                 )
                 Spacer(Modifier.height(8.dp))
                 FlowRow(
@@ -349,7 +349,7 @@ internal fun ComicFilterDialog(
                             selected = draftSort == option.value,
                             onClick = { draftSort = option.value },
                             label = {
-                                Text(text = option.label, style = MaterialTheme.typography.bodySmall)
+                                Text(text = option.label, style = MiuixTheme.textStyles.footnote1)
                             },
                         )
                     }
@@ -357,8 +357,8 @@ internal fun ComicFilterDialog(
                 Spacer(Modifier.height(14.dp))
                 Text(
                     text = "完结状态",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = colors.onSurfaceSecondary,
                 )
                 Spacer(Modifier.height(8.dp))
                 FlowRow(
@@ -370,7 +370,7 @@ internal fun ComicFilterDialog(
                             selected = draftFinished == option,
                             onClick = { draftFinished = option },
                             label = {
-                                Text(text = option.label, style = MaterialTheme.typography.bodySmall)
+                                Text(text = option.label, style = MiuixTheme.textStyles.footnote1)
                             },
                         )
                     }
@@ -379,8 +379,8 @@ internal fun ComicFilterDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "标签筛选",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = colors.onSurfaceSecondary,
                         modifier = Modifier.weight(1f),
                     )
                     if (draftTags.isNotEmpty() || draftExcluded.isNotEmpty()) {
@@ -388,15 +388,15 @@ internal fun ComicFilterDialog(
                             draftTags = emptyList()
                             draftExcluded = emptyList()
                         }) {
-                            Text(text = "清空", style = MaterialTheme.typography.labelSmall)
+                            Text(text = "清空", style = MiuixTheme.textStyles.footnote2)
                         }
                     }
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = "包含的都要有，排除的都不能有。第一个「包含」走接口，其余在本地筛；标签不必是列表里出现过的。",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = colors.onSurfaceSecondary,
                 )
                 Spacer(Modifier.height(8.dp))
                 // 先选好这一条要加进哪一边，再输入 / 点标签，位置就在输入框上面，不用往下翻。
@@ -404,12 +404,12 @@ internal fun ComicFilterDialog(
                     FilterChip(
                         selected = !excludeMode,
                         onClick = { excludeMode = false },
-                        label = { Text(text = "包含", style = MaterialTheme.typography.bodySmall) },
+                        label = { Text(text = "包含", style = MiuixTheme.textStyles.footnote1) },
                     )
                     FilterChip(
                         selected = excludeMode,
                         onClick = { excludeMode = true },
-                        label = { Text(text = "排除", style = MaterialTheme.typography.bodySmall) },
+                        label = { Text(text = "排除", style = MiuixTheme.textStyles.footnote1) },
                     )
                 }
                 Spacer(Modifier.height(8.dp))
@@ -418,11 +418,11 @@ internal fun ComicFilterDialog(
                         value = tagInput,
                         onValueChange = { tagInput = it },
                         singleLine = true,
-                        textStyle = MaterialTheme.typography.bodySmall,
+                        textStyle = MiuixTheme.textStyles.footnote1,
                         placeholder = {
                             Text(
                                 text = if (excludeMode) "输入要排除的标签" else "输入要包含的标签",
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MiuixTheme.textStyles.footnote1,
                             )
                         },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -438,7 +438,7 @@ internal fun ComicFilterDialog(
                     Spacer(Modifier.height(12.dp))
                     Text(
                         text = "已包含",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MiuixTheme.textStyles.footnote2,
                         color = colors.primary,
                     )
                     Spacer(Modifier.height(6.dp))
@@ -451,13 +451,13 @@ internal fun ComicFilterDialog(
                                 selected = true,
                                 onClick = { draftTags = draftTags - tag },
                                 label = {
-                                    Text(text = tag, style = MaterialTheme.typography.bodySmall)
+                                    Text(text = tag, style = MiuixTheme.textStyles.footnote1)
                                 },
                                 trailingIcon = {
                                     PicaGlyph(
                                         icon = PicaIcon.Close,
                                         modifier = Modifier.size(14.dp),
-                                        tint = colors.onSurfaceVariant,
+                                        tint = colors.onSurfaceSecondary,
                                     )
                                 },
                             )
@@ -468,7 +468,7 @@ internal fun ComicFilterDialog(
                     Spacer(Modifier.height(10.dp))
                     Text(
                         text = "已排除",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MiuixTheme.textStyles.footnote2,
                         color = colors.error,
                     )
                     Spacer(Modifier.height(6.dp))
@@ -483,7 +483,7 @@ internal fun ComicFilterDialog(
                                 label = {
                                     Text(
                                         text = tag,
-                                        style = MaterialTheme.typography.bodySmall,
+                                        style = MiuixTheme.textStyles.footnote1,
                                         color = colors.error,
                                     )
                                 },
@@ -514,8 +514,8 @@ internal fun ComicFilterDialog(
                         } else {
                             "匹配「$typed」，点一下加到${if (excludeMode) "排除" else "包含"}："
                         },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote2,
+                        color = colors.onSurfaceSecondary,
                     )
                     Spacer(Modifier.height(6.dp))
                     FlowRow(
@@ -527,7 +527,7 @@ internal fun ComicFilterDialog(
                                 selected = false,
                                 onClick = { addTag(tag) },
                                 label = {
-                                    Text(text = tag, style = MaterialTheme.typography.bodySmall)
+                                    Text(text = tag, style = MiuixTheme.textStyles.footnote1)
                                 },
                             )
                         }
@@ -536,8 +536,8 @@ internal fun ComicFilterDialog(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = "列表里没有对得上的，点上面的「${if (excludeMode) "排除" else "包含"}」直接用「$typed」。",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote2,
+                        color = colors.onSurfaceSecondary,
                     )
                 }
 
@@ -577,11 +577,10 @@ internal fun ComicListRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(22.dp),
         color = colors.surface,
-        tonalElevation = 1.dp,
         modifier = modifier.fillMaxWidth().padding(bottom = 12.dp),
     ) {
         Row(
@@ -604,7 +603,7 @@ internal fun ComicListRow(
                 if (progress != null && progress.order > 0) {
                     Text(
                         text = "看到第 ${progress.order} 话",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MiuixTheme.textStyles.footnote2,
                         color = Color.White,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -621,7 +620,7 @@ internal fun ComicListRow(
             Column(Modifier.weight(1f)) {
                 Text(
                     text = comic.title,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MiuixTheme.textStyles.subtitle,
                     color = colors.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -631,8 +630,8 @@ internal fun ComicListRow(
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = author,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = colors.onSurfaceSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -641,18 +640,18 @@ internal fun ComicListRow(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         text = "${compactCount(comic.totalLikes)} 赞",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote2,
+                        color = colors.onSurfaceSecondary,
                     )
                     Text(
                         text = "${compactCount(comic.totalViews)} 浏览",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote2,
+                        color = colors.onSurfaceSecondary,
                     )
                     Text(
                         text = "${comic.pagesCount} 页",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote2,
+                        color = colors.onSurfaceSecondary,
                     )
                 }
                 val categories = comic.categories.take(3)
@@ -662,7 +661,7 @@ internal fun ComicListRow(
                         categories.forEach { category ->
                             Text(
                                 text = category,
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MiuixTheme.textStyles.footnote2,
                                 color = colors.primary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -674,8 +673,8 @@ internal fun ComicListRow(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = "已完结",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote2,
+                        color = colors.onSurfaceSecondary,
                     )
                 }
             }

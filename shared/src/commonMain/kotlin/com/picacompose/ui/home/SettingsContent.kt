@@ -1,6 +1,7 @@
 package com.picacompose.ui.home
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,10 +14,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.Switch
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -298,12 +299,12 @@ fun SettingsContent(onSignOut: () -> Unit) {
         item {
             OutlinedButton(
                 onClick = onSignOut,
-                shape = CircleShape,
+                shape = RoundedCornerShape(999.dp),
                 modifier = Modifier.height(52.dp).fillMaxWidth(),
             ) {
                 PicaGlyph(PicaIcon.Logout, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("退出登录", style = MaterialTheme.typography.labelLarge)
+                Text("退出登录", style = MiuixTheme.textStyles.button)
             }
         }
     }
@@ -357,7 +358,7 @@ private fun PickerRow(
     value: String,
     onClick: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -365,21 +366,21 @@ private fun PickerRow(
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PicaGlyph(icon, Modifier.size(18.dp), colors.onSurfaceVariant)
+        PicaGlyph(icon, Modifier.size(18.dp), colors.onSurfaceSecondary)
         Spacer(Modifier.width(12.dp))
         Text(
             text = title,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MiuixTheme.textStyles.body1,
             color = colors.onSurface,
             modifier = Modifier.weight(1f),
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.onSurfaceVariant,
+            style = MiuixTheme.textStyles.footnote1,
+            color = colors.onSurfaceSecondary,
         )
         Spacer(Modifier.width(6.dp))
-        PicaGlyph(PicaIcon.ArrowRight, Modifier.size(16.dp), colors.onSurfaceVariant)
+        PicaGlyph(PicaIcon.ArrowRight, Modifier.size(16.dp), colors.onSurfaceSecondary)
     }
 }
 
@@ -395,7 +396,7 @@ private fun SwitchRow(
     /** 子开关往右缩一点，视觉上挂在上面那个开关下面。 */
     indent: Boolean = false,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val alpha = if (enabled) 1f else 0.45f
     Row(
         modifier = Modifier
@@ -408,20 +409,20 @@ private fun SwitchRow(
         PicaGlyph(
             icon = icon,
             modifier = Modifier.size(18.dp),
-            tint = colors.onSurfaceVariant.copy(alpha = alpha),
+            tint = colors.onSurfaceSecondary.copy(alpha = alpha),
         )
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MiuixTheme.textStyles.body1,
                 color = colors.onSurface.copy(alpha = alpha),
             )
             Spacer(Modifier.height(3.dp))
             Text(
                 text = summary,
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.onSurfaceVariant.copy(alpha = alpha),
+                style = MiuixTheme.textStyles.footnote2,
+                color = colors.onSurfaceSecondary.copy(alpha = alpha),
             )
         }
         Spacer(Modifier.width(10.dp))
@@ -441,7 +442,7 @@ private fun LinkRow(
     url: String,
     onClick: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -449,24 +450,24 @@ private fun LinkRow(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PicaGlyph(icon, Modifier.size(18.dp), colors.onSurfaceVariant)
+        PicaGlyph(icon, Modifier.size(18.dp), colors.onSurfaceSecondary)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MiuixTheme.textStyles.body1,
                 color = colors.onSurface,
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 text = url,
-                style = MaterialTheme.typography.labelSmall,
+                style = MiuixTheme.textStyles.footnote2,
                 color = colors.primary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
         Spacer(Modifier.width(6.dp))
-        PicaGlyph(PicaIcon.ArrowRight, Modifier.size(16.dp), colors.onSurfaceVariant)
+        PicaGlyph(PicaIcon.ArrowRight, Modifier.size(16.dp), colors.onSurfaceSecondary)
     }
 }

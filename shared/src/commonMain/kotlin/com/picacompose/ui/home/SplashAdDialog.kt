@@ -13,9 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -70,7 +71,7 @@ fun SplashAdDialog(
             val current = ad
             when {
                 loading -> CircularProgressIndicator(
-                    color = Color.White,
+                    colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = Color.White),
                     modifier = Modifier.align(Alignment.Center),
                 )
 
@@ -80,13 +81,13 @@ fun SplashAdDialog(
                 ) {
                     Text(
                         text = "广告没拉到",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MiuixTheme.textStyles.title4,
                         color = Color.White,
                     )
                     Spacer(Modifier.height(14.dp))
                     Text(
                         text = "关闭",
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MiuixTheme.textStyles.button,
                         color = Color.White,
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
@@ -110,7 +111,7 @@ fun SplashAdDialog(
                     )
                     Text(
                         text = "广告",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MiuixTheme.textStyles.footnote2,
                         color = Color.Black,
                         modifier = Modifier
                             .align(Alignment.BottomStart)
@@ -125,7 +126,7 @@ fun SplashAdDialog(
 
             Text(
                 text = "关闭",
-                style = MaterialTheme.typography.labelMedium,
+                style = MiuixTheme.textStyles.footnote1,
                 color = Color.White,
                 modifier = Modifier
                     .align(Alignment.TopEnd)

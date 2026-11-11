@@ -14,9 +14,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -48,7 +48,7 @@ fun ForumContent(
     modifier: Modifier = Modifier,
     topComments: List<Comment> = emptyList(),
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
     // 要回复谁：非空就弹回复面板。
     var replyTarget by remember { mutableStateOf<CommentReplyTarget?>(null) }
@@ -78,7 +78,7 @@ fun ForumContent(
                     // 工具栏右上角：评论翻到几页之后，直接输页码跳。
                     Text(
                         text = "跳页",
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MiuixTheme.textStyles.footnote1,
                         color = colors.primary,
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))

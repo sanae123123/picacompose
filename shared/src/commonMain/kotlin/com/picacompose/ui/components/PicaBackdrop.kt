@@ -2,7 +2,7 @@ package com.picacompose.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -17,7 +17,7 @@ import androidx.compose.ui.graphics.Color
  */
 @Composable
 fun PicaBackdrop(modifier: Modifier = Modifier) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Canvas(modifier.fillMaxSize()) {
         drawRect(
             brush = Brush.verticalGradient(

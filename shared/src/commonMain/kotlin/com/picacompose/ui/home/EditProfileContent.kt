@@ -10,10 +10,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,7 +55,7 @@ fun EditProfileContent(
     onSaved: suspend () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
 
     // 进来先拉一份最新的：外层那份是登录 / 切页时拉的，可能已经过期。
@@ -164,7 +164,7 @@ fun EditProfileContent(
                         TextButton(onClick = ::save, enabled = dirty && !saving && !nameBlank) {
                             Text(
                                 text = if (saving) "保存中…" else "保存",
-                                style = MaterialTheme.typography.labelLarge,
+                                style = MiuixTheme.textStyles.button,
                             )
                         }
                     },
@@ -196,7 +196,7 @@ fun EditProfileContent(
                     Column(Modifier.weight(1f)) {
                         Text(
                             text = "头像",
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MiuixTheme.textStyles.subtitle,
                             color = colors.onSurface,
                         )
                         Spacer(Modifier.height(2.dp))
@@ -206,13 +206,13 @@ fun EditProfileContent(
                                 imagePickerSupported -> "从相册挑一张，会自动压到 512 像素"
                                 else -> "这个平台暂时换不了头像"
                             },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
+                            style = MiuixTheme.textStyles.footnote1,
+                            color = colors.onSurfaceSecondary,
                         )
                     }
                     if (imagePickerSupported) {
                         TextButton(onClick = { pickAvatar() }) {
-                            Text(text = "更换", style = MaterialTheme.typography.labelLarge)
+                            Text(text = "更换", style = MiuixTheme.textStyles.button)
                         }
                     }
                 }
@@ -236,8 +236,8 @@ fun EditProfileContent(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = "这份资料里没有邮箱，昵称先改不了，签名不受影响。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = colors.onSurfaceSecondary,
                     )
                 }
                 Spacer(Modifier.height(12.dp))
@@ -263,12 +263,12 @@ fun EditProfileContent(
         AlertDialog(
             onDismissRequest = pop::dismiss,
             modifier = pop.modifier,
-            title = { Text(text = "没保存成功", style = MaterialTheme.typography.titleMedium) },
+            title = { Text(text = "没保存成功", style = MiuixTheme.textStyles.title4) },
             text = {
                 Text(
                     text = text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.body1,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
                 )
             },
             confirmButton = {

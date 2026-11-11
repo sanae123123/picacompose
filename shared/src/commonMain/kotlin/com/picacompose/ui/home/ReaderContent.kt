@@ -32,10 +32,11 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -366,14 +367,14 @@ fun ReaderContent(
                     Column(Modifier.weight(1f)) {
                         Text(
                             text = title.ifBlank { "第 $order 话" },
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MiuixTheme.textStyles.subtitle,
                             color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
                             text = comicTitle,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MiuixTheme.textStyles.footnote2,
                             color = Color.White.copy(alpha = 0.7f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -381,7 +382,7 @@ fun ReaderContent(
                     }
                     Text(
                         text = if (totalPages > 0) "$shown / $totalPages" else "$shown",
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MiuixTheme.textStyles.footnote1,
                         color = Color.White.copy(alpha = 0.85f),
                         modifier = Modifier.padding(horizontal = 8.dp),
                     )
@@ -461,7 +462,7 @@ private fun ReaderPage(
                     ) {
                         Text(
                             text = "这张没加载出来",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MiuixTheme.textStyles.body1,
                             color = Color.White.copy(alpha = 0.8f),
                         )
                         Surface(
@@ -475,7 +476,7 @@ private fun ReaderPage(
                         ) {
                             Text(
                                 text = "点一下重试",
-                                style = MaterialTheme.typography.labelLarge,
+                                style = MiuixTheme.textStyles.button,
                                 color = Color.White,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             )
@@ -483,7 +484,7 @@ private fun ReaderPage(
                     }
                 } else {
                     CircularProgressIndicator(
-                        color = Color.White.copy(alpha = 0.85f),
+                        colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = Color.White.copy(alpha = 0.85f)),
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(32.dp),
                     )
@@ -535,7 +536,7 @@ private fun EpisodeButton(
         Box(Modifier.padding(vertical = 9.dp), contentAlignment = Alignment.Center) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelLarge,
+                style = MiuixTheme.textStyles.button,
                 color = if (enabled) Color.White else Color.White.copy(alpha = 0.35f),
             )
         }
@@ -558,7 +559,7 @@ private fun ReaderState(
             error != null -> {
                 Text(
                     text = error,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MiuixTheme.textStyles.body1,
                     color = Color.White.copy(alpha = 0.8f),
                 )
                 Surface(
@@ -568,7 +569,7 @@ private fun ReaderState(
                 ) {
                     Text(
                         text = "再试一次",
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MiuixTheme.textStyles.button,
                         color = Color.White,
                         modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
                     )
@@ -577,13 +578,13 @@ private fun ReaderState(
 
             loading -> Text(
                 text = "正在拉图片…",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MiuixTheme.textStyles.body1,
                 color = Color.White.copy(alpha = 0.8f),
             )
 
             else -> Text(
                 text = "这话没有图片",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MiuixTheme.textStyles.body1,
                 color = Color.White.copy(alpha = 0.8f),
             )
         }

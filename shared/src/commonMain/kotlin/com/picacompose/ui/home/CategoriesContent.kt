@@ -2,6 +2,7 @@ package com.picacompose.ui.home
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -14,10 +15,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
@@ -173,7 +174,7 @@ fun CategoriesContent(
                     PicaGlyph(
                         icon = PicaIcon.Search,
                         modifier = Modifier.size(22.dp),
-                        tint = MaterialTheme.colorScheme.onBackground,
+                        tint = MiuixTheme.colorScheme.onBackground,
                     )
                 }
             }
@@ -270,8 +271,8 @@ fun CategoriesContent(
 private fun SectionTitle(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onBackground,
+        style = MiuixTheme.textStyles.title4,
+        color = MiuixTheme.colorScheme.onBackground,
     )
 }
 
@@ -289,11 +290,10 @@ private fun HotTileCard(
     tile: HotTile,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
-        shape = MaterialTheme.shapes.medium,
+        shape = RoundedCornerShape(16.dp),
         color = colors.surface,
-        tonalElevation = 1.dp,
         modifier = modifier.then(tile.modifier),
     ) {
         Column(modifier = Modifier.clickable(onClick = tile.onClick)) {
@@ -314,7 +314,7 @@ private fun HotTileCard(
             }
             Text(
                 text = tile.label,
-                style = MaterialTheme.typography.labelMedium,
+                style = MiuixTheme.textStyles.footnote1,
                 color = colors.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -331,11 +331,10 @@ private fun CategoryCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(22.dp),
         color = colors.surface,
-        tonalElevation = 1.dp,
         modifier = modifier,
     ) {
         Column(modifier = Modifier.clickable(onClick = onClick)) {
@@ -349,7 +348,7 @@ private fun CategoryCard(
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
                 Text(
                     text = category.title,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MiuixTheme.textStyles.subtitle,
                     color = colors.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -359,8 +358,8 @@ private fun CategoryCard(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = colors.onSurfaceSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

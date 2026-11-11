@@ -16,11 +16,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
+import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,7 +52,7 @@ fun WebPageContent(
      *  挂早了会直接以整屏尺寸弹出来，看着就不是从磁贴长出来的。 */
     showWebView: Boolean = true,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val controller = rememberWebViewController()
     val openInBrowser = rememberBrowserOpener()
     var menuOpen by remember { mutableStateOf(false) }
@@ -83,15 +84,15 @@ fun WebPageContent(
             Column(Modifier.weight(1f)) {
                 Text(
                     text = title.orEmpty().ifBlank { "网页" },
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MiuixTheme.textStyles.subtitle,
                     color = colors.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = pageUrl,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = colors.onSurfaceSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -138,10 +139,9 @@ fun WebPageContent(
         Box(Modifier.fillMaxWidth().height(2.dp)) {
             if (controller.progress > 0.01f && controller.progress < 1f) {
                 LinearProgressIndicator(
-                    progress = { controller.progress },
+colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.primary, backgroundColor = colors.primary.copy(alpha = 0.12f)),
+progress = controller.progress,
                     modifier = Modifier.fillMaxSize(),
-                    color = colors.primary,
-                    trackColor = colors.primary.copy(alpha = 0.12f),
                 )
             }
         }

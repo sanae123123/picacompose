@@ -14,12 +14,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.NavigationBar
+import top.yukonga.miuix.kmp.basic.NavigationBarItem
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -49,6 +48,7 @@ import com.picacompose.data.keepImageIpsFresh
 import com.picacompose.data.refreshImageHost
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
+import com.picacompose.ui.components.vector
 import com.picacompose.ui.components.overlayBounds
 import com.picacompose.ui.components.WebPageContent
 import com.picacompose.ui.components.overlayPageFade
@@ -587,7 +587,7 @@ fun HomeShell(
                             Modifier
                                 .fillMaxSize()
                                 .background(
-                                    if (fullBleed) Color.Black else MaterialTheme.colorScheme.background,
+                                    if (fullBleed) Color.Black else MiuixTheme.colorScheme.background,
                                 ),
                         )
                         if (!fullBleed) PicaBackdrop()
@@ -869,42 +869,21 @@ fun HomeShell(
 
 @Composable
 private fun PicaNavigationBar(pagerState: PagerState, onSelect: (HomeTab) -> Unit) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val tabs = HomeTab.entries
     // 选中态只在这一层读：换页时整页不重组，只有底部栏这颗会跟着更新。
     val selected by remember(pagerState) {
         derivedStateOf { tabs[pagerState.currentPage.coerceIn(tabs.indices)] }
     }
     NavigationBar(
-        containerColor = colors.surface.copy(alpha = 0.94f),
-        tonalElevation = 3.dp,
+        color = colors.surface.copy(alpha = 0.94f),
     ) {
         tabs.forEach { tab ->
-            val isSelected = tab == selected
             NavigationBarItem(
-                selected = isSelected,
+                selected = tab == selected,
                 onClick = { onSelect(tab) },
-                icon = {
-                    PicaGlyph(
-                        icon = tab.icon,
-                        modifier = Modifier.size(22.dp),
-                        tint = if (isSelected) colors.onSecondaryContainer else colors.onSurfaceVariant,
-                        filled = isSelected,
-                    )
-                },
-                label = {
-                    Text(
-                        text = tab.label,
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = colors.onSecondaryContainer,
-                    selectedTextColor = colors.onSurface,
-                    indicatorColor = colors.secondaryContainer,
-                    unselectedIconColor = colors.onSurfaceVariant,
-                    unselectedTextColor = colors.onSurfaceVariant,
-                ),
+                icon = tab.icon.vector(tab == selected),
+                label = tab.label,
             )
         }
     }

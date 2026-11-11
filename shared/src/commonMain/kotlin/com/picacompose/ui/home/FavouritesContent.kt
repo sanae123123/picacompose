@@ -7,9 +7,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
@@ -38,7 +38,7 @@ fun FavouritesContent(
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
 
     LaunchedEffect(pager) {
         if (pager.items.isEmpty()) pager.loadNext()
@@ -74,7 +74,7 @@ fun FavouritesContent(
                 PageHeader(
                     title = "我的收藏",
                     action = if (pager.total > 0) {
-                        { Text("共 ${pager.total} 本", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant) }
+                        { Text("共 ${pager.total} 本", style = MiuixTheme.textStyles.footnote1, color = colors.onSurfaceSecondary) }
                     } else {
                         null
                     },

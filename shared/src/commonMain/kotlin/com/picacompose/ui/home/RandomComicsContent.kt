@@ -23,11 +23,12 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -79,7 +80,7 @@ fun RandomComicsContent(
     onOpenComic: (ComicSummary, String) -> Unit = { _, _ -> },
     comicRowModifier: @Composable (String) -> Modifier = { Modifier },
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     var comics by remember { mutableStateOf<List<ComicSummary>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
@@ -212,7 +213,7 @@ fun RandomComicsContent(
                         }
                         Text(
                             text = "换一批",
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MiuixTheme.textStyles.footnote1,
                             color = colors.primary,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
@@ -249,8 +250,8 @@ fun RandomComicsContent(
                     item(key = "random-footer") {
                         Text(
                             text = "就这些——想换一批，点上面「换一批」，或者滑到底再往上推一把",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.onSurfaceVariant,
+                            style = MiuixTheme.textStyles.footnote2,
+                            color = colors.onSurfaceSecondary,
                             modifier = Modifier.padding(vertical = 18.dp),
                         )
                     }
@@ -271,9 +272,8 @@ fun RandomComicsContent(
                 .padding(bottom = 26.dp),
         ) {
             Surface(
-                shape = CircleShape,
+                shape = RoundedCornerShape(999.dp),
                 color = if (swapError != null) colors.errorContainer else colors.secondaryContainer,
-                tonalElevation = 2.dp,
                 shadowElevation = 3.dp,
             ) {
                 Row(
@@ -283,16 +283,16 @@ fun RandomComicsContent(
                 ) {
                     if (swapping) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
+colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.onSecondaryContainer),
+modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
-                            color = colors.onSecondaryContainer,
                         )
                     } else if (swapError == null) {
                         CircularProgressIndicator(
-                            progress = { (pullPx / thresholdPx).coerceIn(0f, 1f) },
+colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.onSecondaryContainer),
+progress = (pullPx / thresholdPx).coerceIn(0f, 1f),
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
-                            color = colors.onSecondaryContainer,
                         )
                     }
                     Text(
@@ -301,7 +301,7 @@ fun RandomComicsContent(
                             swapError != null -> swapError.orEmpty()
                             else -> "再推一点换一批"
                         },
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MiuixTheme.textStyles.footnote1,
                         color = if (swapError != null) {
                             colors.onErrorContainer
                         } else {

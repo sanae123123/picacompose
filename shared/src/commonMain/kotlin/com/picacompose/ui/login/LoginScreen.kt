@@ -23,16 +23,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import top.yukonga.miuix.kmp.basic.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
@@ -64,7 +65,7 @@ fun LoginScreen(
 ) {
     val scope = rememberCoroutineScope()
     val onSubmit: () -> Unit = { scope.launch { controller.signIn() } }
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
 
     Box(Modifier.fillMaxSize()) {
         PicaBackdrop()
@@ -82,14 +83,14 @@ fun LoginScreen(
                 Spacer(Modifier.height(24.dp))
                 Text(
                     text = "欢迎回来",
-                    style = MaterialTheme.typography.headlineLarge,
+                    style = MiuixTheme.textStyles.title1,
                     color = colors.onBackground,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = "登录后同步你的收藏、评论和追更进度。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.body1,
+                    color = colors.onSurfaceSecondary,
                 )
                 Spacer(Modifier.height(20.dp))
                 LoginCard(controller = controller, onSubmit = onSubmit, onForgotPassword = onForgotPassword)
@@ -98,8 +99,8 @@ fun LoginScreen(
                 Spacer(Modifier.height(16.dp))
                 Text(
                     text = "同一个 PicACG 账号即可登录",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceVariant.copy(alpha = 0.75f),
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = colors.onSurfaceSecondary.copy(alpha = 0.75f),
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center,
                 )
@@ -110,18 +111,18 @@ fun LoginScreen(
 
 @Composable
 private fun BrandRow() {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .size(46.dp)
                 .clip(RoundedCornerShape(15.dp))
-                .background(Brush.linearGradient(listOf(colors.primary, colors.tertiary))),
+                .background(Brush.linearGradient(listOf(colors.primary, colors.tertiaryContainer))),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = "P",
-                style = MaterialTheme.typography.titleLarge,
+                style = MiuixTheme.textStyles.title3,
                 color = colors.onPrimary,
             )
         }
@@ -129,13 +130,13 @@ private fun BrandRow() {
         Column {
             Text(
                 text = "PicaCompose",
-                style = MaterialTheme.typography.titleMedium,
+                style = MiuixTheme.textStyles.title4,
                 color = colors.onBackground,
             )
             Text(
                 text = "PicACG 第三方客户端",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant,
+                style = MiuixTheme.textStyles.footnote1,
+                color = colors.onSurfaceSecondary,
             )
         }
     }
@@ -147,19 +148,18 @@ private fun LoginCard(
     onSubmit: () -> Unit,
     onForgotPassword: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = RoundedCornerShape(28.dp),
         color = colors.surface,
-        tonalElevation = 1.dp,
         shadowElevation = 10.dp,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(horizontal = 22.dp, vertical = 22.dp)) {
             Text(
                 text = "账号登录",
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.onSurfaceVariant,
+                style = MiuixTheme.textStyles.title4,
+                color = colors.onSurfaceSecondary,
             )
             Spacer(Modifier.height(14.dp))
             EmailField(controller)
@@ -171,7 +171,7 @@ private fun LoginCard(
             ) {
                 RememberRow(controller, Modifier.weight(1f))
                 TextButton(onClick = onForgotPassword) {
-                    Text("忘记密码？", style = MaterialTheme.typography.bodyMedium)
+                    Text("忘记密码？", style = MiuixTheme.textStyles.body1)
                 }
             }
             AnimatedVisibility(visible = controller.error != null) {
@@ -184,9 +184,9 @@ private fun LoginCard(
             Button(
                 onClick = onSubmit,
                 enabled = !controller.loading,
-                shape = CircleShape,
+                cornerRadius = 999.dp,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.primary,
+                    color = colors.primary,
                     contentColor = colors.onPrimary,
                 ),
                 modifier = Modifier
@@ -195,14 +195,14 @@ private fun LoginCard(
             ) {
                 if (controller.loading) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        color = colors.onPrimary,
+colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.onPrimary),
+modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
                     )
                     Spacer(Modifier.width(10.dp))
-                    Text("登录中…", style = MaterialTheme.typography.labelLarge)
+                    Text("登录中…", style = MiuixTheme.textStyles.button)
                 } else {
-                    Text("登录", style = MaterialTheme.typography.labelLarge)
+                    Text("登录", style = MiuixTheme.textStyles.button)
                     Spacer(Modifier.width(8.dp))
                     PicaGlyph(PicaIcon.ArrowRight, Modifier.size(18.dp), colors.onPrimary)
                 }
@@ -213,7 +213,7 @@ private fun LoginCard(
 
 @Composable
 private fun EmailField(controller: LoginController) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     OutlinedTextField(
         value = controller.email,
         onValueChange = controller::onEmailChange,
@@ -221,8 +221,8 @@ private fun EmailField(controller: LoginController) {
         enabled = !controller.loading,
         label = { Text("邮箱 / 用户名") },
         singleLine = true,
-        shape = MaterialTheme.shapes.medium,
-        leadingIcon = { PicaGlyph(PicaIcon.Person, Modifier.size(20.dp), colors.onSurfaceVariant) },
+        shape = RoundedCornerShape(16.dp),
+        leadingIcon = { PicaGlyph(PicaIcon.Person, Modifier.size(20.dp), colors.onSurfaceSecondary) },
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Email,
             imeAction = ImeAction.Next,
@@ -233,7 +233,7 @@ private fun EmailField(controller: LoginController) {
 
 @Composable
 private fun PasswordField(controller: LoginController, onSubmit: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     OutlinedTextField(
         value = controller.password,
         onValueChange = controller::onPasswordChange,
@@ -241,14 +241,14 @@ private fun PasswordField(controller: LoginController, onSubmit: () -> Unit) {
         enabled = !controller.loading,
         label = { Text("密码") },
         singleLine = true,
-        shape = MaterialTheme.shapes.medium,
-        leadingIcon = { PicaGlyph(PicaIcon.Lock, Modifier.size(20.dp), colors.onSurfaceVariant) },
+        shape = RoundedCornerShape(16.dp),
+        leadingIcon = { PicaGlyph(PicaIcon.Lock, Modifier.size(20.dp), colors.onSurfaceSecondary) },
         trailingIcon = {
             IconButton(onClick = controller::togglePasswordVisible) {
                 PicaGlyph(
                     icon = if (controller.passwordVisible) PicaIcon.EyeOff else PicaIcon.Eye,
                     modifier = Modifier.size(20.dp),
-                    tint = colors.onSurfaceVariant,
+                    tint = colors.onSurfaceSecondary,
                 )
             }
         },
@@ -268,10 +268,10 @@ private fun PasswordField(controller: LoginController, onSubmit: () -> Unit) {
 
 @Composable
 private fun RememberRow(controller: LoginController, modifier: Modifier = Modifier) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Row(
         modifier = modifier
-            .clip(MaterialTheme.shapes.small)
+            .clip(RoundedCornerShape(12.dp))
             .clickable(enabled = !controller.loading) {
                 controller.onRememberChange(!controller.rememberAccount)
             },
@@ -284,34 +284,34 @@ private fun RememberRow(controller: LoginController, modifier: Modifier = Modifi
         )
         Text(
             text = "记住账号",
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.onSurfaceVariant,
+            style = MiuixTheme.textStyles.body1,
+            color = colors.onSurfaceSecondary,
         )
     }
 }
 
 @Composable
 private fun picaFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = MaterialTheme.colorScheme.primary,
-    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+    focusedBorderColor = MiuixTheme.colorScheme.primary,
+    unfocusedBorderColor = MiuixTheme.colorScheme.dividerLine,
     focusedContainerColor = Color.Transparent,
     unfocusedContainerColor = Color.Transparent,
-    cursorColor = MaterialTheme.colorScheme.primary,
-    focusedLabelColor = MaterialTheme.colorScheme.primary,
-    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    cursorColor = MiuixTheme.colorScheme.primary,
+    focusedLabelColor = MiuixTheme.colorScheme.primary,
+    unfocusedLabelColor = MiuixTheme.colorScheme.onSurfaceSecondary,
 )
 
 @Composable
 private fun ErrorBanner(message: String) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
-        shape = MaterialTheme.shapes.small,
+        shape = RoundedCornerShape(12.dp),
         color = colors.errorContainer,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
             text = message,
-            style = MaterialTheme.typography.bodySmall,
+            style = MiuixTheme.textStyles.footnote1,
             color = colors.onErrorContainer,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
         )
@@ -320,7 +320,7 @@ private fun ErrorBanner(message: String) {
 
 @Composable
 private fun SignUpRow(onRegister: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
@@ -328,11 +328,11 @@ private fun SignUpRow(onRegister: () -> Unit) {
     ) {
         Text(
             text = "还没有账号？",
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.onSurfaceVariant,
+            style = MiuixTheme.textStyles.body1,
+            color = colors.onSurfaceSecondary,
         )
         TextButton(onClick = onRegister) {
-            Text("注册一个", style = MaterialTheme.typography.labelLarge)
+            Text("注册一个", style = MiuixTheme.textStyles.button)
         }
     }
 }

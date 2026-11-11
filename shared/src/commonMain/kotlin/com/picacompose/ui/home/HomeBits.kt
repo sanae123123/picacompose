@@ -6,6 +6,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,13 +35,14 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import top.yukonga.miuix.kmp.basic.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Surface
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -82,8 +84,8 @@ fun PageHeader(
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground,
+            style = MiuixTheme.textStyles.title2,
+            color = MiuixTheme.colorScheme.onBackground,
             modifier = Modifier.weight(1f),
         )
         if (action != null) action()
@@ -97,9 +99,8 @@ fun PicaCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
+        shape = RoundedCornerShape(28.dp),
+        color = MiuixTheme.colorScheme.surface,
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(18.dp), content = content)
@@ -108,14 +109,14 @@ fun PicaCard(
 
 @Composable
 fun InfoChip(text: String) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
-        shape = CircleShape,
+        shape = RoundedCornerShape(999.dp),
         color = colors.secondaryContainer.copy(alpha = 0.85f),
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.bodySmall,
+            style = MiuixTheme.textStyles.footnote1,
             color = colors.onSecondaryContainer,
             maxLines = 1,
             softWrap = false,
@@ -131,24 +132,24 @@ fun DetailRow(
     title: String,
     value: String? = null,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PicaGlyph(icon, Modifier.size(18.dp), colors.onSurfaceVariant)
+        PicaGlyph(icon, Modifier.size(18.dp), colors.onSurfaceSecondary)
         Spacer(Modifier.width(12.dp))
         Text(
             text = title,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MiuixTheme.textStyles.body1,
             color = colors.onSurface,
         )
         Spacer(Modifier.weight(1f))
         if (!value.isNullOrBlank()) {
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.onSurfaceVariant,
+                style = MiuixTheme.textStyles.body1,
+                color = colors.onSurfaceSecondary,
                 textAlign = TextAlign.End,
             )
         }
@@ -157,36 +158,36 @@ fun DetailRow(
 
 @Composable
 fun LoadingBlock(text: String = "加载中…") {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         CircularProgressIndicator(
-            modifier = Modifier.size(24.dp),
+colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.primary),
+modifier = Modifier.size(24.dp),
             strokeWidth = 2.5.dp,
-            color = colors.primary,
         )
         Spacer(Modifier.height(12.dp))
-        Text(text, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+        Text(text, style = MiuixTheme.textStyles.footnote1, color = colors.onSurfaceSecondary)
     }
 }
 
 @Composable
 fun FailedBlock(message: String, onRetry: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.onSurfaceVariant,
+            style = MiuixTheme.textStyles.body1,
+            color = colors.onSurfaceSecondary,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(14.dp))
-        Button(onClick = onRetry, shape = CircleShape) { Text("再试一次") }
+        Button(onClick = onRetry, cornerRadius = 999.dp) { Text("再试一次") }
     }
 }
 
@@ -421,7 +422,7 @@ fun ListFooter(
     hasMore: Boolean,
     onRetry: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     when {
         loading -> Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
@@ -432,8 +433,8 @@ fun ListFooter(
             Spacer(Modifier.width(10.dp))
             Text(
                 text = "再拉一页…",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant,
+                style = MiuixTheme.textStyles.footnote1,
+                color = colors.onSurfaceSecondary,
             )
         }
 
@@ -443,12 +444,12 @@ fun ListFooter(
         ) {
             Text(
                 text = error,
-                style = MaterialTheme.typography.bodySmall,
+                style = MiuixTheme.textStyles.footnote1,
                 color = colors.error,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(10.dp))
-            Button(onClick = onRetry, shape = CircleShape) { Text("再试一次") }
+            Button(onClick = onRetry, cornerRadius = 999.dp) { Text("再试一次") }
         }
 
         !hasMore -> Box(
@@ -457,8 +458,8 @@ fun ListFooter(
         ) {
             Text(
                 text = "到底了",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant,
+                style = MiuixTheme.textStyles.footnote1,
+                color = colors.onSurfaceSecondary,
             )
         }
 
@@ -472,8 +473,8 @@ fun EmptyBlock(text: String) {
     Box(Modifier.fillMaxWidth().padding(vertical = 36.dp), contentAlignment = Alignment.Center) {
         Text(
             text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MiuixTheme.textStyles.body1,
+            color = MiuixTheme.colorScheme.onSurfaceSecondary,
             textAlign = TextAlign.Center,
         )
     }

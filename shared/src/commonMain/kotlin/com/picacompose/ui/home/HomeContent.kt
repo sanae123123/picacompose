@@ -2,6 +2,7 @@ package com.picacompose.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,10 +21,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -97,7 +98,7 @@ fun HomeContent(
     /** 给每张封面挂变形源，点开时从它长成整屏详情。 */
     comicCoverModifier: @Composable (String) -> Modifier = { Modifier },
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val collections = feed.collections
     val collectionError = feed.error
     var showAnnouncements by remember { mutableStateOf(false) }
@@ -116,14 +117,14 @@ fun HomeContent(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // 真头像盖在首字母上；没头像或没加载出来时露出首字母。
                     Surface(
-                        shape = CircleShape,
+                        shape = RoundedCornerShape(999.dp),
                         color = colors.primaryContainer,
                         modifier = Modifier.size(52.dp),
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
                                 text = profile.name.take(1).ifBlank { "P" },
-                                style = MaterialTheme.typography.titleLarge,
+                                style = MiuixTheme.textStyles.title3,
                                 color = colors.onPrimaryContainer,
                             )
                             val avatarUrl = profile.avatar.url()
@@ -140,7 +141,7 @@ fun HomeContent(
                     Spacer(Modifier.width(12.dp))
                     Text(
                         text = profile.name.ifBlank { "已登录" },
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MiuixTheme.textStyles.title4,
                         color = colors.onSurface,
                     )
                 }
@@ -155,8 +156,8 @@ fun HomeContent(
                     Spacer(Modifier.height(14.dp))
                     Text(
                         text = slogan,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.body1,
+                        color = colors.onSurfaceSecondary,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -169,11 +170,11 @@ fun HomeContent(
             collectionError != null -> item {
                 Text(
                     text = collectionError.orEmpty(),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MiuixTheme.textStyles.footnote1,
                     color = colors.error,
                 )
                 Spacer(Modifier.height(8.dp))
-                Button(onClick = feed::retry, shape = CircleShape) { Text("再试一次") }
+                Button(onClick = feed::retry, cornerRadius = 999.dp) { Text("再试一次") }
             }
 
             groups == null -> item { LoadingBlock("正在拉推荐…") }
@@ -225,19 +226,19 @@ private fun CollectionSection(
     onOpenComic: (ComicSummary, String) -> Unit,
     coverModifier: @Composable (String) -> Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = group.title.orEmpty().ifBlank { "本子妹推荐" },
-                style = MaterialTheme.typography.titleMedium,
+                style = MiuixTheme.textStyles.title4,
                 color = colors.onSurface,
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 text = "${group.comics.size} 本",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant,
+                style = MiuixTheme.textStyles.footnote1,
+                color = colors.onSurfaceSecondary,
             )
         }
         Spacer(Modifier.height(12.dp))
@@ -263,7 +264,7 @@ private fun ComicCover(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     // 圆角只裁封面，别把下面作者的左下角一起削掉。
     Column(modifier = modifier.width(132.dp).clickable(onClick = onClick)) {
         PicaImage(
@@ -272,12 +273,12 @@ private fun ComicCover(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(3f / 4f)
-                .clip(MaterialTheme.shapes.large),
+                .clip(RoundedCornerShape(22.dp)),
         )
         Spacer(Modifier.height(8.dp))
         Text(
             text = comic.title,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MiuixTheme.textStyles.body1,
             color = colors.onSurface,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -287,8 +288,8 @@ private fun ComicCover(
             Spacer(Modifier.height(2.dp))
             Text(
                 text = author,
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant,
+                style = MiuixTheme.textStyles.footnote1,
+                color = colors.onSurfaceSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -305,11 +306,10 @@ private fun QuickCard(
     modifier: Modifier = Modifier,
     badge: Boolean = false,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = RoundedCornerShape(28.dp),
         color = colors.surface,
-        tonalElevation = 1.dp,
         modifier = modifier,
     ) {
         Column(
@@ -339,13 +339,13 @@ private fun QuickCard(
             Spacer(Modifier.height(10.dp))
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleSmall,
+                style = MiuixTheme.textStyles.subtitle,
                 color = colors.onSurface,
             )
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant,
+                style = MiuixTheme.textStyles.footnote1,
+                color = colors.onSurfaceSecondary,
                 textAlign = TextAlign.Start,
             )
         }

@@ -7,9 +7,9 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,12 +61,12 @@ fun PicaToastHost(modifier: Modifier = Modifier) {
     ) {
         Surface(
             shape = RoundedCornerShape(22.dp),
-            color = MaterialTheme.colorScheme.inverseSurface,
-            contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+            color = MiuixTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MiuixTheme.colorScheme.onSurface,
         ) {
             Text(
                 text = lastShown,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MiuixTheme.textStyles.body1,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
             )

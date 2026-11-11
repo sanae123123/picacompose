@@ -1,6 +1,7 @@
 package com.picacompose.ui.home
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,9 +21,9 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,7 +79,7 @@ fun LeaderboardContent(
     comicRowModifier: @Composable (String) -> Modifier = { Modifier },
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
     var tabOrdinal by rememberSaveable { mutableStateOf(LeaderboardTab.Popular.ordinal) }
     var rangeOrdinal by rememberSaveable { mutableStateOf(PopularRange.Day.ordinal) }
@@ -140,8 +141,8 @@ fun LeaderboardContent(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0f),
+                shape = RoundedCornerShape(999.dp),
+                color = MiuixTheme.colorScheme.surface.copy(alpha = 0f),
                 modifier = Modifier.size(40.dp).clickable(onClick = onBack),
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -221,7 +222,7 @@ internal fun PillTabs(
     selected: Int,
     onSelect: (Int) -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -229,15 +230,14 @@ internal fun PillTabs(
         labels.forEachIndexed { index, label ->
             val active = index == selected
             Surface(
-                shape = CircleShape,
+                shape = RoundedCornerShape(999.dp),
                 color = if (active) colors.secondaryContainer else colors.surface,
-                tonalElevation = if (active) 0.dp else 1.dp,
                 modifier = Modifier.clickable { onSelect(index) },
             ) {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (active) colors.onSecondaryContainer else colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.button,
+                    color = if (active) colors.onSecondaryContainer else colors.onSurfaceSecondary,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
@@ -291,13 +291,13 @@ private fun ComicRankRow(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     PicaCard(modifier = modifier.clickable(onClick = onOpen)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = rank.toString(),
-                style = MaterialTheme.typography.titleMedium,
-                color = if (rank <= 3) colors.primary else colors.onSurfaceVariant,
+                style = MiuixTheme.textStyles.title4,
+                color = if (rank <= 3) colors.primary else colors.onSurfaceSecondary,
                 modifier = Modifier.width(26.dp),
             )
             PicaImage(
@@ -305,13 +305,13 @@ private fun ComicRankRow(
                 contentDescription = comic.title,
                 modifier = Modifier
                     .size(width = 62.dp, height = 82.dp)
-                    .clip(MaterialTheme.shapes.medium),
+                    .clip(RoundedCornerShape(16.dp)),
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     text = comic.title,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MiuixTheme.textStyles.subtitle,
                     color = colors.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -321,8 +321,8 @@ private fun ComicRankRow(
                     Spacer(Modifier.height(3.dp))
                     Text(
                         text = author,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = colors.onSurfaceSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -330,8 +330,8 @@ private fun ComicRankRow(
                 Spacer(Modifier.height(6.dp))
                 Text(
                     text = "${compactCount(comic.totalViews)} 浏览 · ${compactCount(comic.totalLikes)} 赞",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = colors.onSurfaceSecondary,
                 )
             }
         }
@@ -345,13 +345,13 @@ private fun KnightRankRow(
     user: UserBasic,
     onOpen: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     PicaCard(modifier = Modifier.clickable(onClick = onOpen)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = rank.toString(),
-                style = MaterialTheme.typography.titleMedium,
-                color = if (rank <= 3) colors.primary else colors.onSurfaceVariant,
+                style = MiuixTheme.textStyles.title4,
+                color = if (rank <= 3) colors.primary else colors.onSurfaceSecondary,
                 modifier = Modifier.width(26.dp),
             )
             UserAvatar(
@@ -369,7 +369,7 @@ private fun KnightRankRow(
                 ) {
                     Text(
                         text = user.name,
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MiuixTheme.textStyles.subtitle,
                         color = colors.onSurface,
                     )
                     UserTitleBadge(user.title)
@@ -381,8 +381,8 @@ private fun KnightRankRow(
                         "Lv.${user.level}",
                         "上传 ${compactCount(user.comicsUploaded)} 本",
                     ).joinToString(" · "),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = colors.onSurfaceSecondary,
                 )
             }
         }

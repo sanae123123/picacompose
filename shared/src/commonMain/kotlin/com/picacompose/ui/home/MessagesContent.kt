@@ -1,6 +1,7 @@
 package com.picacompose.ui.home
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,10 +17,10 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -96,7 +97,7 @@ fun MessagesContent(
                     PicaGlyph(
                         icon = PicaIcon.Back,
                         modifier = Modifier.size(22.dp),
-                        tint = MaterialTheme.colorScheme.onBackground,
+                        tint = MiuixTheme.colorScheme.onBackground,
                     )
                 }
                 Spacer(Modifier.width(6.dp))
@@ -142,7 +143,7 @@ private fun MessageRow(
     message: NotificationDoc,
     onClick: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     PicaCard(modifier = Modifier.padding(bottom = 10.dp).clickable(onClick = onClick)) {
         Row(verticalAlignment = Alignment.Top) {
             NotificationAvatar(message)
@@ -150,7 +151,7 @@ private fun MessageRow(
             Column(Modifier.weight(1f)) {
                 Text(
                     text = message.title.ifBlank { "站内通知" },
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MiuixTheme.textStyles.subtitle,
                     color = colors.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -159,8 +160,8 @@ private fun MessageRow(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = message.content,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = colors.onSurfaceSecondary,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -170,8 +171,8 @@ private fun MessageRow(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = time,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote2,
+                        color = colors.onSurfaceSecondary,
                     )
                 }
             }
@@ -185,7 +186,7 @@ private fun MessageRow(
                     modifier = Modifier
                         .width(46.dp)
                         .height(62.dp)
-                        .clip(MaterialTheme.shapes.small),
+                        .clip(RoundedCornerShape(12.dp)),
                 )
             }
         }
@@ -195,9 +196,9 @@ private fun MessageRow(
 /** 圆形头像；系统通知没有发信人，用铃铛占位。 */
 @Composable
 private fun NotificationAvatar(message: NotificationDoc) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
-        shape = CircleShape,
+        shape = RoundedCornerShape(999.dp),
         color = colors.secondaryContainer,
         modifier = Modifier.size(42.dp),
     ) {
@@ -215,7 +216,7 @@ private fun NotificationAvatar(message: NotificationDoc) {
                 } else {
                     Text(
                         text = message.sender?.name?.take(1) ?: "·",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MiuixTheme.textStyles.title4,
                         color = colors.onSecondaryContainer,
                     )
                 }
@@ -230,19 +231,18 @@ private fun MessageDialog(
     message: NotificationDoc,
     onDismiss: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val pop = rememberDialogPop(onDismiss)
     Dialog(onDismissRequest = pop::dismiss) {
         Surface(
-            shape = MaterialTheme.shapes.extraLarge,
+            shape = RoundedCornerShape(28.dp),
             color = colors.surfaceContainerHigh,
-            tonalElevation = 4.dp,
             modifier = pop.modifier,
         ) {
             Column(Modifier.padding(horizontal = 22.dp, vertical = 20.dp)) {
                 Text(
                     text = message.title.ifBlank { "站内通知" },
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MiuixTheme.textStyles.title4,
                     color = colors.onSurface,
                 )
                 val time = relativeTime(message.createdAt)
@@ -250,16 +250,16 @@ private fun MessageDialog(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = time,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote2,
+                        color = colors.onSurfaceSecondary,
                     )
                 }
                 if (message.content.isNotBlank()) {
                     Spacer(Modifier.height(14.dp))
                     Text(
                         text = message.content,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.body1,
+                        color = colors.onSurfaceSecondary,
                     )
                 }
                 Row(

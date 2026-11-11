@@ -2,6 +2,7 @@ package com.picacompose.ui.routing
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,10 +17,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -90,8 +92,8 @@ fun RoutingScreen(manual: Boolean = false, onReady: () -> Unit) {
             Column(modifier = Modifier.fillMaxWidth().widthIn(max = 460.dp)) {
                 Text(
                     text = "选一条线路",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    style = MiuixTheme.textStyles.title2,
+                    color = MiuixTheme.colorScheme.onBackground,
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
@@ -100,8 +102,8 @@ fun RoutingScreen(manual: Boolean = false, onReady: () -> Unit) {
                     } else {
                         "启动时会先拉一次线路列表，这里已经自动测好速，最快的那条默认选中，过一秒自动进去。"
                     },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.body1,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
                 )
                 Spacer(Modifier.height(20.dp))
 
@@ -121,8 +123,8 @@ fun RoutingScreen(manual: Boolean = false, onReady: () -> Unit) {
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = note,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = MiuixTheme.colorScheme.error,
                     )
                 }
 
@@ -138,8 +140,8 @@ fun RoutingScreen(manual: Boolean = false, onReady: () -> Unit) {
                         } else {
                             "${controller.ips.size} 个下发 IP"
                         },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
                     )
                     TextButton(
                         onClick = {
@@ -168,11 +170,10 @@ private fun LineCard(
     idle: Boolean,
     onClick: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(22.dp),
         color = if (chosen) colors.primaryContainer else colors.surface,
-        tonalElevation = if (chosen) 0.dp else 1.dp,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = !loading, onClick = onClick),
@@ -185,20 +186,20 @@ private fun LineCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = probe.line.title,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MiuixTheme.textStyles.title4,
                         fontWeight = FontWeight.SemiBold,
                         color = if (chosen) colors.onPrimaryContainer else colors.onSurface,
                     )
                     if (last) {
                         Spacer(Modifier.size(8.dp))
                         Surface(
-                            shape = CircleShape,
+                            shape = RoundedCornerShape(999.dp),
                             color = colors.surfaceVariant,
                         ) {
                             Text(
                                 text = "上次",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colors.onSurfaceVariant,
+                                style = MiuixTheme.textStyles.footnote2,
+                                color = colors.onSurfaceSecondary,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                             )
                         }
@@ -207,8 +208,8 @@ private fun LineCard(
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = probe.line.detail,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (chosen) colors.onPrimaryContainer.copy(alpha = 0.8f) else colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = if (chosen) colors.onPrimaryContainer.copy(alpha = 0.8f) else colors.onSurfaceSecondary,
                 )
             }
             Spacer(Modifier.size(12.dp))
@@ -216,27 +217,27 @@ private fun LineCard(
                 idle && !probe.done -> Unit
                 !probe.done -> Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(14.dp),
+colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.onSurfaceSecondary),
+modifier = Modifier.size(14.dp),
                         strokeWidth = 2.dp,
-                        color = colors.onSurfaceVariant,
                     )
                     Spacer(Modifier.size(8.dp))
                     Text(
                         text = "测速中",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = colors.onSurfaceSecondary,
                     )
                 }
 
                 probe.latencyMs != null -> Text(
                     text = "${probe.latencyMs} ms",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MiuixTheme.textStyles.button,
                     color = if (chosen) colors.onPrimaryContainer else colors.primary,
                 )
 
                 else -> Text(
                     text = "不通",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MiuixTheme.textStyles.button,
                     color = colors.error,
                 )
             }

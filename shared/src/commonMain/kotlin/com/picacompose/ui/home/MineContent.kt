@@ -16,13 +16,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
+import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -73,7 +74,7 @@ fun MineContent(
     historyModifier: Modifier = Modifier,
     editProfileModifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
     // 签到成功后本地的 isPunched 会立刻翻，不等下次拉 profile。
     var checkedIn by remember(profile) { mutableStateOf(profile.isPunched) }
@@ -113,14 +114,14 @@ fun MineContent(
                     ) {
                         // 底下垫首字母，头像没加载出来（或没有头像）时不至于空一块。
                         Surface(
-                            shape = CircleShape,
+                            shape = RoundedCornerShape(999.dp),
                             color = colors.primaryContainer,
                             modifier = Modifier.size(72.dp),
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
                                     text = profile.name.take(1).ifBlank { "P" },
-                                    style = MaterialTheme.typography.headlineSmall,
+                                    style = MiuixTheme.textStyles.title2,
                                     color = colors.onPrimaryContainer,
                                 )
                                 if (avatarUrl != null) {
@@ -140,7 +141,7 @@ fun MineContent(
                         ) {
                             Text(
                                 text = profile.name.ifBlank { "已登录" },
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MiuixTheme.textStyles.title4,
                                 color = colors.onSurface,
                             )
                             UserTitleBadge(profile.title)
@@ -149,8 +150,8 @@ fun MineContent(
                             Spacer(Modifier.height(12.dp))
                             Text(
                                 text = slogan,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = colors.onSurfaceVariant,
+                                style = MiuixTheme.textStyles.body1,
+                                color = colors.onSurfaceSecondary,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
                                 textAlign = TextAlign.Center,
@@ -160,7 +161,7 @@ fun MineContent(
                             if (sloganOverflows) {
                                 Text(
                                     text = "展开",
-                                    style = MaterialTheme.typography.labelMedium,
+                                    style = MiuixTheme.textStyles.footnote1,
                                     color = colors.primary,
                                     modifier = Modifier
                                         .align(Alignment.End)
@@ -225,7 +226,7 @@ fun MineContent(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = error,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MiuixTheme.textStyles.footnote1,
                     color = colors.error,
                     modifier = Modifier.padding(horizontal = 6.dp),
                 )
@@ -273,12 +274,12 @@ fun MineContent(
         item {
             OutlinedButton(
                 onClick = onSignOut,
-                shape = CircleShape,
+                shape = RoundedCornerShape(999.dp),
                 modifier = Modifier.height(52.dp).fillMaxWidth(),
             ) {
                 PicaGlyph(PicaIcon.Logout, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("退出登录", style = MaterialTheme.typography.labelLarge)
+                Text("退出登录", style = MiuixTheme.textStyles.button)
             }
         }
     }
@@ -289,13 +290,13 @@ fun MineContent(
             onDismissRequest = pop::dismiss,
             modifier = pop.modifier,
             title = {
-                Text(text = notice.title, style = MaterialTheme.typography.titleMedium)
+                Text(text = notice.title, style = MiuixTheme.textStyles.title4)
             },
             text = {
                 Text(
                     text = notice.message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.body1,
+                    color = colors.onSurfaceSecondary,
                 )
             },
             confirmButton = {
@@ -340,11 +341,10 @@ private fun MineEntryRow(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(22.dp),
         color = colors.surface,
-        tonalElevation = 1.dp,
         modifier = modifier.fillMaxWidth().padding(vertical = 5.dp),
     ) {
         Row(
@@ -359,20 +359,20 @@ private fun MineEntryRow(
             Column(Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MiuixTheme.textStyles.subtitle,
                     color = colors.onSurface,
                 )
                 Spacer(Modifier.height(3.dp))
                 Text(
                     text = summary,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = colors.onSurfaceSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
             Spacer(Modifier.width(8.dp))
-            PicaGlyph(PicaIcon.ArrowRight, Modifier.size(18.dp), colors.onSurfaceVariant)
+            PicaGlyph(PicaIcon.ArrowRight, Modifier.size(18.dp), colors.onSurfaceSecondary)
         }
     }
 }
@@ -380,7 +380,7 @@ private fun MineEntryRow(
 /** 到下一等级的进度条。 */
 @Composable
 private fun LevelProgress(level: Int, exp: Int) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val start = levelStartExp(level)
     val next = levelStartExp(level + 1)
     val span = (next - start).coerceAtLeast(1)
@@ -389,24 +389,22 @@ private fun LevelProgress(level: Int, exp: Int) {
 
     Column(modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 8.dp)) {
         LinearProgressIndicator(
-            progress = { fraction },
+colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.primary, backgroundColor = colors.surfaceVariant),
+progress = fraction,
             modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
-            color = colors.primary,
-            trackColor = colors.surfaceVariant,
-            drawStopIndicator = {},
         )
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = "$exp / $next",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant,
+                style = MiuixTheme.textStyles.footnote1,
+                color = colors.onSurfaceSecondary,
             )
             Spacer(Modifier.weight(1f))
             Text(
                 text = "还差 $remaining 到 Lv.${level + 1}",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant,
+                style = MiuixTheme.textStyles.footnote1,
+                color = colors.onSurfaceSecondary,
             )
         }
     }

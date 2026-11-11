@@ -17,11 +17,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
+import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -180,7 +181,7 @@ fun ComicDetailContent(
     /** 点本子标签：按这个标签看同类本子。 */
     onSearchTag: (String) -> Unit = {},
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
     val listState = state.listState
     val tab = DetailTab.entries[state.tabOrdinal.coerceIn(0, DetailTab.entries.lastIndex)]
@@ -263,7 +264,7 @@ fun ComicDetailContent(
                     if (tab == DetailTab.Comments) {
                         Text(
                             text = "跳页",
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MiuixTheme.textStyles.footnote1,
                             color = colors.primary,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
@@ -469,9 +470,9 @@ private fun ResumeCard(
     progress: ReadingProgress?,
     onResume: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(22.dp),
         color = colors.secondaryContainer,
         modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp).clickable(onClick = onResume),
     ) {
@@ -482,7 +483,7 @@ private fun ResumeCard(
             Column(Modifier.weight(1f)) {
                 Text(
                     text = if (progress == null) "开始阅读" else "继续阅读",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MiuixTheme.textStyles.button,
                     color = colors.onSecondaryContainer,
                 )
                 Spacer(Modifier.height(2.dp))
@@ -495,13 +496,13 @@ private fun ResumeCard(
                             if (progress.page > 0) append(" · 第 ${progress.page + 1} 页")
                         }
                     },
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MiuixTheme.textStyles.footnote1,
                     color = colors.onSecondaryContainer.copy(alpha = 0.8f),
                 )
             }
             Text(
                 text = if (progress == null) "开始" else "接着看",
-                style = MaterialTheme.typography.labelLarge,
+                style = MiuixTheme.textStyles.button,
                 color = colors.onSecondaryContainer,
             )
             PicaGlyph(
@@ -527,7 +528,7 @@ private fun DetailHero(
     onLike: () -> Unit,
     onFavourite: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val cover = detail.thumb.url()
     Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -543,7 +544,7 @@ private fun DetailHero(
             Column(Modifier.weight(1f)) {
                 Text(
                     text = detail.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MiuixTheme.textStyles.title4,
                     color = colors.onSurface,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
@@ -553,8 +554,8 @@ private fun DetailHero(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = author,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = colors.onSurfaceSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -566,8 +567,8 @@ private fun DetailHero(
                         add("${detail.episodesCount} 话")
                         add("${compactCount(detail.totalViews)} 浏览")
                     }.joinToString(" · "),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = colors.onSurfaceSecondary,
                 )
                 val chips = detail.categories.take(3)
                 if (chips.isNotEmpty()) {
@@ -576,7 +577,7 @@ private fun DetailHero(
                         chips.forEach { label ->
                             Text(
                                 text = "#$label",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MiuixTheme.textStyles.footnote2,
                                 color = colors.primary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -603,7 +604,7 @@ private fun DetailHero(
                             ) {
                                 Text(
                                     text = "#$tag",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MiuixTheme.textStyles.footnote2,
                                     color = colors.primary,
                                     modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp),
                                 )
@@ -634,7 +635,7 @@ private fun DetailHero(
             Spacer(Modifier.height(8.dp))
             Text(
                 text = failure,
-                style = MaterialTheme.typography.labelSmall,
+                style = MiuixTheme.textStyles.footnote2,
                 color = colors.error,
             )
         }
@@ -643,15 +644,14 @@ private fun DetailHero(
         if (!description.isNullOrBlank()) {
             Spacer(Modifier.height(12.dp))
             Surface(
-                shape = MaterialTheme.shapes.large,
+                shape = RoundedCornerShape(22.dp),
                 color = colors.surface,
-                tonalElevation = 1.dp,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
                     text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = colors.onSurfaceSecondary,
                     modifier = Modifier.padding(12.dp),
                 )
             }
@@ -670,7 +670,7 @@ private fun UploaderCard(
     creator: Creator,
     onClick: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val level = creator.level.coerceAtLeast(1)
     val start = levelStartExp(level)
     val next = levelStartExp(level + 1)
@@ -678,10 +678,9 @@ private fun UploaderCard(
         .coerceIn(0f, 1f)
 
     Surface(
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(22.dp),
         color = colors.surface,
-        tonalElevation = 1.dp,
-        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).clickable(onClick = onClick),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -698,7 +697,7 @@ private fun UploaderCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = creator.name.ifBlank { "匿名骑士" },
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MiuixTheme.textStyles.subtitle,
                         color = colors.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -717,23 +716,21 @@ private fun UploaderCard(
                 Spacer(Modifier.height(3.dp))
                 Text(
                     text = "上传骑士 · Lv.$level · 经验 ${creator.exp}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = colors.onSurfaceSecondary,
                 )
                 Spacer(Modifier.height(5.dp))
                 LinearProgressIndicator(
-                    progress = { fraction },
+colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.primary, backgroundColor = colors.surfaceVariant),
+progress = fraction,
                     modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
-                    color = colors.primary,
-                    trackColor = colors.surfaceVariant,
-                    drawStopIndicator = {},
                 )
             }
             Spacer(Modifier.width(8.dp))
             PicaGlyph(
                 icon = PicaIcon.ArrowRight,
                 modifier = Modifier.size(16.dp),
-                tint = colors.onSurfaceVariant,
+                tint = colors.onSurfaceSecondary,
             )
         }
     }
@@ -747,11 +744,10 @@ private fun ActionPill(
     active: Boolean,
     onClick: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = if (active) colors.secondaryContainer else colors.surface,
-        tonalElevation = if (active) 0.dp else 1.dp,
         modifier = Modifier.clickable(onClick = onClick),
     ) {
         Row(
@@ -764,12 +760,12 @@ private fun ActionPill(
                 // 点过是实心、没点过是空心，一眼能分出来。
                 filled = active,
                 modifier = Modifier.size(16.dp),
-                tint = if (active) colors.onSecondaryContainer else colors.onSurfaceVariant,
+                tint = if (active) colors.onSecondaryContainer else colors.onSurfaceSecondary,
             )
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (active) colors.onSecondaryContainer else colors.onSurfaceVariant,
+                style = MiuixTheme.textStyles.button,
+                color = if (active) colors.onSecondaryContainer else colors.onSurfaceSecondary,
             )
         }
     }
@@ -795,11 +791,10 @@ private fun EpisodeRow(
     modifier: Modifier = Modifier,
     resumed: Boolean = false,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(22.dp),
         color = colors.surface,
-        tonalElevation = 1.dp,
         modifier = modifier.fillMaxWidth().padding(bottom = 8.dp),
     ) {
         Row(
@@ -811,13 +806,13 @@ private fun EpisodeRow(
         ) {
             Text(
                 text = "第 ${episode.order} 话",
-                style = MaterialTheme.typography.labelMedium,
+                style = MiuixTheme.textStyles.footnote1,
                 color = colors.primary,
                 modifier = Modifier.width(64.dp),
             )
             Text(
                 text = episode.title.ifBlank { "第 ${episode.order} 话" },
-                style = MaterialTheme.typography.bodyMedium,
+                style = MiuixTheme.textStyles.body1,
                 color = colors.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -827,7 +822,7 @@ private fun EpisodeRow(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = "读到这里",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MiuixTheme.textStyles.footnote2,
                     color = colors.primary,
                 )
             }
@@ -836,8 +831,8 @@ private fun EpisodeRow(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = date,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = colors.onSurfaceSecondary,
                 )
             }
         }

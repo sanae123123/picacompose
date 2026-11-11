@@ -1,6 +1,7 @@
 package com.picacompose.ui.home
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,13 +22,13 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
@@ -227,7 +228,7 @@ fun SearchContent(
     onOpenComic: (ComicSummary, String) -> Unit = { _, _ -> },
     comicRowModifier: @Composable (String) -> Modifier = { Modifier },
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = remember { FocusRequester() }
@@ -310,8 +311,8 @@ fun SearchContent(
                             } else {
                                 "已筛 ${pager.items.size} 本"
                             },
-                            style = MaterialTheme.typography.labelMedium,
-                            color = colors.onSurfaceVariant,
+                            style = MiuixTheme.textStyles.footnote1,
+                            color = colors.onSurfaceSecondary,
                         )
                     }
                     // 筛选：排序方式 + 完结状态。完结是拿回来后在本地筛的（搜索接口不吃这个参数）。
@@ -354,7 +355,7 @@ fun SearchContent(
                                     PicaGlyph(
                                         icon = PicaIcon.ArrowRight,
                                         modifier = Modifier.size(18.dp),
-                                        tint = colors.onSurfaceVariant,
+                                        tint = colors.onSurfaceSecondary,
                                     )
                                 },
                                 onClick = {
@@ -365,8 +366,8 @@ fun SearchContent(
                             HorizontalDivider()
                             Text(
                                 text = "排序方式",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colors.onSurfaceVariant,
+                                style = MiuixTheme.textStyles.footnote2,
+                                color = colors.onSurfaceSecondary,
                                 modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp),
                             )
                             ComicSort.entries.forEach { option ->
@@ -398,16 +399,16 @@ fun SearchContent(
                         onValueChange = state::onQueryChange,
                         modifier = Modifier.weight(1f).focusRequester(focus),
                         placeholder = {
-                            Text("搜本子：标题、作者", style = MaterialTheme.typography.bodyMedium)
+                            Text("搜本子：标题、作者", style = MiuixTheme.textStyles.body1)
                         },
                         singleLine = true,
-                        shape = CircleShape,
-                        textStyle = MaterialTheme.typography.bodyMedium,
+                        shape = RoundedCornerShape(999.dp),
+                        textStyle = MiuixTheme.textStyles.body1,
                         leadingIcon = {
                             PicaGlyph(
                                 icon = PicaIcon.Search,
                                 modifier = Modifier.size(20.dp),
-                                tint = colors.onSurfaceVariant,
+                                tint = colors.onSurfaceSecondary,
                             )
                         },
                         trailingIcon = {
@@ -416,7 +417,7 @@ fun SearchContent(
                                     PicaGlyph(
                                         icon = PicaIcon.Close,
                                         modifier = Modifier.size(18.dp),
-                                        tint = colors.onSurfaceVariant,
+                                        tint = colors.onSurfaceSecondary,
                                     )
                                 }
                             }
@@ -427,7 +428,7 @@ fun SearchContent(
                     )
                     Spacer(Modifier.width(4.dp))
                     TextButton(onClick = { submit(null) }) {
-                        Text("搜索", style = MaterialTheme.typography.labelLarge)
+                        Text("搜索", style = MiuixTheme.textStyles.button)
                     }
                 }
             }
@@ -519,12 +520,12 @@ private fun HotKeywordPanel(
     state: SearchState,
     onSubmit: (String?) -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Column(Modifier.fillMaxWidth()) {
         if (state.hotKeywords.isNotEmpty()) {
             Text(
                 text = "大家都在搜",
-                style = MaterialTheme.typography.titleMedium,
+                style = MiuixTheme.textStyles.title4,
                 color = colors.onBackground,
             )
             Spacer(Modifier.height(12.dp))
@@ -540,8 +541,8 @@ private fun HotKeywordPanel(
         }
         Text(
             text = "输入关键词，按键盘上的搜索键就能找本子；标题和作者都能搜。",
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.onSurfaceVariant,
+            style = MiuixTheme.textStyles.footnote1,
+            color = colors.onSurfaceSecondary,
         )
     }
 }
@@ -549,15 +550,15 @@ private fun HotKeywordPanel(
 /** 一颗热搜词：圆角小胶囊，点一下就拿它去搜。 */
 @Composable
 private fun HotKeywordChip(text: String, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
-        shape = CircleShape,
+        shape = RoundedCornerShape(999.dp),
         color = colors.secondaryContainer.copy(alpha = 0.75f),
         modifier = Modifier.clickable(onClick = onClick),
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.bodySmall,
+            style = MiuixTheme.textStyles.footnote1,
             color = colors.onSecondaryContainer,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -568,9 +569,9 @@ private fun HotKeywordChip(text: String, onClick: () -> Unit) {
 
 @Composable
 private fun searchFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = MaterialTheme.colorScheme.primary,
-    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+    focusedBorderColor = MiuixTheme.colorScheme.primary,
+    unfocusedBorderColor = MiuixTheme.colorScheme.dividerLine,
     focusedContainerColor = Color.Transparent,
     unfocusedContainerColor = Color.Transparent,
-    cursorColor = MaterialTheme.colorScheme.primary,
+    cursorColor = MiuixTheme.colorScheme.primary,
 )

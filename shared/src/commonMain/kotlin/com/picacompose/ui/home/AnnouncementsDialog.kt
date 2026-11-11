@@ -18,9 +18,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,7 +60,7 @@ private val urlPattern = Regex("""https?://[^\s"'<>，。、）】]+""")
  */
 @Composable
 fun AnnouncementsDialog(onDismiss: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val pop = rememberDialogPop(onDismiss)
     var announcements by remember { mutableStateOf<List<Announcement>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -84,7 +84,6 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
         Surface(
             shape = RoundedCornerShape(28.dp),
             color = colors.surface,
-            tonalElevation = 3.dp,
             modifier = pop.modifier,
         ) {
             val list = announcements
@@ -92,14 +91,14 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
                 error != null -> Column(Modifier.padding(24.dp)) {
                     Text(
                         text = error.orEmpty(),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MiuixTheme.textStyles.body1,
                         color = colors.error,
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = "稍后再试试。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = colors.onSurfaceSecondary,
                     )
                 }
 
@@ -110,8 +109,8 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
                 list.isEmpty() -> Column(Modifier.padding(24.dp)) {
                     Text(
                         text = "暂时没有公告。",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.body1,
+                        color = colors.onSurfaceSecondary,
                     )
                     Spacer(Modifier.height(10.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -145,14 +144,14 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
                             Column(Modifier.padding(start = 22.dp, end = 22.dp, top = 16.dp)) {
                                 Text(
                                     text = current?.title.orEmpty(),
-                                    style = MaterialTheme.typography.titleMedium,
+                                    style = MiuixTheme.textStyles.title4,
                                     color = colors.onSurface,
                                 )
                                 Spacer(Modifier.height(10.dp))
                                 Text(
                                     text = linkify(current?.content.orEmpty().trim(), colors.primary),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.onSurfaceVariant,
+                                    style = MiuixTheme.textStyles.footnote1,
+                                    color = colors.onSurfaceSecondary,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                                 Spacer(Modifier.height(12.dp))
@@ -186,11 +185,11 @@ private fun AnnouncementList(
     onPick: (Int) -> Unit,
     onClose: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Column {
         Text(
             text = "公告列表",
-            style = MaterialTheme.typography.titleMedium,
+            style = MiuixTheme.textStyles.title4,
             color = colors.onSurface,
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 20.dp, bottom = 6.dp),
         )
@@ -214,15 +213,15 @@ private fun AnnouncementList(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = item.title,
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MiuixTheme.textStyles.subtitle,
                             color = if (i == current) colors.primary else colors.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
                             text = item.content.trim().lineSequence().firstOrNull().orEmpty(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
+                            style = MiuixTheme.textStyles.footnote1,
+                            color = colors.onSurfaceSecondary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -244,7 +243,7 @@ private fun AnnouncementList(
 /** 公告首图：按原图比例铺满宽度，不裁切，点了看大图。 */
 @Composable
 private fun AnnouncementBanner(url: String, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     var aspect by remember(url) { mutableStateOf(0f) }
     AsyncImage(
         model = url,

@@ -3,7 +3,7 @@ package com.picacompose.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -25,7 +25,7 @@ fun PicaImage(
     contentScale: ContentScale = ContentScale.Crop,
     alignment: Alignment = Alignment.Center,
 ) {
-    Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
+    Box(modifier.background(MiuixTheme.colorScheme.surfaceVariant)) {
         if (url != null) {
             AsyncImage(
                 model = url,

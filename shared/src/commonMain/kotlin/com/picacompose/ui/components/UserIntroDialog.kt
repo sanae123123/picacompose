@@ -15,9 +15,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,14 +52,14 @@ fun UserIntroDialog(
     error: String? = null,
     onDismiss: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val pop = rememberDialogPop(onDismiss)
     var showAvatar by remember(avatarUrl) { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = pop::dismiss,
         modifier = pop.modifier,
-        title = { Text(text = "简介", style = MaterialTheme.typography.titleMedium) },
+        title = { Text(text = "简介", style = MiuixTheme.textStyles.title4) },
         text = {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -85,7 +86,7 @@ fun UserIntroDialog(
                     ) {
                         Text(
                             text = name,
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MiuixTheme.textStyles.subtitle,
                             color = colors.onSurface,
                         )
                         UserTitleBadge(title)
@@ -95,32 +96,32 @@ fun UserIntroDialog(
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = detail,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote2,
+                        color = colors.onSurfaceSecondary,
                     )
                 }
                 Spacer(Modifier.height(12.dp))
                 when {
                     !slogan.isNullOrBlank() -> Text(
                         text = slogan,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.body1,
+                        color = colors.onSurfaceSecondary,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     loading -> CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
+colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.primary),
+modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
-                        color = colors.primary,
                     )
                     !error.isNullOrBlank() -> Text(
                         text = error,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MiuixTheme.textStyles.footnote1,
                         color = colors.error,
                     )
                     else -> Text(
                         text = "这个人还没写简介",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.body1,
+                        color = colors.onSurfaceSecondary,
                     )
                 }
             }

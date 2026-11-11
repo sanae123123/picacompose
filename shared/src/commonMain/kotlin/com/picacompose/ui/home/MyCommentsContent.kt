@@ -11,9 +11,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
@@ -48,7 +48,7 @@ fun MyCommentsContent(
     selfName: String? = null,
 ) {
     val scope = rememberCoroutineScope()
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
 
     LaunchedEffect(pager) {
         if (pager.items.isEmpty()) pager.loadNext()
@@ -87,8 +87,8 @@ fun MyCommentsContent(
                         {
                             Text(
                                 text = "共 ${pager.total} 条",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.onSurfaceVariant,
+                                style = MiuixTheme.textStyles.footnote1,
+                                color = colors.onSurfaceSecondary,
                             )
                         }
                     } else {
@@ -138,7 +138,7 @@ private fun MyCommentCard(
     onOpenComic: (comicId: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val comic = comment.comic
     val target = comic?.title?.takeIf { it.isNotBlank() }
         ?: comment.game?.title?.takeIf { it.isNotBlank() }
@@ -156,8 +156,8 @@ private fun MyCommentCard(
         ) {
             Text(
                 text = target ?: "未知本子",
-                style = MaterialTheme.typography.labelLarge,
-                color = if (openable) colors.primary else colors.onSurfaceVariant,
+                style = MiuixTheme.textStyles.button,
+                color = if (openable) colors.primary else colors.onSurfaceSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
@@ -166,13 +166,13 @@ private fun MyCommentCard(
                 Spacer(Modifier.width(4.dp))
                 Text(
                     text = "看本子",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = colors.onSurfaceSecondary,
                 )
                 PicaGlyph(
                     icon = PicaIcon.ArrowRight,
                     modifier = Modifier.size(14.dp),
-                    tint = colors.onSurfaceVariant,
+                    tint = colors.onSurfaceSecondary,
                 )
             }
             if (comment.hide) {

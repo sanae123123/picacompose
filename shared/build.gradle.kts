@@ -49,6 +49,7 @@ kotlin {
             implementation(compose.animation)
             implementation(compose.ui)
             implementation(compose.materialIconsExtended)
+            implementation(libs.miuix.ui)
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
         }

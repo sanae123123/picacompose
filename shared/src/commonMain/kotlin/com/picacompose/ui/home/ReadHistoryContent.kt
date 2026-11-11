@@ -14,10 +14,10 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,7 +49,7 @@ fun ReadHistoryContent(
     listState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     // 清空之后换个版本号，列表立刻跟着变空。
     var version by remember { mutableIntStateOf(0) }
     val history = remember(version) { readingProgressStore.all() }
@@ -77,7 +77,7 @@ fun ReadHistoryContent(
                                     version += 1
                                 },
                             ) {
-                                Text("清空", style = MaterialTheme.typography.labelLarge)
+                                Text("清空", style = MiuixTheme.textStyles.button)
                             }
                         }
                     } else {
@@ -107,11 +107,10 @@ private fun HistoryRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Surface(
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(22.dp),
         color = colors.surface,
-        tonalElevation = 1.dp,
         modifier = modifier.fillMaxWidth().padding(bottom = 12.dp),
     ) {
         Row(
@@ -130,7 +129,7 @@ private fun HistoryRow(
             Column(Modifier.weight(1f)) {
                 Text(
                     text = item.title?.takeIf { it.isNotBlank() } ?: "未命名本子",
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MiuixTheme.textStyles.subtitle,
                     color = colors.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -140,8 +139,8 @@ private fun HistoryRow(
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = author,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = colors.onSurfaceSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -154,7 +153,7 @@ private fun HistoryRow(
                     } else {
                         "打开过，还没开始读"
                     },
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MiuixTheme.textStyles.footnote2,
                     color = colors.primary,
                 )
             }

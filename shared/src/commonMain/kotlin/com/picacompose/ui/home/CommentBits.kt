@@ -30,11 +30,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -151,7 +151,7 @@ data class CommentReplyTarget(
  */
 @Composable
 private fun ReportCommentDialog(comment: Comment, onDismiss: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val pop = rememberDialogPop(onDismiss)
     val scope = rememberCoroutineScope()
     var sending by remember { mutableStateOf(false) }
@@ -164,7 +164,7 @@ private fun ReportCommentDialog(comment: Comment, onDismiss: () -> Unit) {
         title = {
             Text(
                 text = if (reported) "已提交" else "举报这条留言？",
-                style = MaterialTheme.typography.titleMedium,
+                style = MiuixTheme.textStyles.title4,
             )
         },
         text = {
@@ -172,28 +172,28 @@ private fun ReportCommentDialog(comment: Comment, onDismiss: () -> Unit) {
                 if (reported) {
                     Text(
                         text = "已经提交给站务了，处理结果以他们为准。",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.body1,
+                        color = colors.onSurfaceSecondary,
                     )
                 } else {
                     Text(
                         text = "${comment.user?.name.orEmpty().ifBlank { "这位绅士" }}：${comment.content}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = colors.onSurfaceSecondary,
                         maxLines = 4,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
                         text = "确认要举报的话就点下面的举报，提交给站务处理。",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MiuixTheme.textStyles.body1,
                         color = colors.onSurface,
                     )
                     error?.let {
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = it,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MiuixTheme.textStyles.footnote1,
                             color = colors.error,
                         )
                     }
@@ -240,7 +240,7 @@ fun PagerJumpDialog(
     onDismiss: () -> Unit,
     onJumped: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val pop = rememberDialogPop(onDismiss)
     val scope = rememberCoroutineScope()
     var text by remember { mutableStateOf(pager.loadedPage.coerceAtLeast(1).toString()) }
@@ -252,14 +252,14 @@ fun PagerJumpDialog(
     AlertDialog(
         onDismissRequest = pop::dismiss,
         modifier = pop.modifier,
-        title = { Text(text = "跳到第几页", style = MaterialTheme.typography.titleMedium) },
+        title = { Text(text = "跳到第几页", style = MiuixTheme.textStyles.title4) },
         text = {
             Column {
                 val now = pager.loadedPage.coerceAtLeast(1)
                 Text(
                     text = if (pager.lastPage > 0) "现在第 $now 页，共 ${pager.lastPage} 页" else "现在第 $now 页",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = colors.onSurfaceSecondary,
                 )
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
@@ -279,7 +279,7 @@ fun PagerJumpDialog(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = it,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MiuixTheme.textStyles.footnote1,
                         color = colors.error,
                     )
                 }
@@ -325,7 +325,7 @@ fun CommentReplyDialog(
     onDismiss: () -> Unit,
     onReplied: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
     val focus = remember { FocusRequester() }
     var draft by remember(target) {
@@ -351,7 +351,6 @@ fun CommentReplyDialog(
             Surface(
                 shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
                 color = colors.surface,
-                tonalElevation = 3.dp,
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
@@ -361,14 +360,14 @@ fun CommentReplyDialog(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "回复 ${target.root.user?.name.orEmpty().ifBlank { "这位绅士" }}",
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MiuixTheme.textStyles.subtitle,
                             color = colors.onSurface,
                             modifier = Modifier.weight(1f),
                         )
                         Text(
                             text = "取消",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = colors.onSurfaceVariant,
+                            style = MiuixTheme.textStyles.footnote1,
+                            color = colors.onSurfaceSecondary,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
                                 .clickable(onClick = onDismiss)
@@ -383,8 +382,8 @@ fun CommentReplyDialog(
                         ) {
                             Text(
                                 text = target.root.content,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.onSurfaceVariant,
+                                style = MiuixTheme.textStyles.footnote1,
+                                color = colors.onSurfaceSecondary,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier
@@ -401,7 +400,7 @@ fun CommentReplyDialog(
                             error = null
                         },
                         placeholder = { Text("回一句…") },
-                        textStyle = MaterialTheme.typography.bodyMedium,
+                        textStyle = MiuixTheme.textStyles.body1,
                         shape = RoundedCornerShape(14.dp),
                         maxLines = 5,
                         modifier = Modifier.fillMaxWidth().focusRequester(focus),
@@ -410,7 +409,7 @@ fun CommentReplyDialog(
                         Spacer(Modifier.height(6.dp))
                         Text(
                             text = it,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MiuixTheme.textStyles.footnote1,
                             color = colors.error,
                         )
                     }
@@ -418,7 +417,7 @@ fun CommentReplyDialog(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         Button(
                             enabled = draft.isNotBlank() && !sending,
-                            shape = RoundedCornerShape(18.dp),
+                            cornerRadius = 18.dp,
                             onClick = {
                                 val content = draft.trim()
                                 if (content.isEmpty()) return@Button
@@ -473,7 +472,7 @@ fun LazyListScope.commentItems(
                     .fillMaxWidth()
                     .padding(top = 2.dp, bottom = 14.dp)
                     .height(1.dp)
-                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.14f)),
+                    .background(MiuixTheme.colorScheme.onSurfaceSecondary.copy(alpha = 0.14f)),
             )
         }
     }
@@ -505,7 +504,7 @@ fun LazyListScope.commentItems(
 /** 点赞按钮：拇指 + 数量，点一下切赞/取消，自己吞掉点击不惊动外层。 */
 @Composable
 private fun LikeButton(comment: Comment, modifier: Modifier = Modifier) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
     // 键里带上服务端那份数据：重新拉到评论后，状态跟着最新的 isLiked 走。
     var liked by remember(comment.id, comment.isLiked) { mutableStateOf(comment.isLiked) }
@@ -541,14 +540,14 @@ private fun LikeButton(comment: Comment, modifier: Modifier = Modifier) {
         PicaGlyph(
             icon = PicaIcon.Like,
             modifier = Modifier.size(15.dp),
-            tint = if (liked) colors.primary else colors.onSurfaceVariant,
+            tint = if (liked) colors.primary else colors.onSurfaceSecondary,
             filled = liked,
         )
         Spacer(Modifier.width(4.dp))
         Text(
             text = if (likes > 0) likes.toString() else "赞",
-            style = MaterialTheme.typography.labelSmall,
-            color = if (liked) colors.primary else colors.onSurfaceVariant,
+            style = MiuixTheme.textStyles.footnote2,
+            color = if (liked) colors.primary else colors.onSurfaceSecondary,
         )
     }
 }
@@ -567,7 +566,7 @@ fun CommentRow(
     /** 自己的评论没有头像可拿（历史评论接口不带作者），关掉就只排名字和正文，不留空头像框。 */
     showAvatar: Boolean = true,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val avatar = comment.user?.avatar.url()
     var expanded by remember(comment.id) { mutableStateOf(false) }
     var introUser by remember(comment.id) { mutableStateOf<UserBasic?>(null) }
@@ -600,7 +599,7 @@ fun CommentRow(
                     Modifier.border(
                         width = 1.dp,
                         color = colors.primary.copy(alpha = 0.35f),
-                        shape = MaterialTheme.shapes.extraLarge,
+                        shape = RoundedCornerShape(28.dp),
                     )
                 } else {
                     Modifier
@@ -652,7 +651,7 @@ fun CommentRow(
                         ) {
                             Text(
                                 text = comment.user?.name.orEmpty().ifBlank { "绅士" },
-                                style = MaterialTheme.typography.titleSmall,
+                                style = MiuixTheme.textStyles.subtitle,
                                 color = colors.onSurface,
                             )
                             UserTitleBadge(comment.user?.title)
@@ -663,8 +662,8 @@ fun CommentRow(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = time,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colors.onSurfaceVariant,
+                                style = MiuixTheme.textStyles.footnote2,
+                                color = colors.onSurfaceSecondary,
                             )
                         }
                     }
@@ -672,8 +671,8 @@ fun CommentRow(
                         Spacer(Modifier.height(6.dp))
                         Text(
                             text = comment.content,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.onSurfaceVariant,
+                            style = MiuixTheme.textStyles.body1,
+                            color = colors.onSurfaceSecondary,
                             maxLines = 12,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -685,8 +684,8 @@ fun CommentRow(
                             Spacer(Modifier.width(10.dp))
                             Text(
                                 text = if (expanded) "收起回复" else "${comment.childsCount} 条回复",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (expanded) colors.primary else colors.onSurfaceVariant,
+                                style = MiuixTheme.textStyles.footnote2,
+                                color = if (expanded) colors.primary else colors.onSurfaceSecondary,
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
                                     .clickable { expanded = !expanded }
@@ -697,7 +696,7 @@ fun CommentRow(
                             Spacer(Modifier.weight(1f))
                             Text(
                                 text = "回复",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MiuixTheme.textStyles.footnote2,
                                 color = colors.primary,
                                 modifier = Modifier
                                     .clickable { onReply(CommentReplyTarget(comment)) }
@@ -749,7 +748,7 @@ private fun CommentReplies(
     onReply: ((CommentReplyTarget) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
     val error = pager.error
 
@@ -758,7 +757,7 @@ private fun CommentReplies(
             when {
                 error != null -> Text(
                     text = "回复没拉到，点一下重试",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MiuixTheme.textStyles.footnote2,
                     color = colors.error,
                     modifier = Modifier
                         .clickable { scope.launch { pager.retry() } }
@@ -766,8 +765,8 @@ private fun CommentReplies(
                 )
                 pager.loading -> Text(
                     text = "正在展开…",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = colors.onSurfaceSecondary,
                     modifier = Modifier.padding(vertical = 4.dp),
                 )
                 else -> Unit
@@ -785,7 +784,7 @@ private fun CommentReplies(
             if (pager.hasMore) {
                 Text(
                     text = if (pager.loading) "正在拉…" else "更多回复",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MiuixTheme.textStyles.footnote2,
                     color = colors.primary,
                     modifier = Modifier
                         .clickable { if (!pager.loading) scope.launch { pager.loadNext() } }
@@ -799,7 +798,7 @@ private fun CommentReplies(
 /** 楼中楼里的一条：小头像 + 昵称 + 正文 + 点赞。 */
 @Composable
 private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val avatar = comment.user?.avatar.url()
     val user = comment.user
     var introUser by remember(comment.id) { mutableStateOf<UserBasic?>(null) }
@@ -841,7 +840,7 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
                 ) {
                     Text(
                         text = comment.user?.name.orEmpty().ifBlank { "绅士" },
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MiuixTheme.textStyles.footnote1,
                         color = colors.onSurface,
                     )
                     UserTitleBadge(comment.user?.title)
@@ -851,8 +850,8 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = time,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
+                        style = MiuixTheme.textStyles.footnote2,
+                        color = colors.onSurfaceSecondary,
                     )
                 }
             }
@@ -860,8 +859,8 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
                 Spacer(Modifier.height(3.dp))
                 Text(
                     text = comment.content,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceVariant,
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = colors.onSurfaceSecondary,
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -870,7 +869,7 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
                     Spacer(Modifier.width(10.dp))
                     Text(
                         text = "回复",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MiuixTheme.textStyles.footnote2,
                         color = colors.primary,
                         modifier = Modifier
                             .clickable(onClick = onReply)
@@ -913,13 +912,13 @@ fun CommentComposer(
     modifier: Modifier = Modifier,
     placeholder: String = "留一句…",
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
     var draft by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    Surface(color = colors.surface, tonalElevation = 3.dp, modifier = modifier) {
+    Surface(color = colors.surface, modifier = modifier) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
@@ -929,7 +928,7 @@ fun CommentComposer(
                         error = null
                     },
                     placeholder = { Text(placeholder) },
-                    textStyle = MaterialTheme.typography.bodyMedium,
+                    textStyle = MiuixTheme.textStyles.body1,
                     shape = RoundedCornerShape(20.dp),
                     maxLines = 4,
                     modifier = Modifier.weight(1f),
@@ -937,7 +936,7 @@ fun CommentComposer(
                 Spacer(Modifier.width(10.dp))
                 Button(
                     enabled = draft.isNotBlank() && !sending,
-                    shape = RoundedCornerShape(20.dp),
+                    cornerRadius = 20.dp,
                     onClick = {
                         val content = draft.trim()
                         if (content.isEmpty()) return@Button
@@ -958,7 +957,7 @@ fun CommentComposer(
                 Spacer(Modifier.height(6.dp))
                 Text(
                     text = it,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MiuixTheme.textStyles.footnote1,
                     color = colors.error,
                 )
             }

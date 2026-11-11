@@ -54,8 +54,8 @@ import androidx.compose.material.icons.rounded.Star as RoundedStar
 import androidx.compose.material.icons.rounded.ThumbUp as RoundedThumbUp
 import androidx.compose.material.icons.rounded.Visibility as RoundedVisibility
 import androidx.compose.material.icons.rounded.VisibilityOff as RoundedVisibilityOff
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.theme.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -72,7 +72,7 @@ enum class PicaIcon {
     Menu, Check, Sort, Star, Close, Search, Filter, Speed, Bolt, Shield,
 }
 
-private fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
+internal fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
     PicaIcon.Mail -> if (filled) Icons.Rounded.RoundedEmail else Icons.Outlined.Email
     PicaIcon.Edit -> if (filled) Icons.Rounded.RoundedEdit else Icons.Outlined.Edit
     PicaIcon.Back -> if (filled) Icons.AutoMirrored.Rounded.ArrowBack else Icons.AutoMirrored.Outlined.ArrowBack

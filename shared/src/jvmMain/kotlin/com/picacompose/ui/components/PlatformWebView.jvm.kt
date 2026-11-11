@@ -2,8 +2,8 @@ package com.picacompose.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -20,7 +20,7 @@ actual fun PlatformWebView(
     controller: WebViewController,
     modifier: Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
+    val colors = MiuixTheme.colorScheme
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -28,12 +28,12 @@ actual fun PlatformWebView(
     ) {
         Text(
             text = "桌面版没有内置浏览器",
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.onSurfaceVariant,
+            style = MiuixTheme.textStyles.body1,
+            color = colors.onSurfaceSecondary,
         )
         Text(
             text = url,
-            style = MaterialTheme.typography.bodySmall,
+            style = MiuixTheme.textStyles.footnote1,
             color = colors.onSurface,
         )
         TextButton(onClick = { openUrl(url) }) {
