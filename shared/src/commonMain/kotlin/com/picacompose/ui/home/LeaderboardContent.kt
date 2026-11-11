@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaSurface
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +24,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -141,7 +141,7 @@ fun LeaderboardContent(
             modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 22.dp, top = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(
+            PicaSurface(
                 shape = RoundedCornerShape(SkinTokens.chipRadius),
                 color = MiuixTheme.colorScheme.surface.copy(alpha = 0f),
                 modifier = Modifier.size(40.dp).clickable(onClick = onBack),
@@ -230,7 +230,7 @@ internal fun PillTabs(
     ) {
         labels.forEachIndexed { index, label ->
             val active = index == selected
-            Surface(
+            PicaSurface(
                 shape = RoundedCornerShape(SkinTokens.chipRadius),
                 color = if (active) colors.primaryContainer else colors.surfaceVariant,
                 modifier = Modifier.clickable { onSelect(index) },

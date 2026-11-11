@@ -7,35 +7,36 @@ import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
- * 两套皮肤共用的「形状 / 表面」参数。
+ * 两套皮肤共用的「形状 / 表面」参数，口径照各自的设计语言来。
  *
- * 组件本身还是同一套 miuix，这里只按皮肤调圆角和表面层：
- *
- * - MIUI 风格：大圆角（卡片 28dp、胶囊全圆）、卡片用淡蓝色。
- * - Material You：按 MD3 规格来——卡片 16dp、chip 8dp、输入框小圆角、表面用
- *   `surfaceContainerHigh` 这一层，卡片靠一层很淡的阴影和底色分开。
+ * - MIUI 风格：大圆角卡片、全圆胶囊、淡蓝卡片底。
+ * - Material You：MD3 的 28dp 大卡片、16dp 列表卡、全圆信息胶囊、
+ *   表面层用 `surface` + `tonalElevation`（就是切到 miuix 之前那套观感）。
  */
 object SkinTokens {
-    private val materialYou: Boolean
+    internal val materialYou: Boolean
         get() = SkinState.current == AppSkin.MaterialYou
 
     /** 整块卡片：首页/设置/详情里那些。 */
-    val cardRadius: Dp get() = if (materialYou) 16.dp else 28.dp
+    val cardRadius: Dp get() = 28.dp
 
-    /** 列表行这种稍小一点的卡片。 */
+    /** 列表行这种小一点的卡片。 */
     val rowRadius: Dp get() = if (materialYou) 16.dp else 22.dp
 
-    /** 胶囊：MD3 的 chip 是 8dp 圆角，不是全圆。 */
-    val chipRadius: Dp get() = if (materialYou) 8.dp else 999.dp
+    /** 自绘的小胶囊：两套都是全圆。 */
+    val chipRadius: Dp get() = 999.dp
 
-    /** 输入框。 */
-    val fieldRadius: Dp get() = if (materialYou) 12.dp else 14.dp
+    /** 输入框：Material You 走 MD3 的 4dp 圆角。 */
+    val fieldRadius: Dp get() = if (materialYou) 4.dp else 14.dp
 
-    val cardShadow: Dp get() = if (materialYou) 1.dp else 0.dp
+    /** MD3 的卡片靠 tonalElevation 分层，不靠阴影。 */
+    val cardTonalElevation: Dp get() = if (materialYou) 1.dp else 0.dp
 
-    /** 卡片底色：Material You 用带色调的表面层，MIUI 用淡蓝底。 */
+    val cardShadow: Dp get() = 0.dp
+
+    /** 卡片底色：Material You 用 surface，MIUI 用淡蓝。 */
     @Composable
     fun cardColor(): Color = MiuixTheme.colorScheme.let { colors ->
-        if (materialYou) colors.surfaceContainerHigh else colors.tertiaryContainer
+        if (materialYou) colors.surface else colors.tertiaryContainer
     }
 }

@@ -9,6 +9,9 @@ import androidx.compose.material3.CircularProgressIndicator as Md3CircularProgre
 import androidx.compose.material3.IconButton as Md3IconButton
 import androidx.compose.material3.LinearProgressIndicator as Md3LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.contentColorFor
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.material3.OutlinedButton as Md3OutlinedButton
 import androidx.compose.material3.Switch as Md3Switch
 import androidx.compose.material3.TextButton as Md3TextButton
@@ -29,6 +32,7 @@ import top.yukonga.miuix.kmp.basic.LinearProgressIndicator as MiuixLinearProgres
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.Switch as MiuixSwitch
 import top.yukonga.miuix.kmp.theme.LocalContentColor as MiuixLocalContentColor
+import top.yukonga.miuix.kmp.basic.Surface as MiuixSurface
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.ui.state.ToggleableState
 
@@ -50,6 +54,54 @@ internal val md3Skin: Boolean
 @Composable
 internal fun MiuixTextColor(color: Color, content: @Composable () -> Unit) {
     CompositionLocalProvider(MiuixLocalContentColor provides color, content = content)
+}
+
+/** 表面层：页面里的卡片、弹窗底、胶囊底都用它。 */
+@Composable
+fun PicaSurface(
+    modifier: Modifier = Modifier,
+    shape: Shape = RectangleShape,
+    color: Color = MiuixTheme.colorScheme.surface,
+    contentColor: Color = Color.Unspecified,
+    tonalElevation: Dp = 0.dp,
+    shadowElevation: Dp = 0.dp,
+    content: @Composable () -> Unit,
+) {
+    if (md3Skin) {
+        val colors = MaterialTheme.colorScheme
+        val resolved = if (contentColor == Color.Unspecified) contentColorFor(color) else contentColor
+        // 旧版 Material3 界面里，surface 底的卡片都带 1dp tonalElevation，卡片和背景才分得开。
+        val elevation = if (tonalElevation == 0.dp && color == colors.surface) 1.dp else tonalElevation
+        androidx.compose.material3.Surface(
+            modifier = modifier,
+            shape = shape,
+            color = color,
+            contentColor = resolved,
+            tonalElevation = elevation,
+            shadowElevation = shadowElevation,
+        ) {
+            MiuixTextColor(resolved) { content() }
+        }
+    } else {
+        if (contentColor == Color.Unspecified) {
+            MiuixSurface(
+                modifier = modifier,
+                shape = shape,
+                color = color,
+                shadowElevation = shadowElevation,
+                content = content,
+            )
+        } else {
+            MiuixSurface(
+                modifier = modifier,
+                shape = shape,
+                color = color,
+                contentColor = contentColor,
+                shadowElevation = shadowElevation,
+                content = content,
+            )
+        }
+    }
 }
 
 /** 主按钮：MIUI 用 miuix 的实心按钮，MD3 用 Material3 的 FilledButton。 */

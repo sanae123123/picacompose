@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaIconButton
 import com.picacompose.ui.components.PicaCircularProgress
 import com.picacompose.ui.components.PicaLinearProgress
@@ -24,7 +25,6 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.picacompose.ui.components.PicaOutlinedButton
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
@@ -115,7 +115,7 @@ fun MineContent(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         // 底下垫首字母，头像没加载出来（或没有头像）时不至于空一块。
-                        Surface(
+                        PicaSurface(
                             shape = RoundedCornerShape(SkinTokens.chipRadius),
                             color = colors.primaryContainer,
                             modifier = Modifier.size(72.dp),
@@ -343,7 +343,7 @@ private fun MineEntryRow(
     onClick: () -> Unit,
 ) {
     val colors = MiuixTheme.colorScheme
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = colors.surface,
         modifier = modifier.fillMaxWidth().padding(vertical = 5.dp),

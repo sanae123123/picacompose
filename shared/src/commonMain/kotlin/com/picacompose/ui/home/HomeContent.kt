@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,7 +26,6 @@ import com.picacompose.ui.components.PicaAlertDialog
 import top.yukonga.miuix.kmp.basic.Button
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
@@ -118,7 +118,7 @@ fun HomeContent(
             PicaCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // 真头像盖在首字母上；没头像或没加载出来时露出首字母。
-                    Surface(
+                    PicaSurface(
                         shape = RoundedCornerShape(SkinTokens.chipRadius),
                         color = colors.primaryContainer,
                         modifier = Modifier.size(52.dp),
@@ -309,7 +309,7 @@ private fun QuickCard(
     badge: Boolean = false,
 ) {
     val colors = MiuixTheme.colorScheme
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(SkinTokens.cardRadius),
         color = colors.surface,
         modifier = modifier,

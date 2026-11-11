@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaIconButton
 import com.picacompose.ui.components.PicaLinearProgress
 import androidx.compose.foundation.clickable
@@ -23,7 +24,6 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -473,7 +473,7 @@ private fun ResumeCard(
     onResume: () -> Unit,
 ) {
     val colors = MiuixTheme.colorScheme
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = colors.primary,
         contentColor = colors.onPrimary,
@@ -598,7 +598,7 @@ private fun DetailHero(
                     ) {
                         tags.forEach { tag ->
                             // 点一下按这个标签看同类本子。做成有底色的小块，点中的范围比一行小字大。
-                            Surface(
+                            PicaSurface(
                                 shape = RoundedCornerShape(6.dp),
                                 color = colors.primary.copy(alpha = 0.10f),
                                 modifier = Modifier
@@ -646,7 +646,7 @@ private fun DetailHero(
         val description = detail.description?.trim()
         if (!description.isNullOrBlank()) {
             Spacer(Modifier.height(12.dp))
-            Surface(
+            PicaSurface(
                 shape = RoundedCornerShape(SkinTokens.rowRadius),
                 color = colors.surface,
                 modifier = Modifier.fillMaxWidth(),
@@ -680,7 +680,7 @@ private fun UploaderCard(
     val fraction = ((creator.exp - start).toFloat() / (next - start).coerceAtLeast(1))
         .coerceIn(0f, 1f)
 
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = colors.surface,
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).clickable(onClick = onClick),
@@ -748,7 +748,7 @@ private fun ActionPill(
     onClick: () -> Unit,
 ) {
     val colors = MiuixTheme.colorScheme
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(20.dp),
         color = if (active) colors.primaryContainer else colors.surfaceVariant,
         modifier = Modifier.clickable(onClick = onClick),
@@ -795,7 +795,7 @@ private fun EpisodeRow(
     resumed: Boolean = false,
 ) {
     val colors = MiuixTheme.colorScheme
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = colors.surface,
         modifier = modifier.fillMaxWidth().padding(bottom = 8.dp),

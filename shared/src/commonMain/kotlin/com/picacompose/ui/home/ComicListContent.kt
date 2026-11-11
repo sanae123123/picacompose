@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaIconButton
 import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.PicaTextButton
@@ -35,7 +36,6 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import com.picacompose.ui.components.PicaInputChip
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -575,7 +575,7 @@ internal fun ComicListRow(
     modifier: Modifier = Modifier,
 ) {
     val colors = MiuixTheme.colorScheme
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = SkinTokens.cardColor(),
         modifier = modifier.fillMaxWidth().padding(bottom = 12.dp),

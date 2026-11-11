@@ -90,7 +90,7 @@ fun PicaFilterChip(
         FilterChip(
             selected = selected,
             onClick = onClick,
-            shape = RoundedCornerShape(SkinTokens.chipRadius),
+            shape = RoundedCornerShape(8.dp),
             label = {
                 MiuixTextColor(if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant) {
                     label()
@@ -129,7 +129,7 @@ fun PicaInputChip(
         InputChip(
             selected = selected,
             onClick = onClick,
-            shape = RoundedCornerShape(SkinTokens.chipRadius),
+            shape = RoundedCornerShape(8.dp),
             label = {
                 MiuixTextColor(if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant) {
                     label()

@@ -1,9 +1,9 @@
 package com.picacompose.ui.components
 
+import com.picacompose.ui.components.PicaSurface
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -20,7 +20,7 @@ fun UserTitleBadge(title: String?, modifier: Modifier = Modifier) {
     val text = title?.trim().orEmpty()
     if (text.isEmpty()) return
     val colors = MiuixTheme.colorScheme
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(5.dp),
         color = colors.primaryContainer,
         contentColor = colors.onPrimaryContainer,

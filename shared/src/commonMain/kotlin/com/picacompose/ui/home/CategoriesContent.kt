@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaIconButton
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -19,7 +20,6 @@ import androidx.compose.foundation.layout.size
 import top.yukonga.miuix.kmp.basic.IconButton
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -293,7 +293,7 @@ private fun HotTileCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = MiuixTheme.colorScheme
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(16.dp),
         color = colors.surface,
         modifier = modifier.then(tile.modifier),
@@ -334,7 +334,7 @@ private fun CategoryCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = MiuixTheme.colorScheme
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = colors.surface,
         modifier = modifier,

@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaIconButton
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,7 +22,6 @@ import androidx.compose.foundation.shape.CircleShape
 import top.yukonga.miuix.kmp.basic.IconButton
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
@@ -199,7 +199,7 @@ private fun MessageRow(
 @Composable
 private fun NotificationAvatar(message: NotificationDoc) {
     val colors = MiuixTheme.colorScheme
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(SkinTokens.chipRadius),
         color = colors.tertiaryContainer,
         modifier = Modifier.size(42.dp),
@@ -236,7 +236,7 @@ private fun MessageDialog(
     val colors = MiuixTheme.colorScheme
     val pop = rememberDialogPop(onDismiss)
     Dialog(onDismissRequest = pop::dismiss) {
-        Surface(
+        PicaSurface(
             shape = RoundedCornerShape(SkinTokens.cardRadius),
             color = colors.surfaceContainerHigh,
             modifier = pop.modifier,

@@ -1,5 +1,6 @@
 package com.picacompose
 
+import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
@@ -9,7 +10,6 @@ import androidx.compose.foundation.layout.size
 import com.picacompose.ui.components.PicaAlertDialog
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
@@ -151,7 +151,7 @@ private fun MainScreens() {
         else -> Screen.Home
     }
 
-    Surface(
+    PicaSurface(
         modifier = Modifier.fillMaxSize(),
         color = MiuixTheme.colorScheme.background,
     ) {

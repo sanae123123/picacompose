@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaButton
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -34,7 +35,6 @@ import com.picacompose.ui.components.PicaAlertDialog
 import top.yukonga.miuix.kmp.basic.Button
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
@@ -348,7 +348,7 @@ fun CommentReplyDialog(
         ),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-            Surface(
+            PicaSurface(
                 shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
                 color = colors.surface,
                 modifier = Modifier
@@ -376,7 +376,7 @@ fun CommentReplyDialog(
                     }
                     if (target.root.content.isNotBlank()) {
                         Spacer(Modifier.height(8.dp))
-                        Surface(
+                        PicaSurface(
                             shape = RoundedCornerShape(10.dp),
                             color = colors.tertiaryContainer.copy(alpha = 0.6f),
                         ) {
@@ -628,7 +628,7 @@ fun CommentRow(
                             ),
                         )
                     } else {
-                        Surface(
+                        PicaSurface(
                             shape = RoundedCornerShape(19.dp),
                             color = colors.tertiaryContainer,
                             modifier = Modifier
@@ -821,7 +821,7 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
                 ),
             )
         } else {
-            Surface(
+            PicaSurface(
                 shape = RoundedCornerShape(13.dp),
                 color = colors.tertiaryContainer,
                 modifier = Modifier
@@ -918,7 +918,7 @@ fun CommentComposer(
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    Surface(color = colors.surface, modifier = modifier) {
+    PicaSurface(color = colors.surface, modifier = modifier) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 PicaTextField(

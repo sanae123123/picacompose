@@ -1,5 +1,6 @@
 package com.picacompose.ui.login
 
+import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaButton
 import com.picacompose.ui.components.PicaIconButton
 import com.picacompose.ui.components.PicaCircularProgress
@@ -33,7 +34,6 @@ import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import com.picacompose.ui.components.PicaTextButton
 import com.picacompose.ui.components.PicaTextField
@@ -151,7 +151,7 @@ private fun LoginCard(
     onForgotPassword: () -> Unit,
 ) {
     val colors = MiuixTheme.colorScheme
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(SkinTokens.cardRadius),
         color = colors.tertiaryContainer,
         shadowElevation = 10.dp,
@@ -290,7 +290,7 @@ private fun RememberRow(controller: LoginController, modifier: Modifier = Modifi
 @Composable
 private fun ErrorBanner(message: String) {
     val colors = MiuixTheme.colorScheme
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(12.dp),
         color = colors.errorContainer,
         modifier = Modifier.fillMaxWidth(),

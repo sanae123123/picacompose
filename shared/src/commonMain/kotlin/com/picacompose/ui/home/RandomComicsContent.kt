@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaIconButton
 import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.animation.AnimatedVisibility
@@ -29,7 +30,6 @@ import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -273,7 +273,7 @@ fun RandomComicsContent(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 26.dp),
         ) {
-            Surface(
+            PicaSurface(
                 shape = RoundedCornerShape(SkinTokens.chipRadius),
                 color = if (swapError != null) colors.errorContainer else colors.primary,
                 shadowElevation = 3.dp,

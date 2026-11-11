@@ -1,5 +1,6 @@
 package com.picacompose.ui.routing
 
+import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,7 +22,6 @@ import androidx.compose.foundation.verticalScroll
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
@@ -172,7 +172,7 @@ private fun LineCard(
     onClick: () -> Unit,
 ) {
     val colors = MiuixTheme.colorScheme
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = if (chosen) colors.primaryContainer else colors.surface,
         modifier = Modifier
@@ -193,7 +193,7 @@ private fun LineCard(
                     )
                     if (last) {
                         Spacer(Modifier.size(8.dp))
-                        Surface(
+                        PicaSurface(
                             shape = RoundedCornerShape(SkinTokens.chipRadius),
                             color = colors.tertiaryContainer,
                         ) {

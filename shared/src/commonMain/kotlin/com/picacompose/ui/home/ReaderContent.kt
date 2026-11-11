@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -35,7 +36,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -465,7 +465,7 @@ private fun ReaderPage(
                             style = MiuixTheme.textStyles.body1,
                             color = Color.White.copy(alpha = 0.8f),
                         )
-                        Surface(
+                        PicaSurface(
                             shape = RoundedCornerShape(16.dp),
                             color = Color.White.copy(alpha = 0.16f),
                             // 先把状态拨回「还没加载」，否则下面那段不会重新挂图片。
@@ -528,7 +528,7 @@ private fun EpisodeButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(18.dp),
         color = if (enabled) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.06f),
         modifier = modifier.clickable(enabled = enabled, onClick = onClick),
@@ -562,7 +562,7 @@ private fun ReaderState(
                     style = MiuixTheme.textStyles.body1,
                     color = Color.White.copy(alpha = 0.8f),
                 )
-                Surface(
+                PicaSurface(
                     shape = RoundedCornerShape(16.dp),
                     color = Color.White.copy(alpha = 0.16f),
                     modifier = Modifier.clickable(onClick = onRetry),

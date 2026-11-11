@@ -1,5 +1,6 @@
 package com.picacompose.ui.components
 
+import com.picacompose.ui.components.PicaSurface
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -9,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,7 +60,7 @@ fun PicaToastHost(modifier: Modifier = Modifier) {
         exit = fadeOut() + slideOutVertically { it / 2 },
         modifier = modifier,
     ) {
-        Surface(
+        PicaSurface(
             shape = RoundedCornerShape(SkinTokens.rowRadius),
             color = MiuixTheme.colorScheme.surfaceContainerHigh,
             contentColor = MiuixTheme.colorScheme.onSurface,

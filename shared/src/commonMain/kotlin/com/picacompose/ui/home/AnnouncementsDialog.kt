@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaSurface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
 import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
@@ -82,7 +82,7 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
     }
 
     Dialog(onDismissRequest = pop::dismiss) {
-        Surface(
+        PicaSurface(
             shape = RoundedCornerShape(SkinTokens.cardRadius),
             color = colors.surface,
             modifier = pop.modifier,

@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaButton
 import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.animation.AnimatedVisibility
@@ -41,9 +42,13 @@ import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Surface
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text as Md3Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import top.yukonga.miuix.kmp.basic.PullToRefresh
 import top.yukonga.miuix.kmp.basic.Text
+import com.picacompose.ui.components.md3Skin
 import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -83,12 +88,21 @@ fun PageHeader(
     action: (@Composable () -> Unit)? = null,
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = title,
-            style = MiuixTheme.textStyles.title2,
-            color = MiuixTheme.colorScheme.onBackground,
-            modifier = Modifier.weight(1f),
-        )
+        if (md3Skin) {
+            Md3Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            Text(
+                text = title,
+                style = MiuixTheme.textStyles.title2,
+                color = MiuixTheme.colorScheme.onBackground,
+                modifier = Modifier.weight(1f),
+            )
+        }
         if (action != null) action()
     }
 }
@@ -99,9 +113,10 @@ fun PicaCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Surface(
+    PicaSurface(
         shape = RoundedCornerShape(SkinTokens.cardRadius),
         color = SkinTokens.cardColor(),
+        tonalElevation = SkinTokens.cardTonalElevation,
         shadowElevation = SkinTokens.cardShadow,
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -111,19 +126,36 @@ fun PicaCard(
 
 @Composable
 fun InfoChip(text: String) {
-    val colors = MiuixTheme.colorScheme
-    Surface(
-        shape = RoundedCornerShape(SkinTokens.chipRadius),
-        color = colors.tertiaryContainer,
-    ) {
-        Text(
-            text = text,
-            style = MiuixTheme.textStyles.footnote1,
-            color = colors.onTertiaryContainer,
-            maxLines = 1,
-            softWrap = false,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-        )
+    if (md3Skin) {
+        val colors = MaterialTheme.colorScheme
+        PicaSurface(
+            shape = CircleShape,
+            color = colors.secondaryContainer.copy(alpha = 0.85f),
+        ) {
+            Md3Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSecondaryContainer,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+        }
+    } else {
+        val colors = MiuixTheme.colorScheme
+        PicaSurface(
+            shape = RoundedCornerShape(SkinTokens.chipRadius),
+            color = colors.tertiaryContainer,
+        ) {
+            Text(
+                text = text,
+                style = MiuixTheme.textStyles.footnote1,
+                color = colors.onTertiaryContainer,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+        }
     }
 }
 
@@ -289,6 +321,7 @@ private fun listContentPadding(base: PaddingValues, hasHeader: Boolean): Padding
  *
  * [onRefresh] 是挂起函数，转圈一直转到它真的干完；传 null 就什么都不套。
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PullRefresh(
     onRefresh: (suspend () -> Unit)?,
@@ -301,20 +334,31 @@ private fun PullRefresh(
     }
     val scope = rememberCoroutineScope()
     var refreshing by remember { mutableStateOf(false) }
-    PullToRefresh(
-        isRefreshing = refreshing,
-        onRefresh = {
-            if (!refreshing) {
-                scope.launch {
-                    refreshing = true
-                    runCatching { onRefresh() }
-                    refreshing = false
-                }
+    val refresh: () -> Unit = {
+        if (!refreshing) {
+            scope.launch {
+                refreshing = true
+                runCatching { onRefresh() }
+                refreshing = false
             }
-        },
-        modifier = modifier,
-    ) {
-        content()
+        }
+    }
+    if (md3Skin) {
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = refresh,
+            modifier = modifier,
+        ) {
+            content()
+        }
+    } else {
+        PullToRefresh(
+            isRefreshing = refreshing,
+            onRefresh = refresh,
+            modifier = modifier,
+        ) {
+            content()
+        }
     }
 }
 
