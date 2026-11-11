@@ -64,7 +64,6 @@ fun SplashAdDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false,
         ),
     ) {
         Box(Modifier.fillMaxSize().background(Color.Black)) {
