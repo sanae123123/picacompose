@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaIconButton
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
@@ -292,7 +293,7 @@ fun SearchContent(
         header = {
             Column(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                    PicaIconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                         PicaGlyph(
                             icon = PicaIcon.Back,
                             modifier = Modifier.size(22.dp),
@@ -315,7 +316,7 @@ fun SearchContent(
                         )
                     }
                     // 筛选：排序方式 + 完结状态。完结是拿回来后在本地筛的（搜索接口不吃这个参数）。
-                    IconButton(
+                    PicaIconButton(
                         onClick = { showFilter = true },
                         modifier = Modifier.size(40.dp),
                     ) {
@@ -333,7 +334,7 @@ fun SearchContent(
                     }
                     // 汉堡菜单：跳页 + 排序方式，和本子列表里那颗一样。
                     Box {
-                        IconButton(
+                        PicaIconButton(
                             onClick = { menuOpen = true },
                             modifier = Modifier.size(40.dp),
                         ) {
@@ -410,7 +411,7 @@ fun SearchContent(
                         },
                         trailingIcon = {
                             if (state.query.isNotEmpty()) {
-                                IconButton(onClick = { state.onQueryChange("") }) {
+                                PicaIconButton(onClick = { state.onQueryChange("") }) {
                                     PicaGlyph(
                                         icon = PicaIcon.Close,
                                         modifier = Modifier.size(18.dp),

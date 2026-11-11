@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaButton
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -414,12 +415,12 @@ fun CommentReplyDialog(
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        Button(
+                        PicaButton(
                             enabled = draft.isNotBlank() && !sending,
                             cornerRadius = 18.dp,
                             onClick = {
                                 val content = draft.trim()
-                                if (content.isEmpty()) return@Button
+                                if (content.isEmpty()) return@PicaButton
                                 scope.launch {
                                     sending = true
                                     error = null
@@ -933,12 +934,12 @@ fun CommentComposer(
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(10.dp))
-                Button(
+                PicaButton(
                     enabled = draft.isNotBlank() && !sending,
                     cornerRadius = 20.dp,
                     onClick = {
                         val content = draft.trim()
-                        if (content.isEmpty()) return@Button
+                        if (content.isEmpty()) return@PicaButton
                         scope.launch {
                             sending = true
                             error = null

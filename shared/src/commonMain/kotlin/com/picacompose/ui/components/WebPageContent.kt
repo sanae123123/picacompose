@@ -1,5 +1,7 @@
 package com.picacompose.ui.components
 
+import com.picacompose.ui.components.PicaIconButton
+import com.picacompose.ui.components.PicaLinearProgress
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
@@ -18,7 +20,6 @@ import com.picacompose.ui.components.PicaDropdownMenu
 import com.picacompose.ui.components.PicaDropdownMenuItem
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Text
@@ -98,7 +99,7 @@ fun WebPageContent(
                 )
             }
             Box {
-                IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(40.dp)) {
+                PicaIconButton(onClick = { menuOpen = true }, modifier = Modifier.size(40.dp)) {
                     PicaGlyph(PicaIcon.Menu, Modifier.size(22.dp), colors.onBackground)
                 }
                 PicaDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
@@ -138,8 +139,8 @@ fun WebPageContent(
         // 顶栏下面那条加载进度：高度一直占着，出现 / 消失时网页不会上下跳。
         Box(Modifier.fillMaxWidth().height(2.dp)) {
             if (controller.progress > 0.01f && controller.progress < 1f) {
-                LinearProgressIndicator(
-colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.primary, backgroundColor = colors.primary.copy(alpha = 0.12f)),
+                PicaLinearProgress(
+color = colors.primary, trackColor = colors.primary.copy(alpha = 0.12f),
 progress = controller.progress,
                     modifier = Modifier.fillMaxSize(),
                 )

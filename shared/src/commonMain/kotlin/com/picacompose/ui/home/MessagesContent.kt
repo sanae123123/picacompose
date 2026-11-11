@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaIconButton
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
@@ -94,7 +95,7 @@ fun MessagesContent(
         onRefresh = { pager.reloadFirstPage() },
         header = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                PicaIconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                     PicaGlyph(
                         icon = PicaIcon.Back,
                         modifier = Modifier.size(22.dp),

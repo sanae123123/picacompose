@@ -1,5 +1,9 @@
 package com.picacompose.ui.login
 
+import com.picacompose.ui.components.PicaButton
+import com.picacompose.ui.components.PicaIconButton
+import com.picacompose.ui.components.PicaCircularProgress
+import com.picacompose.ui.components.PicaCheckbox
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,8 +29,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Checkbox
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
 import com.picacompose.ui.theme.SkinTokens
@@ -181,21 +183,17 @@ private fun LoginCard(
                 }
             }
             Spacer(Modifier.height(20.dp))
-            Button(
+            PicaButton(
                 onClick = onSubmit,
                 enabled = !controller.loading,
                 cornerRadius = 999.dp,
-                colors = ButtonDefaults.buttonColors(
-                    color = colors.primary,
-                    contentColor = colors.onPrimary,
-                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
             ) {
                 if (controller.loading) {
-                    CircularProgressIndicator(
-colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.onPrimary),
+                    PicaCircularProgress(
+color = colors.onPrimary,
 modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
                     )
@@ -243,7 +241,7 @@ private fun PasswordField(controller: LoginController, onSubmit: () -> Unit) {
         cornerRadius = 16.dp,
         leadingIcon = { PicaGlyph(PicaIcon.Lock, Modifier.size(20.dp), colors.onSurfaceSecondary) },
         trailingIcon = {
-            IconButton(onClick = controller::togglePasswordVisible) {
+            PicaIconButton(onClick = controller::togglePasswordVisible) {
                 PicaGlyph(
                     icon = if (controller.passwordVisible) PicaIcon.EyeOff else PicaIcon.Eye,
                     modifier = Modifier.size(20.dp),
@@ -275,9 +273,9 @@ private fun RememberRow(controller: LoginController, modifier: Modifier = Modifi
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Checkbox(
-            state = ToggleableState(controller.rememberAccount),
-            onClick = { controller.onRememberChange(!controller.rememberAccount) },
+        PicaCheckbox(
+            checked = controller.rememberAccount,
+            onCheckedChange = { controller.onRememberChange(it) },
             enabled = !controller.loading,
         )
         Text(

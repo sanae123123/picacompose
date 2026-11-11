@@ -1,5 +1,6 @@
 package com.picacompose.ui.components
 
+import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,7 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import com.picacompose.ui.components.PicaAlertDialog
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Text
@@ -108,8 +108,8 @@ fun UserIntroDialog(
                         color = colors.onSurfaceSecondary,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    loading -> CircularProgressIndicator(
-colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.primary),
+                    loading -> PicaCircularProgress(
+color = colors.primary,
 modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
                     )

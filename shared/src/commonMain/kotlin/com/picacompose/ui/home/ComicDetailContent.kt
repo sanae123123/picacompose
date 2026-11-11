@@ -1,5 +1,7 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaIconButton
+import com.picacompose.ui.components.PicaLinearProgress
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -248,7 +249,7 @@ fun ComicDetailContent(
             },
             header = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                    PicaIconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                         PicaGlyph(
                             icon = PicaIcon.Back,
                             modifier = Modifier.size(22.dp),
@@ -722,8 +723,8 @@ private fun UploaderCard(
                     color = colors.onSurfaceSecondary,
                 )
                 Spacer(Modifier.height(5.dp))
-                LinearProgressIndicator(
-colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.primary, backgroundColor = colors.surfaceVariant),
+                PicaLinearProgress(
+color = colors.primary, trackColor = colors.surfaceVariant,
 progress = fraction,
                     modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
                 )

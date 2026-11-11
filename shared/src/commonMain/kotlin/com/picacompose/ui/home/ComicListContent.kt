@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaIconButton
 import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.PicaTextButton
 import com.picacompose.ui.components.PicaFilterChip
@@ -133,7 +134,7 @@ fun ComicListContent(
         onRefresh = { pager.reloadFirstPage() },
         header = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                PicaIconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                     PicaGlyph(
                         icon = PicaIcon.Back,
                         modifier = Modifier.size(22.dp),
@@ -158,7 +159,7 @@ fun ComicListContent(
                     )
                 }
                 // 筛选：排序方式 + 完结状态，点开弹窗配。开了筛选就把图标点亮。
-                IconButton(
+                PicaIconButton(
                     onClick = { showFilter = true },
                     modifier = Modifier.size(40.dp),
                 ) {
@@ -174,7 +175,7 @@ fun ComicListContent(
                 }
                 // 汉堡菜单：跳页 + 排序方式。
                 Box {
-                    IconButton(
+                    PicaIconButton(
                         onClick = { menuOpen = true },
                         modifier = Modifier.size(40.dp),
                     ) {

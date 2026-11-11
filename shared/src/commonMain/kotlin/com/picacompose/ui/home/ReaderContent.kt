@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -32,7 +33,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
@@ -483,8 +483,8 @@ private fun ReaderPage(
                         }
                     }
                 } else {
-                    CircularProgressIndicator(
-                        colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = Color.White.copy(alpha = 0.85f)),
+                    PicaCircularProgress(
+                        color = Color.White.copy(alpha = 0.85f),
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(32.dp),
                     )

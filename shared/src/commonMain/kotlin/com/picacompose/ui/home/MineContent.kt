@@ -1,5 +1,8 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaIconButton
+import com.picacompose.ui.components.PicaCircularProgress
+import com.picacompose.ui.components.PicaLinearProgress
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,10 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.picacompose.ui.components.PicaAlertDialog
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.picacompose.ui.components.PicaOutlinedButton
@@ -96,7 +97,7 @@ fun MineContent(
             PageHeader(
                 title = "我的",
                 action = {
-                    IconButton(
+                    PicaIconButton(
                         onClick = onOpenEditProfile,
                         modifier = editProfileModifier.size(40.dp),
                     ) {
@@ -176,7 +177,7 @@ fun MineContent(
                     }
                     // 头像卡的右上角，只留一个图标；签过了就不出现。
                     if (!checkedIn) {
-                        IconButton(
+                        PicaIconButton(
                             onClick = {
                                 scope.launch {
                                     punching = true
@@ -211,7 +212,7 @@ fun MineContent(
                             modifier = Modifier.align(Alignment.TopEnd).size(44.dp),
                         ) {
                             if (punching) {
-                                CircularProgressIndicator(
+                                PicaCircularProgress(
                                     strokeWidth = 2.dp,
                                     modifier = Modifier.size(18.dp),
                                 )
@@ -388,8 +389,8 @@ private fun LevelProgress(level: Int, exp: Int) {
     val remaining = (next - exp).coerceAtLeast(0)
 
     Column(modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 8.dp)) {
-        LinearProgressIndicator(
-colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.primary, backgroundColor = colors.surfaceVariant),
+        PicaLinearProgress(
+color = colors.primary, trackColor = colors.surfaceVariant,
 progress = fraction,
             modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
         )

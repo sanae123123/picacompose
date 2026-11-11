@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaIconButton
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -171,7 +172,7 @@ fun CategoriesContent(
         state = listState,
         header = {
             PageHeader(title = "分类") {
-                IconButton(onClick = onOpenSearch, modifier = Modifier.size(40.dp)) {
+                PicaIconButton(onClick = onOpenSearch, modifier = Modifier.size(40.dp)) {
                     PicaGlyph(
                         icon = PicaIcon.Search,
                         modifier = Modifier.size(22.dp),

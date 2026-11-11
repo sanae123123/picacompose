@@ -1,12 +1,12 @@
 package com.picacompose.ui.components
 
+import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.runtime.Composable
@@ -66,9 +66,9 @@ fun PicaImageViewer(url: String, onDismiss: () -> Unit) {
                     .transformable(transformState),
             )
             if (loading) {
-                CircularProgressIndicator(
+                PicaCircularProgress(
                     strokeWidth = 2.dp,
-                    colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = MiuixTheme.colorScheme.primary),
+                    color = MiuixTheme.colorScheme.primary,
                 )
             }
         }

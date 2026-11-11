@@ -20,6 +20,47 @@ internal fun baselineMaterialYouScheme(darkTheme: Boolean): ColorScheme =
     if (darkTheme) darkColorScheme() else lightColorScheme()
 
 /**
+ * 反过来：把 miuix 的 [Colors] 摊成 MD3 的 [ColorScheme]。
+ *
+ * MIUI 皮肤下 Material3 的控件（弹窗外壳、Material You 才用的那批）也归我们管，
+ * 让它们跟着 MIUI 的配色走，不要露出 Material3 默认的那套紫。
+ */
+internal fun Colors.toMd3Scheme(darkTheme: Boolean): ColorScheme {
+    val base = if (darkTheme) darkColorScheme() else lightColorScheme()
+    return base.copy(
+        primary = primary,
+        onPrimary = onPrimary,
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = onPrimaryContainer,
+        secondary = secondary,
+        onSecondary = onSecondary,
+        secondaryContainer = secondaryContainer,
+        onSecondaryContainer = onSecondaryContainer,
+        tertiary = tertiaryContainer,
+        onTertiary = onTertiaryContainer,
+        tertiaryContainer = tertiaryContainer,
+        onTertiaryContainer = onTertiaryContainer,
+        background = background,
+        onBackground = onBackground,
+        surface = surface,
+        onSurface = onSurface,
+        surfaceVariant = surfaceVariant,
+        onSurfaceVariant = onSurfaceSecondary,
+        surfaceContainer = surfaceContainer,
+        surfaceContainerHigh = surfaceContainerHigh,
+        surfaceContainerHighest = surfaceContainerHighest,
+        surfaceContainerLow = surfaceVariant,
+        surfaceContainerLowest = surfaceVariant,
+        outline = outline,
+        outlineVariant = dividerLine,
+        error = error,
+        onError = onError,
+        errorContainer = errorContainer,
+        onErrorContainer = onErrorContainer,
+    )
+}
+
+/**
  * 把 MD3 的 [ColorScheme] 铺到 miuix 的 [Colors] 上。
  *
  * 我们界面里的「卡片」用的是 miuix 的 `tertiaryContainer`，这里把它对到 MD3 的

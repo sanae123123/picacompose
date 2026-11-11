@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaSwitch
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Column
@@ -452,7 +453,7 @@ private fun SwitchRow(
             )
         }
         Spacer(Modifier.width(10.dp))
-        Switch(
+        PicaSwitch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             enabled = enabled,

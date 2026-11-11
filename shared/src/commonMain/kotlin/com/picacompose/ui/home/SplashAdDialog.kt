@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Text
@@ -69,8 +69,8 @@ fun SplashAdDialog(
         Box(Modifier.fillMaxSize().background(Color.Black)) {
             val current = ad
             when {
-                loading -> CircularProgressIndicator(
-                    colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = Color.White),
+                loading -> PicaCircularProgress(
+                    color = Color.White,
                     modifier = Modifier.align(Alignment.Center),
                 )
 

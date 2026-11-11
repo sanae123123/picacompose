@@ -1,5 +1,7 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaButton
+import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -36,7 +38,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import com.picacompose.ui.components.PicaAlertDialog
 import top.yukonga.miuix.kmp.basic.Button
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -164,8 +165,8 @@ fun LoadingBlock(text: String = "加载中…") {
         modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        CircularProgressIndicator(
-colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.primary),
+        PicaCircularProgress(
+color = colors.primary,
 modifier = Modifier.size(24.dp),
             strokeWidth = 2.5.dp,
         )
@@ -188,7 +189,7 @@ fun FailedBlock(message: String, onRetry: () -> Unit) {
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(14.dp))
-        Button(onClick = onRetry, cornerRadius = 999.dp) { Text("再试一次") }
+        PicaButton(onClick = onRetry, cornerRadius = 999.dp) { Text("再试一次") }
     }
 }
 
@@ -429,7 +430,7 @@ fun ListFooter(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            PicaCircularProgress(Modifier.size(16.dp), strokeWidth = 2.dp)
             Spacer(Modifier.width(10.dp))
             Text(
                 text = "再拉一页…",
@@ -449,7 +450,7 @@ fun ListFooter(
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(10.dp))
-            Button(onClick = onRetry, cornerRadius = 999.dp) { Text("再试一次") }
+            PicaButton(onClick = onRetry, cornerRadius = 999.dp) { Text("再试一次") }
         }
 
         !hasMore -> Box(

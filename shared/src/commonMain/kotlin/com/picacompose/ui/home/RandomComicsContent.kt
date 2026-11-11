@@ -1,5 +1,7 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaIconButton
+import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -23,7 +25,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
 import com.picacompose.ui.theme.SkinTokens
@@ -201,7 +202,7 @@ fun RandomComicsContent(
                 onRefresh = { loadFirst() },
                 header = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                        PicaIconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                             PicaGlyph(
                                 icon = PicaIcon.Back,
                                 modifier = Modifier.size(22.dp),
@@ -283,14 +284,14 @@ fun RandomComicsContent(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     if (swapping) {
-                        CircularProgressIndicator(
-colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.onPrimary),
+                        PicaCircularProgress(
+color = colors.onPrimary,
 modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
                         )
                     } else if (swapError == null) {
-                        CircularProgressIndicator(
-colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.onPrimary),
+                        PicaCircularProgress(
+color = colors.onPrimary,
 progress = (pullPx / thresholdPx).coerceIn(0f, 1f),
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,

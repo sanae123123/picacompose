@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import androidx.compose.material3.Icon as Md3Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar as Md3NavigationBar
+import androidx.compose.material3.NavigationBarItem as Md3NavigationBarItem
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -48,6 +52,7 @@ import com.picacompose.data.keepImageIpsFresh
 import com.picacompose.data.refreshImageHost
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
+import com.picacompose.ui.components.md3Skin
 import com.picacompose.ui.components.vector
 import com.picacompose.ui.components.overlayBounds
 import com.picacompose.ui.components.WebPageContent
@@ -875,16 +880,43 @@ private fun PicaNavigationBar(pagerState: PagerState, onSelect: (HomeTab) -> Uni
     val selected by remember(pagerState) {
         derivedStateOf { tabs[pagerState.currentPage.coerceIn(tabs.indices)] }
     }
-    NavigationBar(
-        color = colors.surfaceVariant.copy(alpha = 0.96f),
-    ) {
-        tabs.forEach { tab ->
-            NavigationBarItem(
-                selected = tab == selected,
-                onClick = { onSelect(tab) },
-                icon = tab.icon.vector(tab == selected),
-                label = tab.label,
-            )
+    if (md3Skin) {
+        val md3 = MaterialTheme.colorScheme
+        Md3NavigationBar(containerColor = md3.surfaceContainer) {
+            tabs.forEach { tab ->
+                val active = tab == selected
+                Md3NavigationBarItem(
+                    selected = active,
+                    onClick = { onSelect(tab) },
+                    icon = {
+                        Md3Icon(
+                            imageVector = tab.icon.vector(active),
+                            contentDescription = tab.label,
+                            tint = if (active) md3.onSecondaryContainer else md3.onSurfaceVariant,
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = tab.label,
+                            style = MiuixTheme.textStyles.footnote2,
+                            color = if (active) md3.onSurface else md3.onSurfaceVariant,
+                        )
+                    },
+                )
+            }
+        }
+    } else {
+        NavigationBar(
+            color = colors.surfaceVariant.copy(alpha = 0.96f),
+        ) {
+            tabs.forEach { tab ->
+                NavigationBarItem(
+                    selected = tab == selected,
+                    onClick = { onSelect(tab) },
+                    icon = tab.icon.vector(tab == selected),
+                    label = tab.label,
+                )
+            }
         }
     }
 }

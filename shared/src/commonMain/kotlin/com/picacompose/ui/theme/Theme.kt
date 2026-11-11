@@ -1,6 +1,7 @@
 package com.picacompose.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -8,13 +9,12 @@ import top.yukonga.miuix.kmp.theme.darkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
 
 /**
- * 两套皮肤共用同一套 miuix 组件，只换色板：
+ * 一种皮肤，两套控件实现。
  *
- * - MIUI 风格：miuix 自带的色板（白色背景 + MIUI 蓝）。
- * - Material You：Android 12 起跟着壁纸动态取色，其余平台用 MD3 基线色板。
- *
- * 现在的界面里「卡片」用的是 `tertiaryContainer`，Material You 下会被映射成 MD3 的
- * 带色调表面层，所以切过去是 MD3 的观感，不是把组件换回原来那套。
+ * 组件层（`ui/components` 里的 Pica* 组件）按当前皮肤挑控件：MIUI 风格用 miuix 的，
+ * Material You 用 Material3 的。两个皮肤都同时提供 [MiuixTheme] 和 [MaterialTheme]，
+ * 这样两边的控件都拿到同一份色板——MIUI 皮肤下 MaterialTheme 是从 miuix 色板反推的，
+ * Material You 皮肤下 miuix 色板是从 MD3 色板映射的。
  */
 private val MiuixLightColors = lightColorScheme()
 
@@ -25,15 +25,20 @@ fun PicaTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    val colors = when (SkinState.current) {
-        AppSkin.Miuix -> if (darkTheme) MiuixDarkColors else MiuixLightColors
+    when (SkinState.current) {
+        AppSkin.Miuix -> {
+            val miuixColors = if (darkTheme) MiuixDarkColors else MiuixLightColors
+            val md3Colors = remember(miuixColors, darkTheme) { miuixColors.toMd3Scheme(darkTheme) }
+            MaterialTheme(colorScheme = md3Colors) {
+                MiuixTheme(colors = miuixColors, content = content)
+            }
+        }
+
         AppSkin.MaterialYou -> {
             val scheme = materialYouScheme(darkTheme)
-            remember(scheme) { scheme.toMiuixColors() }
+            MiuixTheme(colors = remember(scheme) { scheme.toMiuixColors() }) {
+                MaterialTheme(colorScheme = scheme, content = content)
+            }
         }
     }
-    MiuixTheme(
-        colors = colors,
-        content = content,
-    )
 }

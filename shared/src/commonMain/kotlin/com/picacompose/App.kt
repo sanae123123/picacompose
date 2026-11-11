@@ -1,12 +1,12 @@
 package com.picacompose
 
+import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import com.picacompose.ui.components.PicaAlertDialog
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
@@ -243,10 +243,10 @@ private fun imageFetcher(): NetworkFetcher.Factory {
 private fun RestoreScreen() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         PicaBackdrop()
-        CircularProgressIndicator(
+        PicaCircularProgress(
             modifier = Modifier.size(28.dp),
             strokeWidth = 3.dp,
-            colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = MiuixTheme.colorScheme.primary),
+            color = MiuixTheme.colorScheme.primary,
         )
     }
 }

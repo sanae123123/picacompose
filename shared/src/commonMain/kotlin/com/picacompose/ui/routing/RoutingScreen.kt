@@ -1,5 +1,6 @@
 package com.picacompose.ui.routing
 
+import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -217,8 +217,8 @@ private fun LineCard(
             when {
                 idle && !probe.done -> Unit
                 !probe.done -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(
-colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.onSurfaceSecondary),
+                    PicaCircularProgress(
+color = colors.onSurfaceSecondary,
 modifier = Modifier.size(14.dp),
                         strokeWidth = 2.dp,
                     )

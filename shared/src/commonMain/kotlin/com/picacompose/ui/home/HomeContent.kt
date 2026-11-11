@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -175,7 +176,7 @@ fun HomeContent(
                     color = colors.error,
                 )
                 Spacer(Modifier.height(8.dp))
-                Button(onClick = feed::retry, cornerRadius = 999.dp) { Text("再试一次") }
+                PicaButton(onClick = feed::retry, cornerRadius = 999.dp) { Text("再试一次") }
             }
 
             groups == null -> item { LoadingBlock("正在拉推荐…") }
