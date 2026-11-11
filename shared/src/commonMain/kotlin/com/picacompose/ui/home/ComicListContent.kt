@@ -575,7 +575,7 @@ internal fun ComicListRow(
     val colors = MiuixTheme.colorScheme
     Surface(
         shape = RoundedCornerShape(22.dp),
-        color = colors.surface,
+        color = colors.tertiaryContainer,
         modifier = modifier.fillMaxWidth().padding(bottom = 12.dp),
     ) {
         Row(

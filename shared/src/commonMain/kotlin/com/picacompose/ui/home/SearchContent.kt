@@ -548,7 +548,7 @@ private fun HotKeywordChip(text: String, onClick: () -> Unit) {
     val colors = MiuixTheme.colorScheme
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = colors.secondaryContainer.copy(alpha = 0.75f),
+        color = colors.tertiaryContainer,
         modifier = Modifier.clickable(onClick = onClick),
     ) {
         Text(

@@ -199,12 +199,12 @@ private fun NotificationAvatar(message: NotificationDoc) {
     val colors = MiuixTheme.colorScheme
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = colors.secondaryContainer,
+        color = colors.tertiaryContainer,
         modifier = Modifier.size(42.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
             if (message.system) {
-                PicaGlyph(PicaIcon.Notice, Modifier.size(20.dp), colors.onSecondaryContainer)
+                PicaGlyph(PicaIcon.Notice, Modifier.size(20.dp), colors.onTertiaryContainer)
             } else {
                 val avatarUrl = message.sender?.avatar.url()
                 if (avatarUrl != null) {

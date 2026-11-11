@@ -231,13 +231,13 @@ internal fun PillTabs(
             val active = index == selected
             Surface(
                 shape = RoundedCornerShape(999.dp),
-                color = if (active) colors.secondaryContainer else colors.surface,
+                color = if (active) colors.primaryContainer else colors.surfaceVariant,
                 modifier = Modifier.clickable { onSelect(index) },
             ) {
                 Text(
                     text = label,
                     style = MiuixTheme.textStyles.button,
-                    color = if (active) colors.onSecondaryContainer else colors.onSurfaceSecondary,
+                    color = if (active) colors.onPrimaryContainer else colors.onSurfaceSecondary,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }

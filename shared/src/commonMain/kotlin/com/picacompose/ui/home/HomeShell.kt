@@ -876,7 +876,7 @@ private fun PicaNavigationBar(pagerState: PagerState, onSelect: (HomeTab) -> Uni
         derivedStateOf { tabs[pagerState.currentPage.coerceIn(tabs.indices)] }
     }
     NavigationBar(
-        color = colors.surface.copy(alpha = 0.94f),
+        color = colors.surfaceVariant.copy(alpha = 0.96f),
     ) {
         tabs.forEach { tab ->
             NavigationBarItem(

@@ -473,7 +473,8 @@ private fun ResumeCard(
     val colors = MiuixTheme.colorScheme
     Surface(
         shape = RoundedCornerShape(22.dp),
-        color = colors.secondaryContainer,
+        color = colors.primary,
+        contentColor = colors.onPrimary,
         modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp).clickable(onClick = onResume),
     ) {
         Row(
@@ -484,7 +485,7 @@ private fun ResumeCard(
                 Text(
                     text = if (progress == null) "开始阅读" else "继续阅读",
                     style = MiuixTheme.textStyles.button,
-                    color = colors.onSecondaryContainer,
+                    color = colors.onPrimary,
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -497,7 +498,7 @@ private fun ResumeCard(
                         }
                     },
                     style = MiuixTheme.textStyles.footnote1,
-                    color = colors.onSecondaryContainer.copy(alpha = 0.8f),
+                    color = colors.onPrimary.copy(alpha = 0.85f),
                 )
             }
             Text(
@@ -747,7 +748,7 @@ private fun ActionPill(
     val colors = MiuixTheme.colorScheme
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = if (active) colors.secondaryContainer else colors.surface,
+        color = if (active) colors.primaryContainer else colors.surfaceVariant,
         modifier = Modifier.clickable(onClick = onClick),
     ) {
         Row(
@@ -760,12 +761,12 @@ private fun ActionPill(
                 // 点过是实心、没点过是空心，一眼能分出来。
                 filled = active,
                 modifier = Modifier.size(16.dp),
-                tint = if (active) colors.onSecondaryContainer else colors.onSurfaceSecondary,
+                tint = if (active) colors.onPrimaryContainer else colors.onSurfaceSecondary,
             )
             Text(
                 text = label,
                 style = MiuixTheme.textStyles.button,
-                color = if (active) colors.onSecondaryContainer else colors.onSurfaceSecondary,
+                color = if (active) colors.onPrimaryContainer else colors.onSurfaceSecondary,
             )
         }
     }

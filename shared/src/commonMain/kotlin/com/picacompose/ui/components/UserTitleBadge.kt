@@ -22,8 +22,8 @@ fun UserTitleBadge(title: String?, modifier: Modifier = Modifier) {
     val colors = MiuixTheme.colorScheme
     Surface(
         shape = RoundedCornerShape(5.dp),
-        color = colors.secondaryContainer,
-        contentColor = colors.onSecondaryContainer,
+        color = colors.primaryContainer,
+        contentColor = colors.onPrimaryContainer,
         modifier = modifier,
     ) {
         Text(

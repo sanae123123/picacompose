@@ -96,8 +96,8 @@ fun PicaFilterChip(
     val colors = MiuixTheme.colorScheme
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = if (selected) colors.primary.copy(alpha = 0.12f) else colors.secondaryContainer,
-        contentColor = if (selected) colors.primary else colors.onSecondaryContainer,
+        color = if (selected) colors.primary.copy(alpha = 0.15f) else colors.tertiaryContainer,
+        contentColor = if (selected) colors.primary else colors.onTertiaryContainer,
         modifier = Modifier.clickable(onClick = onClick),
     ) {
         Row(
@@ -121,8 +121,8 @@ fun PicaInputChip(
     val colors = MiuixTheme.colorScheme
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = if (selected) colors.primary.copy(alpha = 0.12f) else colors.secondaryContainer,
-        contentColor = if (selected) colors.primary else colors.onSecondaryContainer,
+        color = if (selected) colors.primary.copy(alpha = 0.15f) else colors.tertiaryContainer,
+        contentColor = if (selected) colors.primary else colors.onTertiaryContainer,
         modifier = Modifier.clickable(onClick = onClick),
     ) {
         Row(
@@ -233,14 +233,14 @@ fun PicaOutlinedButton(
     val colors = MiuixTheme.colorScheme
     Button(
         onClick = onClick,
-        modifier = modifier.border(1.dp, colors.dividerLine, RoundedCornerShape(999.dp)),
+        modifier = modifier.border(1.dp, colors.primary.copy(alpha = 0.35f), RoundedCornerShape(999.dp)),
         enabled = enabled,
         cornerRadius = 999.dp,
         insideMargin = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
         colors = ButtonDefaults.buttonColors(
-            color = colors.surface,
-            disabledColor = colors.surface,
-            contentColor = colors.onSurface,
+            color = colors.tertiaryContainer,
+            disabledColor = colors.tertiaryContainer,
+            contentColor = colors.primary,
             disabledContentColor = colors.disabledOnSurface,
         ),
         content = content,

@@ -194,12 +194,12 @@ private fun LineCard(
                         Spacer(Modifier.size(8.dp))
                         Surface(
                             shape = RoundedCornerShape(999.dp),
-                            color = colors.surfaceVariant,
+                            color = colors.tertiaryContainer,
                         ) {
                             Text(
                                 text = "上次",
                                 style = MiuixTheme.textStyles.footnote2,
-                                color = colors.onSurfaceSecondary,
+                                color = colors.onTertiaryContainer,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                             )
                         }

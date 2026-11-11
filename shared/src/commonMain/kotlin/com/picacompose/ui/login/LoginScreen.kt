@@ -150,7 +150,7 @@ private fun LoginCard(
     val colors = MiuixTheme.colorScheme
     Surface(
         shape = RoundedCornerShape(28.dp),
-        color = colors.surface,
+        color = colors.tertiaryContainer,
         shadowElevation = 10.dp,
         modifier = Modifier.fillMaxWidth(),
     ) {

@@ -321,10 +321,10 @@ private fun QuickCard(
                 Box(
                     modifier = Modifier
                         .size(34.dp)
-                        .background(colors.secondaryContainer, CircleShape),
+                        .background(colors.primaryContainer, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    PicaGlyph(icon, Modifier.size(18.dp), colors.onSecondaryContainer)
+                    PicaGlyph(icon, Modifier.size(18.dp), colors.onPrimaryContainer)
                 }
                 // 有新消息：图标右上角点个红点。
                 if (badge) {

@@ -377,7 +377,7 @@ fun CommentReplyDialog(
                         Spacer(Modifier.height(8.dp))
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = colors.surfaceVariant.copy(alpha = 0.6f),
+                            color = colors.tertiaryContainer.copy(alpha = 0.6f),
                         ) {
                             Text(
                                 text = target.root.content,
@@ -629,7 +629,7 @@ fun CommentRow(
                     } else {
                         Surface(
                             shape = RoundedCornerShape(19.dp),
-                            color = colors.surfaceVariant,
+                            color = colors.tertiaryContainer,
                             modifier = Modifier
                                 .size(38.dp)
                                 .then(
@@ -822,7 +822,7 @@ private fun ReplyRow(comment: Comment, onReply: (() -> Unit)? = null) {
         } else {
             Surface(
                 shape = RoundedCornerShape(13.dp),
-                color = colors.surfaceVariant,
+                color = colors.tertiaryContainer,
                 modifier = Modifier
                     .size(26.dp)
                     .then(if (user != null) Modifier.clickable { introUser = user } else Modifier),

@@ -273,7 +273,7 @@ fun RandomComicsContent(
         ) {
             Surface(
                 shape = RoundedCornerShape(999.dp),
-                color = if (swapError != null) colors.errorContainer else colors.secondaryContainer,
+                color = if (swapError != null) colors.errorContainer else colors.primary,
                 shadowElevation = 3.dp,
             ) {
                 Row(
@@ -283,13 +283,13 @@ fun RandomComicsContent(
                 ) {
                     if (swapping) {
                         CircularProgressIndicator(
-colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.onSecondaryContainer),
+colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.onPrimary),
 modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
                         )
                     } else if (swapError == null) {
                         CircularProgressIndicator(
-colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.onSecondaryContainer),
+colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = colors.onPrimary),
 progress = (pullPx / thresholdPx).coerceIn(0f, 1f),
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
@@ -305,7 +305,7 @@ progress = (pullPx / thresholdPx).coerceIn(0f, 1f),
                         color = if (swapError != null) {
                             colors.onErrorContainer
                         } else {
-                            colors.onSecondaryContainer
+                            colors.onPrimary
                         },
                     )
                 }

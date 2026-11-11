@@ -99,7 +99,7 @@ fun PicaCard(
 ) {
     Surface(
         shape = RoundedCornerShape(28.dp),
-        color = MiuixTheme.colorScheme.surface,
+        color = MiuixTheme.colorScheme.tertiaryContainer,
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(18.dp), content = content)
@@ -111,12 +111,12 @@ fun InfoChip(text: String) {
     val colors = MiuixTheme.colorScheme
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = colors.secondaryContainer.copy(alpha = 0.85f),
+        color = colors.tertiaryContainer,
     ) {
         Text(
             text = text,
             style = MiuixTheme.textStyles.footnote1,
-            color = colors.onSecondaryContainer,
+            color = colors.onTertiaryContainer,
             maxLines = 1,
             softWrap = false,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
