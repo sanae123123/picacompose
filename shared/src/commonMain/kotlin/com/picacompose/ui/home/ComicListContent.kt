@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import com.picacompose.ui.components.PicaDivider
 import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaIconButton
 import com.picacompose.ui.components.rememberDialogPop
@@ -31,7 +32,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.picacompose.ui.components.PicaDropdownMenu
 import com.picacompose.ui.components.PicaDropdownMenuItem
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.IconButton
 import com.picacompose.ui.components.PicaInputChip
 import com.picacompose.ui.theme.SkinTokens
@@ -199,7 +199,7 @@ fun ComicListContent(
                                 showJump = true
                             },
                         )
-                        HorizontalDivider()
+                        PicaDivider()
                         Text(
                             text = "排序方式",
                             style = MiuixTheme.textStyles.footnote2,

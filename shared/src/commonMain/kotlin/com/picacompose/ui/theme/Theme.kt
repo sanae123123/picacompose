@@ -36,8 +36,13 @@ fun PicaTheme(
 
         AppSkin.MaterialYou -> {
             val scheme = materialYouScheme(darkTheme)
-            MiuixTheme(colors = remember(scheme) { scheme.toMiuixColors() }) {
-                MaterialTheme(colorScheme = scheme, content = content)
+            MaterialTheme(colorScheme = scheme) {
+                MiuixTheme(
+                    colors = remember(scheme) { scheme.toMiuixColors() },
+                    textStyles = md3MiuixTextStyles(),
+                ) {
+                    content()
+                }
             }
         }
     }

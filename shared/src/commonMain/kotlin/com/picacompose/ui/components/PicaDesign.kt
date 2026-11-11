@@ -1,5 +1,6 @@
 package com.picacompose.ui.components
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button as Md3Button
@@ -9,6 +10,8 @@ import androidx.compose.material3.CircularProgressIndicator as Md3CircularProgre
 import androidx.compose.material3.IconButton as Md3IconButton
 import androidx.compose.material3.LinearProgressIndicator as Md3LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider as Md3HorizontalDivider
+import androidx.compose.material3.Scaffold as Md3Scaffold
 import androidx.compose.material3.contentColorFor
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
@@ -32,6 +35,8 @@ import top.yukonga.miuix.kmp.basic.LinearProgressIndicator as MiuixLinearProgres
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.Switch as MiuixSwitch
 import top.yukonga.miuix.kmp.theme.LocalContentColor as MiuixLocalContentColor
+import top.yukonga.miuix.kmp.basic.HorizontalDivider as MiuixHorizontalDivider
+import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.basic.Surface as MiuixSurface
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.ui.state.ToggleableState
@@ -321,5 +326,45 @@ fun PicaLinearProgress(
                 backgroundColor = trackColor,
             ),
         )
+    }
+}
+
+/** 页面骨架：Material You 下用 MD3 的 Scaffold，MIUI 下用 miuix 的。 */
+@Composable
+fun PicaScaffold(
+    modifier: Modifier = Modifier,
+    containerColor: Color = Color.Unspecified,
+    bottomBar: @Composable () -> Unit = {},
+    content: @Composable (PaddingValues) -> Unit,
+) {
+    if (md3Skin) {
+        Md3Scaffold(
+            modifier = modifier,
+            containerColor = containerColor,
+            bottomBar = bottomBar,
+        ) { inner ->
+            val contentColor = MiuixTheme.colorScheme.onBackground
+            MiuixTextColor(contentColor) { content(inner) }
+        }
+    } else {
+        MiuixScaffold(
+            modifier = modifier,
+            containerColor = if (containerColor == Color.Unspecified) MiuixTheme.colorScheme.background else containerColor,
+            bottomBar = bottomBar,
+            content = content,
+        )
+    }
+}
+
+/** 分割线：Material You 用 MD3 的，MIUI 用 miuix 的。 */
+@Composable
+fun PicaDivider(modifier: Modifier = Modifier) {
+    if (md3Skin) {
+        Md3HorizontalDivider(
+            modifier = modifier,
+            color = MaterialTheme.colorScheme.outlineVariant,
+        )
+    } else {
+        MiuixHorizontalDivider(modifier = modifier)
     }
 }

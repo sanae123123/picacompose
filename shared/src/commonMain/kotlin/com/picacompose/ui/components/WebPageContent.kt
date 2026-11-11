@@ -1,5 +1,6 @@
 package com.picacompose.ui.components
 
+import com.picacompose.ui.components.PicaDivider
 import com.picacompose.ui.components.PicaIconButton
 import com.picacompose.ui.components.PicaLinearProgress
 import androidx.compose.animation.core.Animatable
@@ -18,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.picacompose.ui.components.PicaDropdownMenu
 import com.picacompose.ui.components.PicaDropdownMenuItem
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -125,7 +125,7 @@ fun WebPageContent(
                             onBack()
                         },
                     )
-                    HorizontalDivider()
+                    PicaDivider()
                     PicaDropdownMenuItem(
                         text = { Text("用默认浏览器打开") },
                         onClick = {

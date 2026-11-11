@@ -3,9 +3,41 @@ package com.picacompose.ui.theme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import top.yukonga.miuix.kmp.theme.Colors
+import top.yukonga.miuix.kmp.theme.TextStyles
+
+/**
+ * 把 MD3 的字体层级摊到 miuix 的 [TextStyles] 上。
+ *
+ * 页面里的文字大部分还是 miuix 的 `Text`，Material You 皮肤下要让它们长成 MD3 的样子，
+ * 最省事也最一致的办法就是把整套 textStyle 换掉 —— 字号、字重、行高全跟着走。
+ */
+@Composable
+internal fun md3MiuixTextStyles(): TextStyles {
+    val typography = MaterialTheme.typography
+    return remember(typography) {
+        TextStyles(
+            main = typography.bodyLarge,
+            paragraph = typography.bodyLarge,
+            body1 = typography.bodyMedium,
+            body2 = typography.bodySmall,
+            button = typography.labelLarge,
+            footnote1 = typography.labelMedium,
+            footnote2 = typography.labelSmall,
+            headline1 = typography.headlineSmall,
+            headline2 = typography.titleLarge,
+            subtitle = typography.titleMedium,
+            title1 = typography.titleLarge,
+            title2 = typography.titleMedium,
+            title3 = typography.titleSmall,
+            title4 = typography.titleSmall,
+        )
+    }
+}
 
 /**
  * Material You 的色板来源。

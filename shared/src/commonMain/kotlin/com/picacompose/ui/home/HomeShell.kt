@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import com.picacompose.ui.components.PicaScaffold
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.material3.Icon as Md3Icon
 import androidx.compose.material3.MaterialTheme
@@ -21,7 +22,6 @@ import androidx.compose.material3.NavigationBar as Md3NavigationBar
 import androidx.compose.material3.NavigationBarItem as Md3NavigationBarItem
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
-import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -401,7 +401,7 @@ fun HomeShell(
                     val leaderboardSource = with(shared) {
                         overlayBounds(OverlayPage.Leaderboard.sharedKey, contentScope)
                     }
-                    Scaffold(
+                    PicaScaffold(
                         containerColor = Color.Transparent,
                         bottomBar = {
                             PicaNavigationBar(
