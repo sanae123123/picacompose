@@ -593,15 +593,21 @@ private fun DetailHero(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         tags.forEach { tag ->
-                            Text(
-                                text = "#$tag",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colors.primary,
+                            // 点一下按这个标签看同类本子。做成有底色的小块，点中的范围比一行小字大。
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = colors.primary.copy(alpha = 0.10f),
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .clickable { onSearchTag(tag) }
-                                    .padding(horizontal = 3.dp, vertical = 2.dp),
-                            )
+                                    .clickable { onSearchTag(tag) },
+                            ) {
+                                Text(
+                                    text = "#$tag",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = colors.primary,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp),
+                                )
+                            }
                         }
                     }
                 }

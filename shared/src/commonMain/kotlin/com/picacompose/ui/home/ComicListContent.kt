@@ -95,17 +95,16 @@ fun ComicListContent(
     var showFilter by remember { mutableStateOf(false) }
 
     // 筛选弹窗里的候选标签：服务端没有标签字典接口，就拿当前列表里出现过的标签按频次凑。
-    val tagSuggestions = remember(pager.items) {
-        pager.items
-            .flatMap { it.tags }
-            .filter { it.isNotBlank() }
-            .groupingBy { it }
-            .eachCount()
-            .entries
-            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
-            .map { it.key }
-            .take(40)
-    }
+    // 不用 remember 缓存：列表续页后 items 变了，缓存会让候选一直停在第几页的状态。
+    val tagSuggestions = pager.items
+        .flatMap { it.tags }
+        .filter { it.isNotBlank() }
+        .groupingBy { it }
+        .eachCount()
+        .entries
+        .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+        .map { it.key }
+        .take(40)
 
     LaunchedEffect(pager) {
         // 换排序会换一个 pager，回到顶部重新看。
@@ -332,7 +331,7 @@ internal fun ComicFilterDialog(
         text = {
             Column(
                 Modifier
-                    .heightIn(max = 460.dp)
+                    .heightIn(max = 520.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
                 Text(
@@ -355,7 +354,7 @@ internal fun ComicFilterDialog(
                         )
                     }
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
                 Text(
                     text = "完结状态",
                     style = MaterialTheme.typography.labelMedium,
@@ -376,7 +375,7 @@ internal fun ComicFilterDialog(
                         )
                     }
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "标签筛选",
@@ -393,13 +392,14 @@ internal fun ComicFilterDialog(
                         }
                     }
                 }
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(2.dp))
                 Text(
-                    text = "包含的标签本子要同时都有，排除的标签一个都不能有。服务端只认一个「包含」标签，其余在本地筛，命中少会自动多翻几页。标签不必是列表里出现过的。",
+                    text = "包含的都要有，排除的都不能有。第一个「包含」走接口，其余在本地筛；标签不必是列表里出现过的。",
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.onSurfaceVariant,
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
+                // 先选好这一条要加进哪一边，再输入 / 点标签，位置就在输入框上面，不用往下翻。
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = !excludeMode,
@@ -434,10 +434,52 @@ internal fun ComicFilterDialog(
                         Text(if (excludeMode) "排除" else "包含")
                     }
                 }
-                if (draftTags.isNotEmpty()) {
+                // 快速添加：列表里出现过的标签直接点就进当前这一边，输入了字就只留对得上的。
+                val typed = tagInput.trim()
+                val remaining = tagSuggestions
+                    .filter { candidate ->
+                        (draftTags + draftExcluded).none { it.equals(candidate, ignoreCase = true) }
+                    }
+                    .filter { candidate -> typed.isEmpty() || candidate.contains(typed, ignoreCase = true) }
+                    .take(24)
+                if (remaining.isNotEmpty()) {
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        text = "包含",
+                        text = if (typed.isEmpty()) {
+                            "点一下加到${if (excludeMode) "排除" else "包含"}："
+                        } else {
+                            "匹配「$typed」，点一下加到${if (excludeMode) "排除" else "包含"}："
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        remaining.forEach { tag ->
+                            FilterChip(
+                                selected = false,
+                                onClick = { addTag(tag) },
+                                label = {
+                                    Text(text = tag, style = MaterialTheme.typography.bodySmall)
+                                },
+                            )
+                        }
+                    }
+                } else if (typed.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "列表里没有对得上的，点上面的「${if (excludeMode) "排除" else "包含"}」直接用「$typed」。",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+                if (draftTags.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "已包含",
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.primary,
                     )
@@ -467,7 +509,7 @@ internal fun ComicFilterDialog(
                 if (draftExcluded.isNotEmpty()) {
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        text = "排除",
+                        text = "已排除",
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.error,
                     )
@@ -497,48 +539,6 @@ internal fun ComicFilterDialog(
                             )
                         }
                     }
-                }
-                // 输入框里有字时先挑对得上的标签（输入即联想）；没输入就摆列表里出现过的。
-                val typed = tagInput.trim()
-                val remaining = tagSuggestions
-                    .filter { candidate ->
-                        (draftTags + draftExcluded).none { it.equals(candidate, ignoreCase = true) }
-                    }
-                    .filter { candidate -> typed.isEmpty() || candidate.contains(typed, ignoreCase = true) }
-                    .take(24)
-                if (remaining.isNotEmpty()) {
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = if (typed.isEmpty()) {
-                            "列表里出现过的标签（点一下加到${if (excludeMode) "排除" else "包含"}）"
-                        } else {
-                            "匹配「$typed」的标签（点一下加到${if (excludeMode) "排除" else "包含"}）"
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        remaining.forEach { tag ->
-                            FilterChip(
-                                selected = false,
-                                onClick = { addTag(tag) },
-                                label = {
-                                    Text(text = tag, style = MaterialTheme.typography.bodySmall)
-                                },
-                            )
-                        }
-                    }
-                } else if (typed.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = "列表里没有对得上的，点上面的「${if (excludeMode) "排除" else "包含"}」直接用「$typed」。",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
-                    )
                 }
             }
         },
