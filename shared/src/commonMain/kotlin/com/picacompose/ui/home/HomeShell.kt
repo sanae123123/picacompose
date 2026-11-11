@@ -151,8 +151,14 @@ fun HomeShell(
     val comicTags = remember(comicTagsRaw) {
         comicTagsRaw.split('\n').filter { it.isNotBlank() }
     }
-    val comicPager = remember(comicTitle, comicSort, comicFinished, comicTagsRaw) {
+    // 标签黑名单：带这些标签的本子不要。服务端不支持排除，本地筛。
+    var comicExcludedTagsRaw by rememberSaveable { mutableStateOf("") }
+    val comicExcludedTags = remember(comicExcludedTagsRaw) {
+        comicExcludedTagsRaw.split('\n').filter { it.isNotBlank() }
+    }
+    val comicPager = remember(comicTitle, comicSort, comicFinished, comicTagsRaw, comicExcludedTagsRaw) {
         val extraTags = comicTags.drop(1)
+        val excluded = comicExcludedTags
         Pager(
             load = { page ->
                 pica.comics.list(
@@ -164,11 +170,12 @@ fun HomeShell(
                 )
             },
             itemKey = { it.id },
-            filter = if (extraTags.isEmpty()) {
+            filter = if (extraTags.isEmpty() && excluded.isEmpty()) {
                 null
             } else {
                 { comic: ComicSummary ->
-                    extraTags.all { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } }
+                    extraTags.all { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } } &&
+                        excluded.none { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } }
                 }
             },
         )
@@ -178,11 +185,16 @@ fun HomeShell(
     var tagPageTagsRaw by rememberSaveable { mutableStateOf("") }
     var tagPageSort by rememberSaveable { mutableStateOf<String?>(null) }
     var tagPageFinished by rememberSaveable { mutableStateOf(ComicFinished.All) }
+    var tagPageExcludedTagsRaw by rememberSaveable { mutableStateOf("") }
     val tagPageTags = remember(tagPageTagsRaw) {
         tagPageTagsRaw.split('\n').filter { it.isNotBlank() }
     }
-    val tagPagePager = remember(tagPageTagsRaw, tagPageSort, tagPageFinished) {
+    val tagPageExcludedTags = remember(tagPageExcludedTagsRaw) {
+        tagPageExcludedTagsRaw.split('\n').filter { it.isNotBlank() }
+    }
+    val tagPagePager = remember(tagPageTagsRaw, tagPageSort, tagPageFinished, tagPageExcludedTagsRaw) {
         val extraTags = tagPageTags.drop(1)
+        val excluded = tagPageExcludedTags
         Pager(
             load = { page ->
                 pica.comics.list(
@@ -193,15 +205,19 @@ fun HomeShell(
                 )
             },
             itemKey = { it.id },
-            filter = if (extraTags.isEmpty()) {
+            filter = if (extraTags.isEmpty() && excluded.isEmpty()) {
                 null
             } else {
                 { comic: ComicSummary ->
-                    extraTags.all { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } }
+                    extraTags.all { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } } &&
+                        excluded.none { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } }
                 }
             },
         )
     }
+    // 标签结果页从哪来：退出时要分清「还在看原来那本」和「点了别的本子」，不然返回会打转。
+    var tagPageOriginComicId by rememberSaveable { mutableStateOf("") }
+    var tagPageReturnOrdinal by rememberSaveable { mutableStateOf(OverlayPage.None.ordinal) }
     val tagPageListState = rememberLazyListState()
     // 本子详情：点哪本记它 id / 标题，变形 key 按 id 生成，和列表里那一行对得上。
     var detailComicId by rememberSaveable { mutableStateOf("") }
@@ -346,7 +362,11 @@ fun HomeShell(
         // 搜索退回分类页（顺手清空搜索页）；别的整页直接回主界面。
         when (overlay) {
             OverlayPage.Detail -> overlayOrdinal = detailReturnOrdinal
-            OverlayPage.TagComics -> overlayOrdinal = OverlayPage.Detail.ordinal
+            OverlayPage.TagComics -> overlayOrdinal = if (detailComicId == tagPageOriginComicId) {
+                OverlayPage.Detail.ordinal
+            } else {
+                tagPageReturnOrdinal
+            }
             OverlayPage.Reader -> overlayOrdinal = OverlayPage.Detail.ordinal
             OverlayPage.Search -> exitSearch()
             else -> overlayOrdinal = OverlayPage.None.ordinal
@@ -464,6 +484,7 @@ fun HomeShell(
                                             comicSort = null
                                             comicFinished = ComicFinished.All
                                             comicTagsRaw = ""
+                                            comicExcludedTagsRaw = ""
                                             comicKey = categoryTileKey(category)
                                             overlayOrdinal = OverlayPage.Comics.ordinal
                                         },
@@ -473,6 +494,7 @@ fun HomeShell(
                                             comicSort = "dd"
                                             comicFinished = ComicFinished.All
                                             comicTagsRaw = ""
+                                            comicExcludedTagsRaw = ""
                                             comicKey = "latestTile"
                                             overlayOrdinal = OverlayPage.Comics.ordinal
                                         },
@@ -625,6 +647,8 @@ fun HomeShell(
                                     onFinishedChange = { comicFinished = it },
                                     tags = comicTags,
                                     onTagsChange = { comicTagsRaw = it.joinToString("\n") },
+                                    excludedTags = comicExcludedTags,
+                                    onExcludedTagsChange = { comicExcludedTagsRaw = it.joinToString("\n") },
                                     // 每一行各自挂一个变形源，点开就从那一行长成整屏。
                                     comicRowModifier = { key ->
                                         with(shared) { overlayBounds(key, contentScope) }
@@ -649,6 +673,8 @@ fun HomeShell(
                                     onFinishedChange = { tagPageFinished = it },
                                     tags = tagPageTags,
                                     onTagsChange = { tagPageTagsRaw = it.joinToString("\n") },
+                                    excludedTags = tagPageExcludedTags,
+                                    onExcludedTagsChange = { tagPageExcludedTagsRaw = it.joinToString("\n") },
                                     comicRowModifier = { key ->
                                         with(shared) { overlayBounds(key, contentScope) }
                                     },
@@ -659,8 +685,14 @@ fun HomeShell(
                                         detailReturnOrdinal = OverlayPage.TagComics.ordinal
                                         overlayOrdinal = OverlayPage.Detail.ordinal
                                     },
-                                    // 从详情点标签进来的，返回就回详情。
-                                    onBack = { overlayOrdinal = OverlayPage.Detail.ordinal },
+                                    // 还在看原来那本就回详情；在标签页里点过别的本子，就回进详情前的页面。
+                                    onBack = {
+                                        overlayOrdinal = if (detailComicId == tagPageOriginComicId) {
+                                            OverlayPage.Detail.ordinal
+                                        } else {
+                                            tagPageReturnOrdinal
+                                        }
+                                    },
                                 )
 
                                 OverlayPage.Search -> SearchContent(
@@ -776,8 +808,11 @@ fun HomeShell(
                                             val clean = tag.trim()
                                             if (clean.isNotBlank()) {
                                                 tagPageTagsRaw = clean
+                                                tagPageExcludedTagsRaw = ""
                                                 tagPageSort = null
                                                 tagPageFinished = ComicFinished.All
+                                                tagPageOriginComicId = detailComicId
+                                                tagPageReturnOrdinal = detailReturnOrdinal
                                                 overlayOrdinal = OverlayPage.TagComics.ordinal
                                             }
                                         },

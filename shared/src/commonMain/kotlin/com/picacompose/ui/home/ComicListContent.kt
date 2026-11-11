@@ -77,9 +77,12 @@ fun ComicListContent(
     /** 完结筛选，点了筛选弹窗里的「应用」才变。 */
     finished: ComicFinished = ComicFinished.All,
     onFinishedChange: (ComicFinished) -> Unit = {},
-    /** 标签筛选：多个标签要同时包含。服务端只认一个标签，其余在本地过一遍。 */
+    /** 标签白名单：多个标签要同时包含。服务端只认一个标签，其余在本地过一遍。 */
     tags: List<String> = emptyList(),
     onTagsChange: (List<String>) -> Unit = {},
+    /** 标签黑名单：带这些标签的本子不要。服务端不支持排除，全在本地筛。 */
+    excludedTags: List<String> = emptyList(),
+    onExcludedTagsChange: (List<String>) -> Unit = {},
     /** 点一本就打开详情页；第二个参数是这一行的变形 key。 */
     onOpenComic: (ComicSummary, String) -> Unit = { _, _ -> },
     /** 给每一行挂变形源：详情页的 key 和它配对，点开从这一行长成整屏。 */
@@ -142,7 +145,7 @@ fun ComicListContent(
                     PageHeader(title = title)
                 }
                 // 官方列表右上角有个总数，这里也给一个；加了标签筛之后总数没意义，显示筛出来的条数。
-                val countText = if (tags.isEmpty()) {
+                val countText = if (tags.isEmpty() && excludedTags.isEmpty()) {
                     if (pager.total > 0) "${compactCount(pager.total)} 本" else null
                 } else {
                     "已筛 ${pager.items.size} 本"
@@ -162,7 +165,7 @@ fun ComicListContent(
                     PicaGlyph(
                         icon = PicaIcon.Filter,
                         modifier = Modifier.size(22.dp),
-                        tint = if (finished == ComicFinished.All && tags.isEmpty()) {
+                        tint = if (finished == ComicFinished.All && tags.isEmpty() && excludedTags.isEmpty()) {
                             colors.onBackground
                         } else {
                             colors.primary
@@ -267,12 +270,14 @@ fun ComicListContent(
             sort = sort,
             finished = finished,
             tags = tags,
+            excludedTags = excludedTags,
             tagSuggestions = tagSuggestions,
-            onApply = { newSort, newFinished, newTags ->
+            onApply = { newSort, newFinished, newTags, newExcluded ->
                 showFilter = false
                 onSortChange(newSort)
                 onFinishedChange(newFinished)
                 onTagsChange(newTags)
+                onExcludedTagsChange(newExcluded)
             },
             onDismiss = { showFilter = false },
         )
@@ -290,8 +295,9 @@ internal fun ComicFilterDialog(
     sort: String?,
     finished: ComicFinished,
     tags: List<String>,
+    excludedTags: List<String>,
     tagSuggestions: List<String>,
-    onApply: (String?, ComicFinished, List<String>) -> Unit,
+    onApply: (String?, ComicFinished, List<String>, List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -299,12 +305,23 @@ internal fun ComicFilterDialog(
     var draftSort by remember { mutableStateOf(sort) }
     var draftFinished by remember { mutableStateOf(finished) }
     var draftTags by remember { mutableStateOf(tags) }
+    var draftExcluded by remember { mutableStateOf(excludedTags) }
     var tagInput by remember { mutableStateOf("") }
+    // 新加的标签算「包含」还是「排除」：同一个输入框，靠这个小开关切换。
+    var excludeMode by remember { mutableStateOf(false) }
 
     fun addTag(raw: String) {
         val tag = raw.trim()
         if (tag.isEmpty()) return
-        if (draftTags.none { it.equals(tag, ignoreCase = true) }) draftTags = draftTags + tag
+        if (excludeMode) {
+            if (draftExcluded.none { it.equals(tag, ignoreCase = true) }) {
+                draftExcluded = draftExcluded + tag
+            }
+            draftTags = draftTags.filterNot { it.equals(tag, ignoreCase = true) }
+        } else {
+            if (draftTags.none { it.equals(tag, ignoreCase = true) }) draftTags = draftTags + tag
+            draftExcluded = draftExcluded.filterNot { it.equals(tag, ignoreCase = true) }
+        }
         tagInput = ""
     }
 
@@ -367,18 +384,34 @@ internal fun ComicFilterDialog(
                         color = colors.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
                     )
-                    if (draftTags.isNotEmpty()) {
-                        TextButton(onClick = { draftTags = emptyList() }) {
+                    if (draftTags.isNotEmpty() || draftExcluded.isNotEmpty()) {
+                        TextButton(onClick = {
+                            draftTags = emptyList()
+                            draftExcluded = emptyList()
+                        }) {
                             Text(text = "清空", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "可加多个，要求同时包含。服务端一次只认一个标签，第一个走接口，其余的在这里本地筛，命中少会自动多翻几页。标签不必是列表里出现过的，输入后直接加。",
+                    text = "包含的标签本子要同时都有，排除的标签一个都不能有。服务端只认一个「包含」标签，其余在本地筛，命中少会自动多翻几页。标签不必是列表里出现过的。",
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.onSurfaceVariant,
                 )
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = !excludeMode,
+                        onClick = { excludeMode = false },
+                        label = { Text(text = "包含", style = MaterialTheme.typography.bodySmall) },
+                    )
+                    FilterChip(
+                        selected = excludeMode,
+                        onClick = { excludeMode = true },
+                        label = { Text(text = "排除", style = MaterialTheme.typography.bodySmall) },
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
@@ -387,7 +420,10 @@ internal fun ComicFilterDialog(
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodySmall,
                         placeholder = {
-                            Text(text = "输入标签名", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                text = if (excludeMode) "输入要排除的标签" else "输入要包含的标签",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                         },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { addTag(tagInput) }),
@@ -395,11 +431,17 @@ internal fun ComicFilterDialog(
                     )
                     Spacer(Modifier.width(8.dp))
                     TextButton(onClick = { addTag(tagInput) }, enabled = tagInput.isNotBlank()) {
-                        Text("添加")
+                        Text(if (excludeMode) "排除" else "包含")
                     }
                 }
                 if (draftTags.isNotEmpty()) {
                     Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = "包含",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.primary,
+                    )
+                    Spacer(Modifier.height(6.dp))
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -422,17 +464,56 @@ internal fun ComicFilterDialog(
                         }
                     }
                 }
-                // 输入框里有字时，先把列表里对得上的标签挑出来（输入即联想）；
-                // 没输入就把列表里出现过的标签摆一排当快捷方式。两种都能直接点着加。
+                if (draftExcluded.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = "排除",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.error,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        draftExcluded.forEach { tag ->
+                            InputChip(
+                                selected = true,
+                                onClick = { draftExcluded = draftExcluded - tag },
+                                label = {
+                                    Text(
+                                        text = tag,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.error,
+                                    )
+                                },
+                                trailingIcon = {
+                                    PicaGlyph(
+                                        icon = PicaIcon.Close,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = colors.error,
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
+                // 输入框里有字时先挑对得上的标签（输入即联想）；没输入就摆列表里出现过的。
                 val typed = tagInput.trim()
                 val remaining = tagSuggestions
-                    .filter { candidate -> draftTags.none { it.equals(candidate, ignoreCase = true) } }
+                    .filter { candidate ->
+                        (draftTags + draftExcluded).none { it.equals(candidate, ignoreCase = true) }
+                    }
                     .filter { candidate -> typed.isEmpty() || candidate.contains(typed, ignoreCase = true) }
                     .take(24)
                 if (remaining.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = if (typed.isEmpty()) "列表里出现过的标签" else "匹配「$typed」的标签",
+                        text = if (typed.isEmpty()) {
+                            "列表里出现过的标签（点一下加到${if (excludeMode) "排除" else "包含"}）"
+                        } else {
+                            "匹配「$typed」的标签（点一下加到${if (excludeMode) "排除" else "包含"}）"
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.onSurfaceVariant,
                     )
@@ -454,7 +535,7 @@ internal fun ComicFilterDialog(
                 } else if (typed.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "列表里没有对得上的，点「添加」直接用「$typed」筛。",
+                        text = "列表里没有对得上的，点上面的「${if (excludeMode) "排除" else "包含"}」直接用「$typed」。",
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.onSurfaceVariant,
                     )
@@ -462,7 +543,9 @@ internal fun ComicFilterDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onApply(draftSort, draftFinished, draftTags) }) { Text("应用") }
+            TextButton(onClick = {
+                onApply(draftSort, draftFinished, draftTags, draftExcluded)
+            }) { Text("应用") }
         },
         dismissButton = {
             TextButton(onClick = pop::dismiss) { Text("取消") }

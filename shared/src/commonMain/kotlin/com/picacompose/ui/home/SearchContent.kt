@@ -79,8 +79,12 @@ class SearchState {
     var finished by mutableStateOf(ComicFinished.All)
         private set
 
-    /** 标签筛选：多个要同时包含，搜索接口同样不吃，拢在 [pagerFor] 里本地筛。 */
+    /** 标签白名单：多个要同时包含，搜索接口同样不吃，拢在 [pagerFor] 里本地筛。 */
     var tags by mutableStateOf<List<String>>(emptyList())
+        private set
+
+    /** 标签黑名单：带这些标签的不要，同样本地筛。 */
+    var excludedTags by mutableStateOf<List<String>>(emptyList())
         private set
 
     /** 当前关键词的结果分页；null 是还没搜。 */
@@ -137,6 +141,7 @@ class SearchState {
         sort = null
         finished = ComicFinished.All
         tags = emptyList()
+        excludedTags = emptyList()
         pager = null
         focusPending = false
     }
@@ -157,6 +162,14 @@ class SearchState {
         pager = pagerFor(keyword, sort)
     }
 
+    /** 换标签黑名单，同样的关键词重搜。 */
+    fun onExcludedTagsChange(value: List<String>) {
+        if (value == excludedTags) return
+        excludedTags = value
+        if (keyword.isBlank()) return
+        pager = pagerFor(keyword, sort)
+    }
+
     /**
      * 一次搜索的分页。
      *
@@ -166,14 +179,18 @@ class SearchState {
     private fun pagerFor(keyword: String, sort: String?): Pager<ComicSummary> {
         val want = finished.value
         val wantedTags = tags
+        val unwantedTags = excludedTags
         val filter: ((ComicSummary) -> Boolean)? = when {
-            want == null && wantedTags.isEmpty() -> null
+            want == null && wantedTags.isEmpty() && unwantedTags.isEmpty() -> null
             else -> { comic ->
                 val finishedOk = want == null || comic.finished == want
                 val tagsOk = wantedTags.all { tag ->
                     comic.tags.any { it.equals(tag, ignoreCase = true) }
                 }
-                finishedOk && tagsOk
+                val excludedOk = unwantedTags.none { tag ->
+                    comic.tags.any { it.equals(tag, ignoreCase = true) }
+                }
+                finishedOk && tagsOk && excludedOk
             }
         }
         return Pager(
@@ -288,7 +305,7 @@ fun SearchContent(
                     }
                     if (pager != null && pager.total > 0) {
                         Text(
-                            text = if (state.tags.isEmpty()) {
+                            text = if (state.tags.isEmpty() && state.excludedTags.isEmpty()) {
                                 "${compactCount(pager.total)} 本"
                             } else {
                                 "已筛 ${pager.items.size} 本"
@@ -305,7 +322,9 @@ fun SearchContent(
                         PicaGlyph(
                             icon = PicaIcon.Filter,
                             modifier = Modifier.size(22.dp),
-                            tint = if (state.finished == ComicFinished.All && state.tags.isEmpty()) {
+                            tint = if (state.finished == ComicFinished.All &&
+                                state.tags.isEmpty() && state.excludedTags.isEmpty()
+                            ) {
                                 colors.onBackground
                             } else {
                                 colors.primary
@@ -472,12 +491,14 @@ fun SearchContent(
             sort = state.sort,
             finished = state.finished,
             tags = state.tags,
+            excludedTags = state.excludedTags,
             tagSuggestions = tagSuggestions,
-            onApply = { newSort, newFinished, newTags ->
+            onApply = { newSort, newFinished, newTags, newExcluded ->
                 showFilter = false
                 state.onSortChange(newSort)
                 state.onFinishedChange(newFinished)
                 state.onTagsChange(newTags)
+                state.onExcludedTagsChange(newExcluded)
             },
             onDismiss = { showFilter = false },
         )
