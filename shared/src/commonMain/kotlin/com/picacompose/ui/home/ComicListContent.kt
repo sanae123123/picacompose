@@ -434,48 +434,6 @@ internal fun ComicFilterDialog(
                         Text(if (excludeMode) "排除" else "包含")
                     }
                 }
-                // 快速添加：列表里出现过的标签直接点就进当前这一边，输入了字就只留对得上的。
-                val typed = tagInput.trim()
-                val remaining = tagSuggestions
-                    .filter { candidate ->
-                        (draftTags + draftExcluded).none { it.equals(candidate, ignoreCase = true) }
-                    }
-                    .filter { candidate -> typed.isEmpty() || candidate.contains(typed, ignoreCase = true) }
-                    .take(24)
-                if (remaining.isNotEmpty()) {
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        text = if (typed.isEmpty()) {
-                            "点一下加到${if (excludeMode) "排除" else "包含"}："
-                        } else {
-                            "匹配「$typed」，点一下加到${if (excludeMode) "排除" else "包含"}："
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        remaining.forEach { tag ->
-                            FilterChip(
-                                selected = false,
-                                onClick = { addTag(tag) },
-                                label = {
-                                    Text(text = tag, style = MaterialTheme.typography.bodySmall)
-                                },
-                            )
-                        }
-                    }
-                } else if (typed.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = "列表里没有对得上的，点上面的「${if (excludeMode) "排除" else "包含"}」直接用「$typed」。",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
                 if (draftTags.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
                     Text(
@@ -540,6 +498,49 @@ internal fun ComicFilterDialog(
                         }
                     }
                 }
+                // 快速添加：列表里出现过的标签直接点就进当前这一边，输入了字就只留对得上的。
+                val typed = tagInput.trim()
+                val remaining = tagSuggestions
+                    .filter { candidate ->
+                        (draftTags + draftExcluded).none { it.equals(candidate, ignoreCase = true) }
+                    }
+                    .filter { candidate -> typed.isEmpty() || candidate.contains(typed, ignoreCase = true) }
+                    .take(24)
+                if (remaining.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = if (typed.isEmpty()) {
+                            "点一下加到${if (excludeMode) "排除" else "包含"}："
+                        } else {
+                            "匹配「$typed」，点一下加到${if (excludeMode) "排除" else "包含"}："
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        remaining.forEach { tag ->
+                            FilterChip(
+                                selected = false,
+                                onClick = { addTag(tag) },
+                                label = {
+                                    Text(text = tag, style = MaterialTheme.typography.bodySmall)
+                                },
+                            )
+                        }
+                    }
+                } else if (typed.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "列表里没有对得上的，点上面的「${if (excludeMode) "排除" else "包含"}」直接用「$typed」。",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+
             }
         },
         confirmButton = {
