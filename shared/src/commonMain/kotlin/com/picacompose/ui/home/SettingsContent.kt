@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Arrangement
+import com.picacompose.ui.components.PicaFilterChip
+import com.picacompose.ui.theme.AppSkin
+import com.picacompose.ui.theme.SkinState
 import com.picacompose.ui.components.PicaDropdownMenu
 import com.picacompose.ui.components.PicaDropdownMenuItem
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -111,6 +115,29 @@ fun SettingsContent(onSignOut: () -> Unit) {
     PageScaffold(
         header = { PageHeader(title = "设置") },
     ) {
+        item {
+            PicaCard {
+                DetailRow(icon = PicaIcon.Star, title = "皮肤", value = SkinState.current.label)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    AppSkin.entries.forEach { skin ->
+                        PicaFilterChip(
+                            selected = SkinState.current == skin,
+                            onClick = { SkinState.select(skin) },
+                        ) {
+                            Text(
+                                text = skin.label,
+                                style = MiuixTheme.textStyles.footnote1,
+                                color = MiuixTheme.colorScheme.onSurface,
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+        }
         item {
             PicaCard {
                 SwitchRow(
