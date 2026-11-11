@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
+import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
@@ -94,7 +95,7 @@ fun GamesContent(
 private fun GameCard(game: GameSummary) {
     val colors = MiuixTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = colors.surface,
         modifier = Modifier.fillMaxWidth(),
     ) {

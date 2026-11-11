@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import top.yukonga.miuix.kmp.basic.IconButton
+import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
@@ -109,7 +110,7 @@ private fun HistoryRow(
 ) {
     val colors = MiuixTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = colors.surface,
         modifier = modifier.fillMaxWidth().padding(bottom = 12.dp),
     ) {

@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import top.yukonga.miuix.kmp.basic.IconButton
+import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
@@ -198,7 +199,7 @@ private fun MessageRow(
 private fun NotificationAvatar(message: NotificationDoc) {
     val colors = MiuixTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(999.dp),
+        shape = RoundedCornerShape(SkinTokens.chipRadius),
         color = colors.tertiaryContainer,
         modifier = Modifier.size(42.dp),
     ) {
@@ -235,7 +236,7 @@ private fun MessageDialog(
     val pop = rememberDialogPop(onDismiss)
     Dialog(onDismissRequest = pop::dismiss) {
         Surface(
-            shape = RoundedCornerShape(28.dp),
+            shape = RoundedCornerShape(SkinTokens.cardRadius),
             color = colors.surfaceContainerHigh,
             modifier = pop.modifier,
         ) {

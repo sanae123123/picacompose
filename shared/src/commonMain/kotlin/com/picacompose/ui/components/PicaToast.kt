@@ -7,6 +7,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
@@ -60,7 +61,7 @@ fun PicaToastHost(modifier: Modifier = Modifier) {
         modifier = modifier,
     ) {
         Surface(
-            shape = RoundedCornerShape(22.dp),
+            shape = RoundedCornerShape(SkinTokens.rowRadius),
             color = MiuixTheme.colorScheme.surfaceContainerHigh,
             contentColor = MiuixTheme.colorScheme.onSurface,
         ) {

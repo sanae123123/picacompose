@@ -24,6 +24,7 @@ import com.picacompose.ui.components.PicaDropdownMenu
 import com.picacompose.ui.components.PicaDropdownMenuItem
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.IconButton
+import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
@@ -547,7 +548,7 @@ private fun HotKeywordPanel(
 private fun HotKeywordChip(text: String, onClick: () -> Unit) {
     val colors = MiuixTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(999.dp),
+        shape = RoundedCornerShape(SkinTokens.chipRadius),
         color = colors.tertiaryContainer,
         modifier = Modifier.clickable(onClick = onClick),
     ) {

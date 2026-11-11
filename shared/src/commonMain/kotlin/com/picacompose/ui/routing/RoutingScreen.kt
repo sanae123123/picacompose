@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
+import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
@@ -172,7 +173,7 @@ private fun LineCard(
 ) {
     val colors = MiuixTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = if (chosen) colors.primaryContainer else colors.surface,
         modifier = Modifier
             .fillMaxWidth()
@@ -193,7 +194,7 @@ private fun LineCard(
                     if (last) {
                         Spacer(Modifier.size(8.dp))
                         Surface(
-                            shape = RoundedCornerShape(999.dp),
+                            shape = RoundedCornerShape(SkinTokens.chipRadius),
                             color = colors.tertiaryContainer,
                         ) {
                             Text(

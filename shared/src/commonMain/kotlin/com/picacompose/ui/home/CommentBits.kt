@@ -31,6 +31,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.picacompose.ui.components.PicaAlertDialog
 import top.yukonga.miuix.kmp.basic.Button
+import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
@@ -597,7 +598,7 @@ fun CommentRow(
                     Modifier.border(
                         width = 1.dp,
                         color = colors.primary.copy(alpha = 0.35f),
-                        shape = RoundedCornerShape(28.dp),
+                        shape = RoundedCornerShape(SkinTokens.cardRadius),
                     )
                 } else {
                     Modifier

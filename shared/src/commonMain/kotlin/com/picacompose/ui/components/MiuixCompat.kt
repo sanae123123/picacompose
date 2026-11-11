@@ -28,6 +28,7 @@ import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.TextField
+import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
@@ -95,7 +96,7 @@ fun PicaFilterChip(
 ) {
     val colors = MiuixTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(999.dp),
+        shape = RoundedCornerShape(SkinTokens.chipRadius),
         color = if (selected) colors.primary.copy(alpha = 0.15f) else colors.tertiaryContainer,
         contentColor = if (selected) colors.primary else colors.onTertiaryContainer,
         modifier = Modifier.clickable(onClick = onClick),
@@ -120,7 +121,7 @@ fun PicaInputChip(
 ) {
     val colors = MiuixTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(999.dp),
+        shape = RoundedCornerShape(SkinTokens.chipRadius),
         color = if (selected) colors.primary.copy(alpha = 0.15f) else colors.tertiaryContainer,
         contentColor = if (selected) colors.primary else colors.onTertiaryContainer,
         modifier = Modifier.clickable(onClick = onClick),
@@ -147,7 +148,7 @@ fun PicaTextField(
     singleLine: Boolean = false,
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     minLines: Int = 1,
-    cornerRadius: Dp = 14.dp,
+    cornerRadius: Dp = SkinTokens.fieldRadius,
     enabled: Boolean = true,
     readOnly: Boolean = false,
     leadingIcon: (@Composable () -> Unit)? = null,
@@ -233,7 +234,7 @@ fun PicaOutlinedButton(
     val colors = MiuixTheme.colorScheme
     Button(
         onClick = onClick,
-        modifier = modifier.border(1.dp, colors.primary.copy(alpha = 0.35f), RoundedCornerShape(999.dp)),
+        modifier = modifier.border(1.dp, colors.primary.copy(alpha = 0.35f), RoundedCornerShape(SkinTokens.chipRadius)),
         enabled = enabled,
         cornerRadius = 999.dp,
         insideMargin = PaddingValues(horizontal = 16.dp, vertical = 10.dp),

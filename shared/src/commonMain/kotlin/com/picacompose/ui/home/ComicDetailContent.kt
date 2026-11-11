@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
+import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
@@ -472,7 +473,7 @@ private fun ResumeCard(
 ) {
     val colors = MiuixTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = colors.primary,
         contentColor = colors.onPrimary,
         modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp).clickable(onClick = onResume),
@@ -645,7 +646,7 @@ private fun DetailHero(
         if (!description.isNullOrBlank()) {
             Spacer(Modifier.height(12.dp))
             Surface(
-                shape = RoundedCornerShape(22.dp),
+                shape = RoundedCornerShape(SkinTokens.rowRadius),
                 color = colors.surface,
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -679,7 +680,7 @@ private fun UploaderCard(
         .coerceIn(0f, 1f)
 
     Surface(
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = colors.surface,
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).clickable(onClick = onClick),
     ) {
@@ -794,7 +795,7 @@ private fun EpisodeRow(
 ) {
     val colors = MiuixTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = colors.surface,
         modifier = modifier.fillMaxWidth().padding(bottom = 8.dp),
     ) {

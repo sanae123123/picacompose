@@ -29,6 +29,7 @@ import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
+import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
@@ -149,7 +150,7 @@ private fun LoginCard(
 ) {
     val colors = MiuixTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(SkinTokens.cardRadius),
         color = colors.tertiaryContainer,
         shadowElevation = 10.dp,
         modifier = Modifier.fillMaxWidth(),

@@ -38,6 +38,7 @@ import com.picacompose.ui.components.PicaAlertDialog
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
+import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.PullToRefresh
@@ -98,8 +99,9 @@ fun PicaCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
-        shape = RoundedCornerShape(28.dp),
-        color = MiuixTheme.colorScheme.tertiaryContainer,
+        shape = RoundedCornerShape(SkinTokens.cardRadius),
+        color = SkinTokens.cardColor(),
+        shadowElevation = SkinTokens.cardShadow,
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(18.dp), content = content)
@@ -110,7 +112,7 @@ fun PicaCard(
 fun InfoChip(text: String) {
     val colors = MiuixTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(999.dp),
+        shape = RoundedCornerShape(SkinTokens.chipRadius),
         color = colors.tertiaryContainer,
     ) {
         Text(

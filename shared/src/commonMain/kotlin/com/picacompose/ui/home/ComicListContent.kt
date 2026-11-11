@@ -32,6 +32,7 @@ import com.picacompose.ui.components.PicaDropdownMenuItem
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.IconButton
 import com.picacompose.ui.components.PicaInputChip
+import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
@@ -574,8 +575,8 @@ internal fun ComicListRow(
 ) {
     val colors = MiuixTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(22.dp),
-        color = colors.tertiaryContainer,
+        shape = RoundedCornerShape(SkinTokens.rowRadius),
+        color = SkinTokens.cardColor(),
         modifier = modifier.fillMaxWidth().padding(bottom = 12.dp),
     ) {
         Row(

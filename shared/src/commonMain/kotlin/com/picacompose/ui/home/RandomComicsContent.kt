@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.IconButton
+import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
@@ -272,7 +273,7 @@ fun RandomComicsContent(
                 .padding(bottom = 26.dp),
         ) {
             Surface(
-                shape = RoundedCornerShape(999.dp),
+                shape = RoundedCornerShape(SkinTokens.chipRadius),
                 color = if (swapError != null) colors.errorContainer else colors.primary,
                 shadowElevation = 3.dp,
             ) {

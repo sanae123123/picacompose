@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
@@ -141,7 +142,7 @@ fun LeaderboardContent(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
-                shape = RoundedCornerShape(999.dp),
+                shape = RoundedCornerShape(SkinTokens.chipRadius),
                 color = MiuixTheme.colorScheme.surface.copy(alpha = 0f),
                 modifier = Modifier.size(40.dp).clickable(onClick = onBack),
             ) {
@@ -230,7 +231,7 @@ internal fun PillTabs(
         labels.forEachIndexed { index, label ->
             val active = index == selected
             Surface(
-                shape = RoundedCornerShape(999.dp),
+                shape = RoundedCornerShape(SkinTokens.chipRadius),
                 color = if (active) colors.primaryContainer else colors.surfaceVariant,
                 modifier = Modifier.clickable { onSelect(index) },
             ) {
