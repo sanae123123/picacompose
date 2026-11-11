@@ -375,7 +375,7 @@ internal fun ComicFilterDialog(
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "可加多个，要求同时包含。服务端一次只认一个标签，其余的在这里本地筛，命中少会自动多翻几页。",
+                    text = "可加多个，要求同时包含。服务端一次只认一个标签，第一个走接口，其余的在这里本地筛，命中少会自动多翻几页。标签不必是列表里出现过的，输入后直接加。",
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.onSurfaceVariant,
                 )
@@ -422,13 +422,17 @@ internal fun ComicFilterDialog(
                         }
                     }
                 }
+                // 输入框里有字时，先把列表里对得上的标签挑出来（输入即联想）；
+                // 没输入就把列表里出现过的标签摆一排当快捷方式。两种都能直接点着加。
+                val typed = tagInput.trim()
                 val remaining = tagSuggestions
                     .filter { candidate -> draftTags.none { it.equals(candidate, ignoreCase = true) } }
+                    .filter { candidate -> typed.isEmpty() || candidate.contains(typed, ignoreCase = true) }
                     .take(24)
                 if (remaining.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = "列表里出现过的标签",
+                        text = if (typed.isEmpty()) "列表里出现过的标签" else "匹配「$typed」的标签",
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.onSurfaceVariant,
                     )
@@ -447,6 +451,13 @@ internal fun ComicFilterDialog(
                             )
                         }
                     }
+                } else if (typed.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "列表里没有对得上的，点「添加」直接用「$typed」筛。",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.onSurfaceVariant,
+                    )
                 }
             }
         },

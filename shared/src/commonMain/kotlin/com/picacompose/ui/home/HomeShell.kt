@@ -59,7 +59,7 @@ import kotlin.math.abs
 
 /** 从按钮长出来的整屏页面。 */
 private enum class OverlayPage {
-    None, Messages, Forum, Leaderboard, Web, Comics, Detail, Random, Reader, Search,
+    None, Messages, Forum, Leaderboard, Web, Comics, TagComics, Detail, Random, Reader, Search,
     Favorites, MyComments, ReadHistory, EditProfile,
 }
 
@@ -72,6 +72,8 @@ private val OverlayPage.sharedKey: String
         // 网页整页的 key 跟着具体磁贴走，这里只是兜底。
         OverlayPage.Web -> "webPage"
         OverlayPage.Comics -> "comicsPage"
+        // 标签结果页复用列表页的变形 key，纯淡入也行。
+        OverlayPage.TagComics -> "comicsPage"
         // 详情页的 key 跟着点的那一本走，这里只是兜底。
         OverlayPage.Detail -> "comicDetail"
         OverlayPage.Random -> "randomTile"
@@ -172,6 +174,35 @@ fun HomeShell(
         )
     }
     val comicListState = rememberLazyListState()
+    // 详情页里点标签打开的「同类本子」页：自己一套筛选条件，不和分类列表互相覆盖。
+    var tagPageTagsRaw by rememberSaveable { mutableStateOf("") }
+    var tagPageSort by rememberSaveable { mutableStateOf<String?>(null) }
+    var tagPageFinished by rememberSaveable { mutableStateOf(ComicFinished.All) }
+    val tagPageTags = remember(tagPageTagsRaw) {
+        tagPageTagsRaw.split('\n').filter { it.isNotBlank() }
+    }
+    val tagPagePager = remember(tagPageTagsRaw, tagPageSort, tagPageFinished) {
+        val extraTags = tagPageTags.drop(1)
+        Pager(
+            load = { page ->
+                pica.comics.list(
+                    page = page,
+                    tag = tagPageTags.firstOrNull(),
+                    sort = tagPageSort,
+                    finished = tagPageFinished.value,
+                )
+            },
+            itemKey = { it.id },
+            filter = if (extraTags.isEmpty()) {
+                null
+            } else {
+                { comic: ComicSummary ->
+                    extraTags.all { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } }
+                }
+            },
+        )
+    }
+    val tagPageListState = rememberLazyListState()
     // 本子详情：点哪本记它 id / 标题，变形 key 按 id 生成，和列表里那一行对得上。
     var detailComicId by rememberSaveable { mutableStateOf("") }
     var detailTitle by rememberSaveable { mutableStateOf("") }
@@ -279,6 +310,7 @@ fun HomeShell(
             OverlayPage.Messages -> messageListState.scrollToItem(0)
             OverlayPage.Forum -> forumListState.scrollToItem(0)
             OverlayPage.Comics -> if (!fromDetail) comicListState.scrollToItem(0)
+            OverlayPage.TagComics -> if (!fromDetail) tagPageListState.scrollToItem(0)
             OverlayPage.Search -> if (!fromDetail) searchListState.scrollToItem(0)
             // 收藏和历史评论是会被别处改动的内容（收藏了新的、发了新评论），每次打开重拉第一页；
             // 从详情页退回来不算打开，保持刚才滚到的地方。
@@ -314,6 +346,7 @@ fun HomeShell(
         // 搜索退回分类页（顺手清空搜索页）；别的整页直接回主界面。
         when (overlay) {
             OverlayPage.Detail -> overlayOrdinal = detailReturnOrdinal
+            OverlayPage.TagComics -> overlayOrdinal = OverlayPage.Detail.ordinal
             OverlayPage.Reader -> overlayOrdinal = OverlayPage.Detail.ordinal
             OverlayPage.Search -> exitSearch()
             else -> overlayOrdinal = OverlayPage.None.ordinal
@@ -606,6 +639,30 @@ fun HomeShell(
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
                                 )
 
+                                OverlayPage.TagComics -> ComicListContent(
+                                    title = "标签：${tagPageTags.firstOrNull().orEmpty()}",
+                                    pager = tagPagePager,
+                                    listState = tagPageListState,
+                                    sort = tagPageSort,
+                                    onSortChange = { tagPageSort = it },
+                                    finished = tagPageFinished,
+                                    onFinishedChange = { tagPageFinished = it },
+                                    tags = tagPageTags,
+                                    onTagsChange = { tagPageTagsRaw = it.joinToString("\n") },
+                                    comicRowModifier = { key ->
+                                        with(shared) { overlayBounds(key, contentScope) }
+                                    },
+                                    onOpenComic = { comic, key ->
+                                        detailComicId = comic.id
+                                        detailTitle = comic.title
+                                        detailKey = key
+                                        detailReturnOrdinal = OverlayPage.TagComics.ordinal
+                                        overlayOrdinal = OverlayPage.Detail.ordinal
+                                    },
+                                    // 从详情点标签进来的，返回就回详情。
+                                    onBack = { overlayOrdinal = OverlayPage.Detail.ordinal },
+                                )
+
                                 OverlayPage.Search -> SearchContent(
                                     state = searchState,
                                     listState = searchListState,
@@ -713,6 +770,16 @@ fun HomeShell(
                                             }
                                             readerKey = key
                                             overlayOrdinal = OverlayPage.Reader.ordinal
+                                        },
+                                        // 点本子标签：开一个只筛这个标签的本子列表，返回回详情。
+                                        onSearchTag = { tag ->
+                                            val clean = tag.trim()
+                                            if (clean.isNotBlank()) {
+                                                tagPageTagsRaw = clean
+                                                tagPageSort = null
+                                                tagPageFinished = ComicFinished.All
+                                                overlayOrdinal = OverlayPage.TagComics.ordinal
+                                            }
                                         },
                                         // 「继续阅读」：没有对应的章节行，直接用兜底的 key，纯淡入。
                                         onResume = { order, page ->

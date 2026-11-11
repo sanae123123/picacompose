@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -176,6 +177,8 @@ fun ComicDetailContent(
     onOpenEpisode: (Episode, String) -> Unit = { _, _ -> },
     /** 「继续阅读」：上次读到第几话、第几页。 */
     onResume: (order: Int, page: Int) -> Unit = { _, _ -> },
+    /** 点本子标签：按这个标签看同类本子。 */
+    onSearchTag: (String) -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -283,6 +286,7 @@ fun ComicDetailContent(
                         actionError = state.actionError,
                         onOpenCover = { coverViewer = it },
                         onOpenUploader = { showUploader = true },
+                        onSearchTag = onSearchTag,
                         onLike = {
                             // 先翻成点过的样子，服务端回话再确认；再点一次就是取消。
                             val base = state.likedCount ?: loaded.likesCount
@@ -519,6 +523,7 @@ private fun DetailHero(
     actionError: String?,
     onOpenCover: (String) -> Unit,
     onOpenUploader: () -> Unit,
+    onSearchTag: (String) -> Unit,
     onLike: () -> Unit,
     onFavourite: () -> Unit,
 ) {
@@ -575,6 +580,27 @@ private fun DetailHero(
                                 color = colors.primary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+                // 本子的标签整排摆出来，点一个就按它筛同类本子。
+                val tags = detail.tags.take(20)
+                if (tags.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        tags.forEach { tag ->
+                            Text(
+                                text = "#$tag",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.primary,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable { onSearchTag(tag) }
+                                    .padding(horizontal = 3.dp, vertical = 2.dp),
                             )
                         }
                     }
