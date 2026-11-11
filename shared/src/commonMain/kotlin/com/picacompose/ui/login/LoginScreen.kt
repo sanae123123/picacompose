@@ -24,7 +24,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import top.yukonga.miuix.kmp.basic.Button
-import androidx.compose.material3.Checkbox
+import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
@@ -34,7 +34,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
-import androidx.compose.material3.TextButton
+import com.picacompose.ui.components.PicaTextButton
+import com.picacompose.ui.components.PicaTextField
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -48,6 +49,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
@@ -170,7 +172,7 @@ private fun LoginCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 RememberRow(controller, Modifier.weight(1f))
-                TextButton(onClick = onForgotPassword) {
+                PicaTextButton(onClick = onForgotPassword) {
                     Text("忘记密码？", style = MiuixTheme.textStyles.body1)
                 }
             }
@@ -214,34 +216,33 @@ modifier = Modifier.size(18.dp),
 @Composable
 private fun EmailField(controller: LoginController) {
     val colors = MiuixTheme.colorScheme
-    OutlinedTextField(
+    PicaTextField(
         value = controller.email,
         onValueChange = controller::onEmailChange,
         modifier = Modifier.fillMaxWidth(),
         enabled = !controller.loading,
-        label = { Text("邮箱 / 用户名") },
+        placeholder = "邮箱 / 用户名",
         singleLine = true,
-        shape = RoundedCornerShape(16.dp),
+        cornerRadius = 16.dp,
         leadingIcon = { PicaGlyph(PicaIcon.Person, Modifier.size(20.dp), colors.onSurfaceSecondary) },
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Email,
             imeAction = ImeAction.Next,
         ),
-        colors = picaFieldColors(),
     )
 }
 
 @Composable
 private fun PasswordField(controller: LoginController, onSubmit: () -> Unit) {
     val colors = MiuixTheme.colorScheme
-    OutlinedTextField(
+    PicaTextField(
         value = controller.password,
         onValueChange = controller::onPasswordChange,
         modifier = Modifier.fillMaxWidth(),
         enabled = !controller.loading,
-        label = { Text("密码") },
+        placeholder = "密码",
         singleLine = true,
-        shape = RoundedCornerShape(16.dp),
+        cornerRadius = 16.dp,
         leadingIcon = { PicaGlyph(PicaIcon.Lock, Modifier.size(20.dp), colors.onSurfaceSecondary) },
         trailingIcon = {
             IconButton(onClick = controller::togglePasswordVisible) {
@@ -262,7 +263,6 @@ private fun PasswordField(controller: LoginController, onSubmit: () -> Unit) {
             imeAction = ImeAction.Done,
         ),
         keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-        colors = picaFieldColors(),
     )
 }
 
@@ -278,8 +278,8 @@ private fun RememberRow(controller: LoginController, modifier: Modifier = Modifi
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(
-            checked = controller.rememberAccount,
-            onCheckedChange = controller::onRememberChange,
+            state = ToggleableState(controller.rememberAccount),
+            onClick = { controller.onRememberChange(!controller.rememberAccount) },
             enabled = !controller.loading,
         )
         Text(
@@ -331,7 +331,7 @@ private fun SignUpRow(onRegister: () -> Unit) {
             style = MiuixTheme.textStyles.body1,
             color = colors.onSurfaceSecondary,
         )
-        TextButton(onClick = onRegister) {
+        PicaTextButton(onClick = onRegister) {
             Text("注册一个", style = MiuixTheme.textStyles.button)
         }
     }

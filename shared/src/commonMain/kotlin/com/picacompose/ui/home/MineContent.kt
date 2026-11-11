@@ -15,16 +15,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
+import com.picacompose.ui.components.PicaAlertDialog
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
-import androidx.compose.material3.FilledTonalIconButton
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.material3.OutlinedButton
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
-import androidx.compose.material3.TextButton
+import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -95,7 +95,7 @@ fun MineContent(
             PageHeader(
                 title = "我的",
                 action = {
-                    FilledTonalIconButton(
+                    IconButton(
                         onClick = onOpenEditProfile,
                         modifier = editProfileModifier.size(40.dp),
                     ) {
@@ -175,7 +175,7 @@ fun MineContent(
                     }
                     // 头像卡的右上角，只留一个图标；签过了就不出现。
                     if (!checkedIn) {
-                        FilledTonalIconButton(
+                        IconButton(
                             onClick = {
                                 scope.launch {
                                     punching = true
@@ -286,7 +286,7 @@ fun MineContent(
 
     punchNotice?.let { notice ->
         val pop = rememberDialogPop(onDismiss = { punchNotice = null })
-        AlertDialog(
+        PicaAlertDialog(
             onDismissRequest = pop::dismiss,
             modifier = pop.modifier,
             title = {
@@ -300,7 +300,7 @@ fun MineContent(
                 )
             },
             confirmButton = {
-                TextButton(onClick = pop::dismiss) { Text("好") }
+                PicaTextButton(onClick = pop::dismiss) { Text("好") }
             },
         )
     }

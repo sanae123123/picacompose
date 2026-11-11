@@ -29,7 +29,7 @@ class DialogPop internal constructor(
  *
  * ```kotlin
  * val pop = rememberDialogPop(onDismiss = { show = false })
- * AlertDialog(onDismissRequest = pop::dismiss, modifier = pop.modifier, ...)
+ * PicaAlertDialog(onDismissRequest = pop::dismiss, modifier = pop.modifier, ...)
  * ```
  *
  * 自绘弹窗把 [DialogPop.modifier] 挂在里面那层 Surface 上，`Dialog.onDismissRequest` 用

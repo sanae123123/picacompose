@@ -21,7 +21,7 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
-import androidx.compose.material3.TextButton
+import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -266,7 +266,7 @@ private fun MessageDialog(
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    TextButton(onClick = pop::dismiss) { Text("关闭") }
+                    PicaTextButton(onClick = pop::dismiss) { Text("关闭") }
                 }
             }
         }

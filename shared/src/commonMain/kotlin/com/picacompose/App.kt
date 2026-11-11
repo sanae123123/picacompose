@@ -5,13 +5,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.AlertDialog
+import com.picacompose.ui.components.PicaAlertDialog
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
-import androidx.compose.material3.TextButton
+import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -177,13 +177,13 @@ private fun MainScreens() {
 
     pendingFeature?.let { feature ->
         val pop = rememberDialogPop(onDismiss = { pendingFeature = null })
-        AlertDialog(
+        PicaAlertDialog(
             onDismissRequest = pop::dismiss,
             modifier = pop.modifier,
             title = { Text("$feature 还没做") },
             text = { Text("先把登录流程跑通，$feature 页面排在下一步。") },
             confirmButton = {
-                TextButton(onClick = pop::dismiss) { Text("好") }
+                PicaTextButton(onClick = pop::dismiss) { Text("好") }
             },
         )
     }

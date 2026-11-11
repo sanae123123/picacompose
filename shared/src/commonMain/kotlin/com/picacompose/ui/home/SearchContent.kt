@@ -29,7 +29,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
-import androidx.compose.material3.TextButton
+import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,6 +50,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.pica
+import com.picacompose.ui.components.PicaTextField
 import com.picacompose.picaapi.model.ComicSummary
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
@@ -394,15 +395,13 @@ fun SearchContent(
                         .padding(top = 6.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    OutlinedTextField(
+                    PicaTextField(
                         value = state.query,
                         onValueChange = state::onQueryChange,
                         modifier = Modifier.weight(1f).focusRequester(focus),
-                        placeholder = {
-                            Text("搜本子：标题、作者", style = MiuixTheme.textStyles.body1)
-                        },
+                        placeholder = "搜本子：标题、作者",
                         singleLine = true,
-                        shape = RoundedCornerShape(999.dp),
+                        cornerRadius = 999.dp,
                         textStyle = MiuixTheme.textStyles.body1,
                         leadingIcon = {
                             PicaGlyph(
@@ -424,10 +423,9 @@ fun SearchContent(
                         },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { submit(null) }),
-                        colors = searchFieldColors(),
                     )
                     Spacer(Modifier.width(4.dp))
-                    TextButton(onClick = { submit(null) }) {
+                    PicaTextButton(onClick = { submit(null) }) {
                         Text("搜索", style = MiuixTheme.textStyles.button)
                     }
                 }

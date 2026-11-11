@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Text
-import androidx.compose.material3.TextButton
+import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -36,7 +36,7 @@ actual fun PlatformWebView(
             style = MiuixTheme.textStyles.footnote1,
             color = colors.onSurface,
         )
-        TextButton(onClick = { openUrl(url) }) {
+        PicaTextButton(onClick = { openUrl(url) }) {
             Text("用系统浏览器打开")
         }
     }

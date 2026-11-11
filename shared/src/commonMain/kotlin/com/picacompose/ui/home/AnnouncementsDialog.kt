@@ -21,7 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
-import androidx.compose.material3.TextButton
+import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -114,7 +114,7 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
                     )
                     Spacer(Modifier.height(10.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = pop::dismiss) { Text("确定") }
+                        PicaTextButton(onClick = pop::dismiss) { Text("确定") }
                     }
                 }
 
@@ -163,8 +163,8 @@ fun AnnouncementsDialog(onDismiss: () -> Unit) {
                                 .padding(end = 12.dp),
                             horizontalArrangement = Arrangement.End,
                         ) {
-                            TextButton(onClick = { showList = true }) { Text("公告列表") }
-                            TextButton(onClick = pop::dismiss) { Text("确定") }
+                            PicaTextButton(onClick = { showList = true }) { Text("公告列表") }
+                            PicaTextButton(onClick = pop::dismiss) { Text("确定") }
                         }
                     }
                 }
@@ -235,7 +235,7 @@ private fun AnnouncementList(
                 .padding(end = 12.dp),
             horizontalArrangement = Arrangement.End,
         ) {
-            TextButton(onClick = onClose) { Text("关闭") }
+            PicaTextButton(onClick = onClose) { Text("关闭") }
         }
     }
 }

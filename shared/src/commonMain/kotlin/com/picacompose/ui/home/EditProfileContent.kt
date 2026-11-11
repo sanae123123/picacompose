@@ -9,12 +9,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
+import com.picacompose.ui.components.PicaAlertDialog
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.material3.OutlinedTextField
 import top.yukonga.miuix.kmp.basic.Text
-import androidx.compose.material3.TextButton
+import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,6 +30,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.picacompose.data.pica
+import com.picacompose.ui.components.PicaTextField
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
@@ -161,7 +162,7 @@ fun EditProfileContent(
                 PageHeader(
                     title = "编辑资料",
                     action = {
-                        TextButton(onClick = ::save, enabled = dirty && !saving && !nameBlank) {
+                        PicaTextButton(onClick = ::save, enabled = dirty && !saving && !nameBlank) {
                             Text(
                                 text = if (saving) "保存中…" else "保存",
                                 style = MiuixTheme.textStyles.button,
@@ -211,7 +212,7 @@ fun EditProfileContent(
                         )
                     }
                     if (imagePickerSupported) {
-                        TextButton(onClick = { pickAvatar() }) {
+                        PicaTextButton(onClick = { pickAvatar() }) {
                             Text(text = "更换", style = MiuixTheme.textStyles.button)
                         }
                     }
@@ -221,14 +222,14 @@ fun EditProfileContent(
         }
         item {
             PicaCard {
-                OutlinedTextField(
+                PicaTextField(
                     value = name,
                     // 不在客户端截：以前偷偷截到 20 字，用户看不见截断，保存下去就把原昵称盖了。
                     onValueChange = {
                         name = it
                         edited = true
                     },
-                    label = { Text("昵称") },
+                    placeholder = "昵称",
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -241,14 +242,14 @@ fun EditProfileContent(
                     )
                 }
                 Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
+                PicaTextField(
                     value = slogan,
                     // 同上：长简介原样提交，能存多少让服务端说了算（存不下会弹窗报原因）。
                     onValueChange = {
                         slogan = it
                         edited = true
                     },
-                    label = { Text("签名") },
+                    placeholder = "签名",
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -260,7 +261,7 @@ fun EditProfileContent(
     // 失败的说明用弹窗：列表底下那条会被输入法盖住，等于没说。
     failure?.let { text ->
         val pop = rememberDialogPop(onDismiss = { failure = null })
-        AlertDialog(
+        PicaAlertDialog(
             onDismissRequest = pop::dismiss,
             modifier = pop.modifier,
             title = { Text(text = "没保存成功", style = MiuixTheme.textStyles.title4) },
@@ -272,7 +273,7 @@ fun EditProfileContent(
                 )
             },
             confirmButton = {
-                TextButton(onClick = pop::dismiss) { Text("知道了") }
+                PicaTextButton(onClick = pop::dismiss) { Text("知道了") }
             },
         )
     }

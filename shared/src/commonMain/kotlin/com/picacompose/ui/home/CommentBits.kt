@@ -29,13 +29,13 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
+import com.picacompose.ui.components.PicaAlertDialog
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.material3.OutlinedTextField
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
-import androidx.compose.material3.TextButton
+import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.picacompose.data.pica
+import com.picacompose.ui.components.PicaTextField
 import com.picacompose.picaapi.model.Comment
 import com.picacompose.picaapi.model.UserBasic
 import com.picacompose.ui.components.PicaGlyph
@@ -158,7 +159,7 @@ private fun ReportCommentDialog(comment: Comment, onDismiss: () -> Unit) {
     var reported by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    AlertDialog(
+    PicaAlertDialog(
         onDismissRequest = pop::dismiss,
         modifier = pop.modifier,
         title = {
@@ -202,9 +203,9 @@ private fun ReportCommentDialog(comment: Comment, onDismiss: () -> Unit) {
         },
         confirmButton = {
             if (reported) {
-                TextButton(onClick = pop::dismiss) { Text("好") }
+                PicaTextButton(onClick = pop::dismiss) { Text("好") }
             } else {
-                TextButton(
+                PicaTextButton(
                     enabled = !sending,
                     onClick = {
                         scope.launch {
@@ -224,7 +225,7 @@ private fun ReportCommentDialog(comment: Comment, onDismiss: () -> Unit) {
         dismissButton = if (reported) {
             null
         } else {
-            { TextButton(onClick = pop::dismiss) { Text("取消") } }
+            { PicaTextButton(onClick = pop::dismiss) { Text("取消") } }
         },
     )
 }
@@ -249,7 +250,7 @@ fun PagerJumpDialog(
     val page = text.trim().toIntOrNull()
     val valid = page != null && page >= 1 && (pager.lastPage == 0 || page <= pager.lastPage)
 
-    AlertDialog(
+    PicaAlertDialog(
         onDismissRequest = pop::dismiss,
         modifier = pop.modifier,
         title = { Text(text = "跳到第几页", style = MiuixTheme.textStyles.title4) },
@@ -262,7 +263,7 @@ fun PagerJumpDialog(
                     color = colors.onSurfaceSecondary,
                 )
                 Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
+                PicaTextField(
                     value = text,
                     // 只收数字，免得输入法带出别的字符。
                     onValueChange = { input ->
@@ -270,8 +271,7 @@ fun PagerJumpDialog(
                         error = null
                     },
                     singleLine = true,
-                    isError = error != null,
-                    placeholder = { Text("页码") },
+                    placeholder = "页码",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -286,10 +286,10 @@ fun PagerJumpDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            PicaTextButton(
                 enabled = valid && !jumping,
                 onClick = {
-                    val target = page ?: return@TextButton
+                    val target = page ?: return@PicaTextButton
                     scope.launch {
                         jumping = true
                         error = null
@@ -309,7 +309,7 @@ fun PagerJumpDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = pop::dismiss) { Text("取消") }
+            PicaTextButton(onClick = pop::dismiss) { Text("取消") }
         },
     )
 }
@@ -393,15 +393,15 @@ fun CommentReplyDialog(
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
+                    PicaTextField(
                         value = draft,
                         onValueChange = {
                             draft = it
                             error = null
                         },
-                        placeholder = { Text("回一句…") },
+                        placeholder = "回一句…",
                         textStyle = MiuixTheme.textStyles.body1,
-                        shape = RoundedCornerShape(14.dp),
+                        cornerRadius = 14.dp,
                         maxLines = 5,
                         modifier = Modifier.fillMaxWidth().focusRequester(focus),
                     )
@@ -921,15 +921,15 @@ fun CommentComposer(
     Surface(color = colors.surface, modifier = modifier) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
+                PicaTextField(
                     value = draft,
                     onValueChange = {
                         draft = it
                         error = null
                     },
-                    placeholder = { Text(placeholder) },
+                    placeholder = placeholder,
                     textStyle = MiuixTheme.textStyles.body1,
-                    shape = RoundedCornerShape(20.dp),
+                    cornerRadius = 20.dp,
                     maxLines = 4,
                     modifier = Modifier.weight(1f),
                 )

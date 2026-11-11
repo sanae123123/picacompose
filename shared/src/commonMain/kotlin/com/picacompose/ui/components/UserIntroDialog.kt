@@ -14,12 +14,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.picacompose.ui.components.PicaAlertDialog
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Text
-import androidx.compose.material3.TextButton
+import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,7 +56,7 @@ fun UserIntroDialog(
     val pop = rememberDialogPop(onDismiss)
     var showAvatar by remember(avatarUrl) { mutableStateOf(false) }
 
-    AlertDialog(
+    PicaAlertDialog(
         onDismissRequest = pop::dismiss,
         modifier = pop.modifier,
         title = { Text(text = "简介", style = MiuixTheme.textStyles.title4) },
@@ -127,7 +127,7 @@ modifier = Modifier.size(20.dp),
             }
         },
         confirmButton = {
-            TextButton(onClick = pop::dismiss) { Text("关闭") }
+            PicaTextButton(onClick = pop::dismiss) { Text("关闭") }
         },
     )
 

@@ -22,7 +22,7 @@ import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.Text
-import androidx.compose.material3.TextButton
+import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -143,7 +143,7 @@ fun RoutingScreen(manual: Boolean = false, onReady: () -> Unit) {
                         style = MiuixTheme.textStyles.footnote1,
                         color = MiuixTheme.colorScheme.onSurfaceSecondary,
                     )
-                    TextButton(
+                    PicaTextButton(
                         onClick = {
                             scope.launch {
                                 entering = false

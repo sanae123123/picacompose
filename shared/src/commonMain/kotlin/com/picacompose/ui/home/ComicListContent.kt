@@ -1,9 +1,9 @@
 package com.picacompose.ui.home
 
 import com.picacompose.ui.components.rememberDialogPop
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.AlertDialog
+import com.picacompose.ui.components.PicaTextButton
+import com.picacompose.ui.components.PicaFilterChip
+import com.picacompose.ui.components.PicaAlertDialog
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,7 +31,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.IconButton
-import androidx.compose.material3.InputChip
+import com.picacompose.ui.components.PicaInputChip
 import androidx.compose.material3.OutlinedTextField
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Surface
@@ -52,6 +52,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.readingProgressStore
+import com.picacompose.ui.components.PicaTextField
 import com.picacompose.picaapi.model.ComicSummary
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
@@ -324,7 +325,7 @@ internal fun ComicFilterDialog(
         tagInput = ""
     }
 
-    AlertDialog(
+    PicaAlertDialog(
         onDismissRequest = pop::dismiss,
         modifier = pop.modifier,
         title = { Text(text = "筛选", style = MiuixTheme.textStyles.title4) },
@@ -345,7 +346,7 @@ internal fun ComicFilterDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     ComicSort.entries.forEach { option ->
-                        FilterChip(
+                        PicaFilterChip(
                             selected = draftSort == option.value,
                             onClick = { draftSort = option.value },
                             label = {
@@ -366,7 +367,7 @@ internal fun ComicFilterDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     ComicFinished.entries.forEach { option ->
-                        FilterChip(
+                        PicaFilterChip(
                             selected = draftFinished == option,
                             onClick = { draftFinished = option },
                             label = {
@@ -384,7 +385,7 @@ internal fun ComicFilterDialog(
                         modifier = Modifier.weight(1f),
                     )
                     if (draftTags.isNotEmpty() || draftExcluded.isNotEmpty()) {
-                        TextButton(onClick = {
+                        PicaTextButton(onClick = {
                             draftTags = emptyList()
                             draftExcluded = emptyList()
                         }) {
@@ -401,12 +402,12 @@ internal fun ComicFilterDialog(
                 Spacer(Modifier.height(8.dp))
                 // 先选好这一条要加进哪一边，再输入 / 点标签，位置就在输入框上面，不用往下翻。
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
+                    PicaFilterChip(
                         selected = !excludeMode,
                         onClick = { excludeMode = false },
                         label = { Text(text = "包含", style = MiuixTheme.textStyles.footnote1) },
                     )
-                    FilterChip(
+                    PicaFilterChip(
                         selected = excludeMode,
                         onClick = { excludeMode = true },
                         label = { Text(text = "排除", style = MiuixTheme.textStyles.footnote1) },
@@ -414,23 +415,18 @@ internal fun ComicFilterDialog(
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
+                    PicaTextField(
                         value = tagInput,
                         onValueChange = { tagInput = it },
                         singleLine = true,
                         textStyle = MiuixTheme.textStyles.footnote1,
-                        placeholder = {
-                            Text(
-                                text = if (excludeMode) "输入要排除的标签" else "输入要包含的标签",
-                                style = MiuixTheme.textStyles.footnote1,
-                            )
-                        },
+                        placeholder = if (excludeMode) "输入要排除的标签" else "输入要包含的标签",
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { addTag(tagInput) }),
                         modifier = Modifier.weight(1f),
                     )
                     Spacer(Modifier.width(8.dp))
-                    TextButton(onClick = { addTag(tagInput) }, enabled = tagInput.isNotBlank()) {
+                    PicaTextButton(onClick = { addTag(tagInput) }, enabled = tagInput.isNotBlank()) {
                         Text(if (excludeMode) "排除" else "包含")
                     }
                 }
@@ -447,7 +443,7 @@ internal fun ComicFilterDialog(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         draftTags.forEach { tag ->
-                            InputChip(
+                            PicaInputChip(
                                 selected = true,
                                 onClick = { draftTags = draftTags - tag },
                                 label = {
@@ -477,7 +473,7 @@ internal fun ComicFilterDialog(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         draftExcluded.forEach { tag ->
-                            InputChip(
+                            PicaInputChip(
                                 selected = true,
                                 onClick = { draftExcluded = draftExcluded - tag },
                                 label = {
@@ -523,7 +519,7 @@ internal fun ComicFilterDialog(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         remaining.forEach { tag ->
-                            FilterChip(
+                            PicaFilterChip(
                                 selected = false,
                                 onClick = { addTag(tag) },
                                 label = {
@@ -544,12 +540,12 @@ internal fun ComicFilterDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = {
+            PicaTextButton(onClick = {
                 onApply(draftSort, draftFinished, draftTags, draftExcluded)
             }) { Text("应用") }
         },
         dismissButton = {
-            TextButton(onClick = pop::dismiss) { Text("取消") }
+            PicaTextButton(onClick = pop::dismiss) { Text("取消") }
         },
     )
 }
