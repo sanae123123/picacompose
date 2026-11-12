@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
+import com.picacompose.ui.components.PicaAlertDialog
+import com.picacompose.ui.components.PicaCircularProgress
 import com.picacompose.ui.components.PicaFilterChip
 import com.picacompose.ui.theme.AppSkin
 import com.picacompose.ui.theme.SkinState
@@ -42,6 +44,7 @@ import com.picacompose.data.LinePreferences
 import com.picacompose.data.LineRouter
 import com.picacompose.data.REPO_URL
 import com.picacompose.data.RouteStore
+import com.picacompose.data.SavedAccount
 import com.picacompose.data.SessionStore
 import com.picacompose.data.clearImageCache
 import com.picacompose.data.formatBytes
@@ -51,7 +54,9 @@ import com.picacompose.picaapi.ImageIps
 import kotlinx.coroutines.launch
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
+import com.picacompose.ui.components.PicaTextButton
 import com.picacompose.ui.components.rememberBrowserOpener
+import com.picacompose.ui.components.rememberDialogPop
 
 /**
  * 设置：账号、线路开关、图片、版本，最后是退出登录。
@@ -81,9 +86,16 @@ import com.picacompose.ui.components.rememberBrowserOpener
  * - 清除缓存：只清 Coil 的图片缓存（内存 + 磁盘），不动登录态、线路和阅读进度。
  */
 @Composable
-fun SettingsContent(onSignOut: () -> Unit) {
+fun SettingsContent(
+    onSignOut: () -> Unit,
+    onSwitchAccount: suspend (SavedAccount) -> Boolean = { false },
+) {
     val session = remember { SessionStore() }
     var savedAccount by remember { mutableStateOf(session.savedAccount) }
+    var accounts by remember { mutableStateOf(session.accounts) }
+    var switchOpen by remember { mutableStateOf(false) }
+    var switchingTo by remember { mutableStateOf<String?>(null) }
+    var switchError by remember { mutableStateOf<String?>(null) }
     var rememberOn by remember { mutableStateOf(session.remember) }
     val scope = rememberCoroutineScope()
     val platformContext = LocalPlatformContext.current
@@ -164,6 +176,12 @@ fun SettingsContent(onSignOut: () -> Unit) {
                     icon = PicaIcon.Lock,
                     title = "保存的账号",
                     value = savedAccount ?: "还没有",
+                )
+                PickerRow(
+                    icon = PicaIcon.Person,
+                    title = "切换账号",
+                    value = if (accounts.size <= 1) "还没有别的账号" else "${accounts.size} 个账号",
+                    onClick = { switchOpen = true },
                 )
             }
             Spacer(Modifier.height(14.dp))
@@ -333,6 +351,86 @@ fun SettingsContent(onSignOut: () -> Unit) {
                 Text("退出登录", style = MiuixTheme.textStyles.button)
             }
         }
+    }
+
+    if (switchOpen) {
+        val colors = MiuixTheme.colorScheme
+        val pop = rememberDialogPop(onDismiss = { switchOpen = false })
+        // 当前账号不用列，切自己没意义。
+        val others = accounts.filter { it.account != savedAccount }
+        PicaAlertDialog(
+            onDismissRequest = pop::dismiss,
+            modifier = pop.modifier,
+            title = { Text("切换账号") },
+            text = {
+                Column(Modifier.fillMaxWidth()) {
+                    if (others.isEmpty()) {
+                        Text(
+                            text = "本机还没记下别的账号。先退出登录、用另一个号登一次，" +
+                                "之后就能在这里一键切过去。",
+                            style = MiuixTheme.textStyles.footnote1,
+                            color = colors.onSurfaceSecondary,
+                        )
+                    }
+                    others.forEach { item ->
+                        val busy = switchingTo == item.account
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = switchingTo == null) {
+                                    scope.launch {
+                                        switchingTo = item.account
+                                        switchError = null
+                                        val ok = onSwitchAccount(item)
+                                        switchingTo = null
+                                        if (ok) {
+                                            accounts = session.accounts
+                                            savedAccount = session.savedAccount
+                                            switchOpen = false
+                                        } else {
+                                            switchError = "「${item.account}」的登录状态失效了，重新输一次密码"
+                                        }
+                                    }
+                                }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            PicaGlyph(PicaIcon.Person, Modifier.size(18.dp), colors.onSurfaceSecondary)
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = item.account,
+                                style = MiuixTheme.textStyles.body1,
+                                color = colors.onSurface,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            if (busy) {
+                                PicaCircularProgress(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = colors.primary,
+                                )
+                            } else {
+                                PicaGlyph(PicaIcon.ArrowRight, Modifier.size(16.dp), colors.onSurfaceSecondary)
+                            }
+                        }
+                    }
+                    switchError?.let { message ->
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = message,
+                            style = MiuixTheme.textStyles.footnote2,
+                            color = colors.error,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                PicaTextButton(onClick = pop::dismiss) { Text("取消") }
+            },
+        )
     }
 }
 

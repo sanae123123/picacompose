@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import com.picacompose.data.SavedAccount
 import com.picacompose.ui.components.PicaScaffold
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.material3.Icon as Md3Icon
@@ -108,6 +109,7 @@ private val OverlayPage.sharedKey: String
 fun HomeShell(
     profile: UserProfile,
     onSignOut: () -> Unit,
+    onSwitchAccount: suspend (SavedAccount) -> Boolean = { false },
     onRefreshProfile: suspend () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
@@ -568,7 +570,10 @@ fun HomeShell(
                                             overlayBounds(OverlayPage.EditProfile.sharedKey, contentScope)
                                         },
                                     )
-                                    HomeTab.Settings -> SettingsContent(onSignOut = onSignOut)
+                                    HomeTab.Settings -> SettingsContent(
+                                        onSignOut = onSignOut,
+                                        onSwitchAccount = onSwitchAccount,
+                                    )
                                 }
                             }
                         }

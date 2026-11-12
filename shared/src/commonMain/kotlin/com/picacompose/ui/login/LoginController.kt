@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.picacompose.data.LineRouter
+import com.picacompose.data.SavedAccount
 import com.picacompose.data.SessionStore
 import com.picacompose.picaapi.PicaClient
 import com.picacompose.picaapi.PicaException
@@ -39,6 +40,14 @@ class LoginController(
 
     var loading by mutableStateOf(false)
         private set
+
+    /** 正在换账号：切换要先验证令牌，这期间弹窗里给个「切换中」。 */
+    var switching by mutableStateOf(false)
+        private set
+
+    /** 本机登录过的账号，给设置页的「切换账号」用。 */
+    val savedAccounts: List<SavedAccount>
+        get() = session.accounts
 
     /** 启动时正在用旧 token 恢复会话，界面上给个加载态。 */
     var restoring by mutableStateOf(false)
@@ -160,11 +169,40 @@ class LoginController(
     }
 
     fun signOut() {
+        val account = session.savedAccount.orEmpty()
         client().updateToken("")
         session.clearToken()
+        // 退出的这个号不再留在快速切换列表里，免得「退出登录」看着像没退干净。
+        if (account.isNotBlank()) session.removeAccount(account)
         profile = null
         password = ""
         error = null
+    }
+
+    /**
+     * 切到本机记过的另一个账号：先拿它的令牌试一下资料接口，通了才算切换成功。
+     *
+     * 令牌过期时不落盘、也不清掉当前登录，弹窗里提示重新输密码，免得切到一半变成未登录。
+     */
+    suspend fun switchAccount(target: SavedAccount): Boolean {
+        if (switching || loading) return false
+        switching = true
+        error = null
+        val previousToken = session.savedToken.orEmpty()
+        client().updateToken(target.token)
+        val fresh = runCatching { client().users.profile() }.getOrNull()
+        val ok = fresh != null
+        if (ok) {
+            email = target.account
+            password = ""
+            session.save(target.token, target.account)
+            profile = fresh
+        } else {
+            client().updateToken(previousToken)
+            error = "「${target.account}」的登录状态失效了，重新输一次密码"
+        }
+        switching = false
+        return ok
     }
 }
 

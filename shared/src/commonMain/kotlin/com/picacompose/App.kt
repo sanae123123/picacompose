@@ -168,6 +168,7 @@ private fun MainScreens() {
                     HomeShell(
                         profile = profile,
                         onSignOut = controller::signOut,
+                        onSwitchAccount = controller::switchAccount,
                         onRefreshProfile = { controller.refreshProfile() },
                     )
                 }
