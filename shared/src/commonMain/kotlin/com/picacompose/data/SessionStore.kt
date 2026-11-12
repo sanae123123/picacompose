@@ -22,7 +22,15 @@ class SessionStore(private val kv: KeyValueStore = platformKeyValueStore()) {
      * 关掉「记住账号」时这个列表跟着清空——不落盘的承诺要对得起。
      */
     val accounts: List<SavedAccount>
-        get() = parseAccounts(kv.get(KEY_ACCOUNTS))
+        get() {
+            val list = parseAccounts(kv.get(KEY_ACCOUNTS))
+            // 老版本升级上来的、或者登录那会儿列表还没写进去的：当前这个号也列出来，
+            // 不然「切换账号」里永远是空的。
+            val account = savedAccount ?: return list
+            val token = savedToken ?: return list
+            if (list.any { it.account == account }) return list
+            return listOf(SavedAccount(account, token)) + list
+        }
 
     /**
      * 「记住账号」开关：关着的时候登录成功也不落盘 token，下次打开要重新登录。
@@ -34,7 +42,7 @@ class SessionStore(private val kv: KeyValueStore = platformKeyValueStore()) {
         get() = kv.get(KEY_REMEMBER) != "0"
         set(value) {
             kv.put(KEY_REMEMBER, if (value) "1" else "0")
-            if (!value) clearAll()
+            if (!value) forgetTokens()
         }
 
     fun save(token: String, account: String) {
@@ -64,6 +72,12 @@ class SessionStore(private val kv: KeyValueStore = platformKeyValueStore()) {
 
     fun clearToken() {
         kv.put(KEY_TOKEN, null)
+    }
+
+    /** 不落令牌，但账号名留着——下次打开至少知道该登哪个号。 */
+    fun forgetTokens() {
+        kv.put(KEY_TOKEN, null)
+        kv.put(KEY_ACCOUNTS, null)
     }
 
     fun clearAll() {

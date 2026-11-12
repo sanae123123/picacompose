@@ -356,28 +356,27 @@ fun SettingsContent(
     if (switchOpen) {
         val colors = MiuixTheme.colorScheme
         val pop = rememberDialogPop(onDismiss = { switchOpen = false })
-        // 当前账号不用列，切自己没意义。
-        val others = accounts.filter { it.account != savedAccount }
         PicaAlertDialog(
             onDismissRequest = pop::dismiss,
             modifier = pop.modifier,
             title = { Text("切换账号") },
             text = {
                 Column(Modifier.fillMaxWidth()) {
-                    if (others.isEmpty()) {
+                    if (accounts.isEmpty()) {
                         Text(
-                            text = "本机还没记下别的账号。先退出登录、用另一个号登一次，" +
-                                "之后就能在这里一键切过去。",
+                            text = "还没有记住任何账号。登录时把「记住账号」开着，" +
+                                "登过的号都会记在这里。",
                             style = MiuixTheme.textStyles.footnote1,
                             color = colors.onSurfaceSecondary,
                         )
                     }
-                    others.forEach { item ->
+                    accounts.forEach { item ->
+                        val current = item.account == savedAccount
                         val busy = switchingTo == item.account
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable(enabled = switchingTo == null) {
+                                .clickable(enabled = !current && switchingTo == null) {
                                     scope.launch {
                                         switchingTo = item.account
                                         switchError = null
@@ -406,16 +405,30 @@ fun SettingsContent(
                                 overflow = TextOverflow.Ellipsis,
                             )
                             Spacer(Modifier.width(8.dp))
-                            if (busy) {
-                                PicaCircularProgress(
+                            when {
+                                busy -> PicaCircularProgress(
                                     modifier = Modifier.size(16.dp),
                                     strokeWidth = 2.dp,
                                     color = colors.primary,
                                 )
-                            } else {
-                                PicaGlyph(PicaIcon.ArrowRight, Modifier.size(16.dp), colors.onSurfaceSecondary)
+
+                                current -> Text(
+                                    text = "当前",
+                                    style = MiuixTheme.textStyles.footnote2,
+                                    color = colors.primary,
+                                )
+
+                                else -> PicaGlyph(PicaIcon.ArrowRight, Modifier.size(16.dp), colors.onSurfaceSecondary)
                             }
                         }
+                    }
+                    if (accounts.size == 1 && switchError == null) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "再登录一个号，这里就能一键切过去。",
+                            style = MiuixTheme.textStyles.footnote2,
+                            color = colors.onSurfaceSecondary,
+                        )
                     }
                     switchError?.let { message ->
                         Spacer(Modifier.height(6.dp))

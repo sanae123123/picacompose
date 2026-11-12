@@ -142,7 +142,9 @@ class LoginController(
             if (rememberAccount) {
                 session.save(signedIn.token, account)
             } else {
-                session.clearAll()
+                // 没勾记住只是不存令牌，账号名还是留下来，下次直接补密码。
+                session.forgetTokens()
+                session.rememberAccount(account)
             }
             // token 已经进了 client，顺手拉一次资料，好让首页有名字可显示。
             profile = runCatching { client().users.profile() }
@@ -169,11 +171,10 @@ class LoginController(
     }
 
     fun signOut() {
-        val account = session.savedAccount.orEmpty()
         client().updateToken("")
+        // 只清当前令牌，账号和它的令牌都留着：退出只是想换个号登录，
+        // 原来那个号还要能在设置里一键切回来。
         session.clearToken()
-        // 退出的这个号不再留在快速切换列表里，免得「退出登录」看着像没退干净。
-        if (account.isNotBlank()) session.removeAccount(account)
         profile = null
         password = ""
         error = null
