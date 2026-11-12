@@ -1,9 +1,7 @@
 package com.picacompose.ui.skin
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -14,17 +12,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.AlertDialog as Md3AlertDialog
 import androidx.compose.material3.CircularProgressIndicator as Md3CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu as Md3DropdownMenu
@@ -46,10 +41,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -57,7 +50,17 @@ import androidx.compose.ui.unit.dp
 import com.picacompose.ui.components.MiuixTextColor
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
-import com.picacompose.ui.components.vector
+import io.github.kalist28.bubbles.BubblesButton
+import io.github.kalist28.bubbles.BubblesButtonDefaults
+import io.github.kalist28.bubbles.BubblesButtonSize
+import io.github.kalist28.bubbles.BubblesCheckBox
+import io.github.kalist28.bubbles.BubblesHorizontalDivider
+import io.github.kalist28.bubbles.BubblesIconButton
+import io.github.kalist28.bubbles.BubblesSurface
+import io.github.kalist28.bubbles.BubblesSwitch
+import io.github.kalist28.bubbles.BubblesSwitchDefaults
+import io.github.kalist28.bubbles.BubblesTextField
+import io.github.kalist28.bubbles.core.theme.BubblesTheme
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -66,18 +69,21 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 private val IosGreen = Color(0xFF34C759)
 
 /**
- * iOS 引擎：控件全部按 iOS 的样子重画。
+ * iOS 引擎：控件全部换成 bubbles（iOS 风格的那套库），剩下的壳自己画。
  *
- * 不借 miuix / Material3 的控件形态，只从 [MaterialTheme] 取颜色。所以这套皮肤下
- * 开关是绿色胶囊、勾选是圆形蓝勾、筛选条是分段的灰底白块、底栏是 iOS 的 TabBar 样子，
- * 而不是换了颜色的 Android 控件。
+ * 开关、按钮、勾选、输入框、分隔线、卡片底都直接是 bubbles 的组件，
+ * 所以开关是 iOS 那种绿色胶囊、勾选是方框打勾、输入框是圆角灰底无边框。
+ * 库里没有的（底栏、分段筛选、弹窗、下拉、标题栏）由这里补，补出来也按 iOS 的样子。
  *
- * 点按反馈也按 iOS 来：不加涟漪，只做了裁剪和按压区域。
+ * 点按反馈跟项目其它地方不一样：iOS 不用涟漪，这里全靠 bubbles 自己的按压态。
  */
 internal object IosRenderer : SkinRenderer {
 
     @Composable
     private fun iosColors() = MaterialTheme.colorScheme
+
+    @Composable
+    private fun bubblesColors() = BubblesTheme.colorScheme
 
     @Composable
     override fun Surface(
@@ -90,15 +96,14 @@ internal object IosRenderer : SkinRenderer {
         content: @Composable () -> Unit,
     ) {
         val colors = iosColors()
-        val fill = if (color == Color.Unspecified) colors.surface else color
-        val onFill = if (contentColor == Color.Unspecified) colors.onSurface else contentColor
-        Box(
-            modifier = modifier
-                .shadow(shadowElevation, shape)
-                .clip(shape)
-                .background(fill),
+        BubblesSurface(
+            modifier = modifier,
+            shape = shape,
+            color = if (color == Color.Unspecified) colors.surface else color,
+            shadowElevation = shadowElevation,
+            contentColor = if (contentColor == Color.Unspecified) colors.onSurface else contentColor,
         ) {
-            MiuixTextColor(onFill) { content() }
+            content()
         }
     }
 
@@ -111,21 +116,19 @@ internal object IosRenderer : SkinRenderer {
         content: @Composable RowScope.() -> Unit,
     ) {
         val colors = iosColors()
-        Row(
-            modifier = modifier
-                .clip(RoundedCornerShape(minOf(cornerRadius, 12.dp)))
-                .background(if (enabled) colors.primary else colors.primary.copy(alpha = 0.35f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    enabled = enabled,
-                ) { onClick() }
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            MiuixTextColor(colors.onPrimary) { content() }
-        }
+        BubblesButton(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            size = BubblesButtonSize.Regular,
+            colors = BubblesButtonDefaults.filledButtonColors(
+                contentColor = colors.onPrimary,
+                containerColor = colors.primary,
+            ),
+            shape = RoundedCornerShape(minOf(cornerRadius, 12.dp)),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
+            content = content,
+        )
     }
 
     @Composable
@@ -136,20 +139,16 @@ internal object IosRenderer : SkinRenderer {
         content: @Composable RowScope.() -> Unit,
     ) {
         val colors = iosColors()
-        Row(
-            modifier = modifier
-                .clip(RoundedCornerShape(8.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    enabled = enabled,
-                ) { onClick() }
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            MiuixTextColor(if (enabled) colors.primary else colors.onSurfaceVariant) { content() }
-        }
+        BubblesButton(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            size = BubblesButtonSize.Regular,
+            colors = BubblesButtonDefaults.clearButtonColors(contentColor = colors.primary),
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+            content = content,
+        )
     }
 
     @Composable
@@ -160,22 +159,21 @@ internal object IosRenderer : SkinRenderer {
         content: @Composable RowScope.() -> Unit,
     ) {
         val colors = iosColors()
-        Row(
-            modifier = modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(colors.surface)
-                .border(1.dp, colors.outlineVariant, RoundedCornerShape(12.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    enabled = enabled,
-                ) { onClick() }
-                .padding(horizontal = 18.dp, vertical = 11.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            MiuixTextColor(if (enabled) colors.primary else colors.onSurfaceVariant) { content() }
-        }
+        BubblesButton(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            size = BubblesButtonSize.Regular,
+            colors = BubblesButtonDefaults.filledButtonColors(
+                contentColor = colors.primary,
+                containerColor = colors.surface,
+                outlineColor = colors.outlineVariant,
+            ),
+            border = BorderStroke(1.dp, colors.outlineVariant),
+            shape = RoundedCornerShape(12.dp),
+            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 11.dp),
+            content = content,
+        )
     }
 
     @Composable
@@ -186,70 +184,34 @@ internal object IosRenderer : SkinRenderer {
         content: @Composable () -> Unit,
     ) {
         val colors = iosColors()
-        Box(
-            modifier = modifier
-                .defaultMinSize(40.dp, 40.dp)
-                .clip(CircleShape)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    enabled = enabled,
-                ) { onClick() },
-            contentAlignment = Alignment.Center,
-        ) {
-            MiuixTextColor(colors.primary) { content() }
-        }
+        BubblesIconButton(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            colors = BubblesButtonDefaults.clearButtonColors(contentColor = colors.primary),
+            content = content,
+        )
     }
 
     @Composable
     override fun Switch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier, enabled: Boolean) {
-        val colors = iosColors()
-        val track by animateColorAsState(
-            if (checked) IosGreen else colors.outline.copy(alpha = 0.45f),
+        BubblesSwitch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = modifier,
+            colors = BubblesSwitchDefaults.colors(checkedTrackColor = IosGreen),
+            enabled = enabled,
         )
-        val thumbOffset by animateDpAsState(if (checked) 20.dp else 0.dp)
-        Box(
-            modifier = modifier
-                .size(width = 51.dp, height = 31.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(track)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    enabled = enabled,
-                ) { onCheckedChange(!checked) }
-                .padding(2.dp),
-        ) {
-            Box(
-                Modifier
-                    .offset(x = thumbOffset)
-                    .size(27.dp)
-                    .shadow(2.dp, CircleShape)
-                    .background(Color.White, CircleShape),
-            )
-        }
     }
 
     @Composable
     override fun Checkbox(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier, enabled: Boolean) {
-        val colors = iosColors()
-        Box(
-            modifier = modifier
-                .size(22.dp)
-                .clip(CircleShape)
-                .background(if (checked) colors.primary else Color.Transparent)
-                .border(1.5.dp, if (checked) colors.primary else colors.outline, CircleShape)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    enabled = enabled,
-                ) { onCheckedChange(!checked) },
-            contentAlignment = Alignment.Center,
-        ) {
-            if (checked) {
-                PicaGlyph(PicaIcon.Check, Modifier.size(14.dp), colors.onPrimary)
-            }
-        }
+        BubblesCheckBox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = modifier,
+            enabled = enabled,
+        )
     }
 
     @Composable
@@ -295,12 +257,10 @@ internal object IosRenderer : SkinRenderer {
 
     @Composable
     override fun Divider(modifier: Modifier) {
-        val colors = iosColors()
-        Box(
-            modifier
-                .fillMaxWidth()
-                .height(0.5.dp)
-                .background(colors.outlineVariant),
+        BubblesHorizontalDivider(
+            modifier = modifier,
+            thickness = 0.5.dp,
+            color = bubblesColors().separator,
         )
     }
 
@@ -334,7 +294,6 @@ internal object IosRenderer : SkinRenderer {
         val shape = RoundedCornerShape(9.dp)
         Box(
             modifier = Modifier
-                .then(if (selected) Modifier.shadow(1.dp, shape) else Modifier)
                 .clip(shape)
                 .background(if (selected) colors.surface else colors.surfaceContainer)
                 .clickable(
@@ -393,48 +352,26 @@ internal object IosRenderer : SkinRenderer {
         keyboardActions: androidx.compose.foundation.text.KeyboardActions,
         visualTransformation: androidx.compose.ui.text.input.VisualTransformation,
     ) {
-        val colors = iosColors()
-        val shape = RoundedCornerShape(minOf(cornerRadius, 12.dp))
-        BasicTextField(
+        BubblesTextField(
             value = value,
             onValueChange = onValueChange,
             modifier = modifier,
             enabled = enabled,
             readOnly = readOnly,
-            textStyle = textStyle.copy(color = colors.onSurface),
+            textStyle = textStyle,
+            placeholder = if (placeholder.isNotEmpty()) {
+                { MiuixText(text = placeholder, style = textStyle) }
+            } else {
+                null
+            },
+            leadingIcon = leadingIcon,
+            trailingIcon = trailingIcon,
+            visualTransformation = visualTransformation,
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
             singleLine = singleLine,
             maxLines = maxLines,
             minLines = minLines,
-            keyboardOptions = keyboardOptions,
-            keyboardActions = keyboardActions,
-            visualTransformation = visualTransformation,
-            cursorBrush = SolidColor(colors.primary),
-            decorationBox = { inner ->
-                Row(
-                    modifier = Modifier
-                        .clip(shape)
-                        .background(colors.surfaceContainer)
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (leadingIcon != null) {
-                        MiuixTextColor(colors.onSurfaceVariant) { leadingIcon() }
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    Box(Modifier.weight(1f)) {
-                        if (value.isEmpty() && placeholder.isNotEmpty()) {
-                            MiuixTextColor(colors.onSurfaceVariant) {
-                                MiuixText(text = placeholder, style = textStyle)
-                            }
-                        }
-                        inner()
-                    }
-                    if (trailingIcon != null) {
-                        Spacer(Modifier.width(8.dp))
-                        MiuixTextColor(colors.onSurfaceVariant) { trailingIcon() }
-                    }
-                }
-            },
         )
     }
 
@@ -545,7 +482,7 @@ internal object IosRenderer : SkinRenderer {
     @Composable
     override fun BottomBar(tabs: List<BottomBarTab>, selectedIndex: Int, onSelect: (Int) -> Unit) {
         val colors = iosColors()
-        Column {
+        Column(Modifier.navigationBarsPadding()) {
             Md3HorizontalDivider(color = colors.outlineVariant)
             Row(
                 modifier = Modifier

@@ -12,9 +12,11 @@ kotlinx-serialization = "1.12.0"
 ktor = "3.6.1"
 coil = "3.6.3"
 miuix = "0.9.4"
+bubbles = "0.5.0-beta"
 
 [libraries]
 miuix-ui = { module = "top.yukonga.miuix.kmp:miuix-ui", version.ref = "miuix" }
+bubbles = { module = "io.github.kalist28:bubbles", version.ref = "bubbles" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
 desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar-jdk-libs" }
 ktor3-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
