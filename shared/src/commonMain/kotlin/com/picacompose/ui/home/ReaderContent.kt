@@ -5,6 +5,7 @@ import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,6 +14,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
@@ -23,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -57,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputScope
@@ -84,6 +88,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.math.exp
 
 /** 提前把后面几张图抓下来，手指划过去时是现成的。 */
@@ -232,6 +237,8 @@ fun ReaderContent(
     val title = episodes.firstOrNull { it.order == order }?.title.orEmpty()
     val shown = (listState.firstVisibleItemIndex + 1).coerceAtLeast(1)
     val totalPages = pager.total
+    // 总页数：服务端给了就用它，还没拉到就用已经有的条数。
+    val pageCount = pager.total.takeIf { it > 0 } ?: pager.items.size
 
     Box(modifier.fillMaxSize().background(Color.Black)) {
             // 放大后的拖动位移：平移画面，顶到边上就转成滚列表。
@@ -395,31 +402,158 @@ fun ReaderContent(
                 exit = fadeOut(),
                 modifier = Modifier.align(Alignment.BottomCenter),
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color.Black.copy(alpha = 0.55f))
                         .windowInsetsPadding(WindowInsets.navigationBars)
                         .padding(horizontal = 14.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    EpisodeButton(
-                        label = "上一话",
-                        enabled = prevOrder != null,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        prevOrder?.let { order = it }
+                    // 定位条：拖到哪一页松手就跳到哪一页。总页数还没出来时不显示，免得条是空的。
+                    if (pageCount > 1) {
+                        ReaderSeekBar(
+                            current = (shown - 1).coerceIn(0, pageCount - 1),
+                            total = pageCount,
+                            onJump = { target ->
+                                scope.launch {
+                                    // 跳到看得清的位置：先退出放大，不然画面还偏在别处。
+                                    flingJob?.cancel()
+                                    scale = 1f
+                                    offset = Offset.Zero
+                                    jumpToPage(pager, listState, target)
+                                }
+                            },
+                        )
                     }
-                    EpisodeButton(
-                        label = "下一话",
-                        enabled = nextOrder != null,
-                        modifier = Modifier.weight(1f),
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        nextOrder?.let { order = it }
+                        EpisodeButton(
+                            label = "上一话",
+                            enabled = prevOrder != null,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            prevOrder?.let { order = it }
+                        }
+                        EpisodeButton(
+                            label = "下一话",
+                            enabled = nextOrder != null,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            nextOrder?.let { order = it }
+                        }
                     }
                 }
         }
+    }
+}
+
+/**
+ * 跳到第 [target] 页（0 基）。
+ *
+ * 定位条可以直接指到还没下载到的地方，所以先把中间那几页拉完再滚过去；
+ * 拉不动（没更多了或者报错）就停在能到的最远那一页。
+ */
+private suspend fun jumpToPage(
+    pager: Pager<*>,
+    listState: LazyListState,
+    target: Int,
+) {
+    if (target < 0) return
+    var guard = 0
+    while (pager.items.size <= target && pager.hasMore && pager.error == null && guard < 80) {
+        pager.loadNext()
+        guard++
+    }
+    if (pager.items.isEmpty()) return
+    listState.scrollToItem(target.coerceAtMost(pager.items.size - 1))
+}
+
+/**
+ * 阅读器底部的定位条：左边当前页，右边总页数，中间是一条细轨道。
+ *
+ * 拖动过程中只更新页码预览，松手才真跳（边拖边滚会把图片请求打爆，也跟手不跟手）。
+ */
+@Composable
+private fun ReaderSeekBar(
+    current: Int,
+    total: Int,
+    onJump: (Int) -> Unit,
+) {
+    var preview by remember { mutableStateOf<Int?>(null) }
+    val index = (preview ?: current).coerceIn(0, (total - 1).coerceAtLeast(0))
+    val fraction = if (total <= 1) 0f else index.toFloat() / (total - 1)
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            text = "${index + 1}",
+            style = MiuixTheme.textStyles.footnote1,
+            color = Color.White.copy(alpha = 0.9f),
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(26.dp)
+                .pointerInput(total) {
+                    if (total <= 1) return@pointerInput
+                    fun indexAt(x: Float): Int {
+                        val w = size.width.toFloat().coerceAtLeast(1f)
+                        val f = (x / w).coerceIn(0f, 1f)
+                        return (f * (total - 1)).roundToInt().coerceIn(0, total - 1)
+                    }
+                    detectHorizontalDragGestures(
+                        onDragStart = { at -> preview = indexAt(at.x) },
+                        onHorizontalDrag = { change, _ -> preview = indexAt(change.position.x) },
+                        onDragEnd = {
+                            preview?.let(onJump)
+                            preview = null
+                        },
+                        onDragCancel = { preview = null },
+                    )
+                }
+                .pointerInput(total) {
+                    if (total <= 1) return@pointerInput
+                    detectTapGestures { at ->
+                        val w = size.width.toFloat().coerceAtLeast(1f)
+                        val f = (at.x / w).coerceIn(0f, 1f)
+                        onJump((f * (total - 1)).roundToInt().coerceIn(0, total - 1))
+                    }
+                },
+        ) {
+            Canvas(Modifier.fillMaxSize()) {
+                val centerY = size.height / 2f
+                val trackWidth = 3.dp.toPx()
+                val radius = 7.dp.toPx()
+                val start = radius
+                val usable = (size.width - radius * 2).coerceAtLeast(1f)
+                val x = start + usable * fraction
+                drawLine(
+                    color = Color.White.copy(alpha = 0.22f),
+                    start = Offset(start, centerY),
+                    end = Offset(start + usable, centerY),
+                    strokeWidth = trackWidth,
+                    cap = StrokeCap.Round,
+                )
+                drawLine(
+                    color = Color.White.copy(alpha = 0.85f),
+                    start = Offset(start, centerY),
+                    end = Offset(x, centerY),
+                    strokeWidth = trackWidth,
+                    cap = StrokeCap.Round,
+                )
+                drawCircle(color = Color.White, radius = radius, center = Offset(x, centerY))
+            }
+        }
+        Text(
+            text = "/ $total",
+            style = MiuixTheme.textStyles.footnote1,
+            color = Color.White.copy(alpha = 0.6f),
+        )
     }
 }
 
