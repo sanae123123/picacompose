@@ -376,28 +376,34 @@ internal object IosRenderer : SkinRenderer {
         keyboardActions: androidx.compose.foundation.text.KeyboardActions,
         visualTransformation: androidx.compose.ui.text.input.VisualTransformation,
     ) {
-        CupertinoTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = modifier,
-            enabled = enabled,
-            readOnly = readOnly,
-            textStyle = textStyle,
-            placeholder = if (placeholder.isNotEmpty()) {
-                { CupertinoText(text = placeholder, style = textStyle) }
-            } else {
-                null
-            },
-            leadingIcon = leadingIcon,
-            trailingIcon = trailingIcon,
-            visualTransformation = visualTransformation,
-            keyboardOptions = keyboardOptions,
-            keyboardActions = keyboardActions,
-            singleLine = singleLine,
-            maxLines = maxLines,
-            minLines = minLines,
-        )
+        // CupertinoTextField 把外部 modifier 交给内部的装饰层，自己根部还带着
+        // defaultMinSize(280.dp)。所以 weight/fillMaxWidth 得套一层 Box 才能真正生效，
+        // 否则输入框会撑到 280dp，把同一行右边的按钮挤出屏幕。
+        Box(modifier = modifier) {
+            CupertinoTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = enabled,
+                readOnly = readOnly,
+                textStyle = textStyle,
+                placeholder = if (placeholder.isNotEmpty()) {
+                    { CupertinoText(text = placeholder, style = textStyle) }
+                } else {
+                    null
+                },
+                leadingIcon = leadingIcon,
+                trailingIcon = trailingIcon,
+                visualTransformation = visualTransformation,
+                keyboardOptions = keyboardOptions,
+                keyboardActions = keyboardActions,
+                singleLine = singleLine,
+                maxLines = maxLines,
+                minLines = minLines,
+            )
+        }
     }
+
 
 
     @Composable
