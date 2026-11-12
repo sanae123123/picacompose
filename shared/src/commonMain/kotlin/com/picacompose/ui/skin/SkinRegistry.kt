@@ -34,6 +34,7 @@ object SkinRegistry {
         register(MiuixSkin)
         register(MaterialYouSkin)
         // 鸿蒙风格还在调，先不上架；觉得差不多了把这里改成 true 就回来。
+        register(IosSkin)
         if (ENABLE_HARMONY) register(HarmonySkin)
         // 之前选中的皮肤被下架了就退回第一套，别让界面停在别人家的配色上。
         if (_skins.none { it.id == currentId }) {

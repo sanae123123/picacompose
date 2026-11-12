@@ -50,6 +50,7 @@ interface PicaSkin {
 enum class SkinEngine(val id: String) {
     Miuix("miuix"),
     Material3("material3"),
+    Ios("ios"),
 }
 
 /**
@@ -229,4 +230,5 @@ internal val PicaSkin.renderer: SkinRenderer
     get() = when (engine) {
         SkinEngine.Miuix -> MiuixRenderer
         SkinEngine.Material3 -> Material3Renderer
+        SkinEngine.Ios -> IosRenderer
     }
