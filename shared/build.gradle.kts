@@ -50,7 +50,7 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.materialIconsExtended)
             implementation(libs.miuix.ui)
-            implementation(libs.bubbles)
+            implementation(libs.cupertino)
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
         }

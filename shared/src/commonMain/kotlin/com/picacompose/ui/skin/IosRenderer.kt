@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog as Md3AlertDialog
-import androidx.compose.material3.CircularProgressIndicator as Md3CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu as Md3DropdownMenu
 import androidx.compose.material3.DropdownMenuItem as Md3DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,8 +28,6 @@ import androidx.compose.material3.HorizontalDivider as Md3HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator as Md3LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
-import androidx.compose.material3.Scaffold as Md3Scaffold
-import androidx.compose.material3.Text as Md3Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -50,40 +47,40 @@ import androidx.compose.ui.unit.dp
 import com.picacompose.ui.components.MiuixTextColor
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
-import io.github.kalist28.bubbles.BubblesButton
-import io.github.kalist28.bubbles.BubblesButtonDefaults
-import io.github.kalist28.bubbles.BubblesButtonSize
-import io.github.kalist28.bubbles.BubblesCheckBox
-import io.github.kalist28.bubbles.BubblesHorizontalDivider
-import io.github.kalist28.bubbles.BubblesIconButton
-import io.github.kalist28.bubbles.BubblesSurface
-import io.github.kalist28.bubbles.BubblesSwitch
-import io.github.kalist28.bubbles.BubblesSwitchDefaults
-import io.github.kalist28.bubbles.BubblesTextField
-import io.github.kalist28.bubbles.core.theme.BubblesTheme
+import io.github.alexzhirkevich.cupertino.CupertinoActivityIndicator
+import io.github.alexzhirkevich.cupertino.CupertinoButton
+import io.github.alexzhirkevich.cupertino.CupertinoButtonDefaults
+import io.github.alexzhirkevich.cupertino.CupertinoButtonSize
+import io.github.alexzhirkevich.cupertino.CupertinoCheckBox
+import io.github.alexzhirkevich.cupertino.CupertinoHorizontalDivider
+import io.github.alexzhirkevich.cupertino.CupertinoIconButton
+import io.github.alexzhirkevich.cupertino.CupertinoScaffold
+import io.github.alexzhirkevich.cupertino.CupertinoSurface
+import io.github.alexzhirkevich.cupertino.CupertinoSwitch
+import io.github.alexzhirkevich.cupertino.CupertinoText
+import io.github.alexzhirkevich.cupertino.CupertinoTextField
+import io.github.alexzhirkevich.cupertino.ExperimentalCupertinoApi
+import io.github.alexzhirkevich.cupertino.theme.CupertinoTheme
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-/** iOS 开关的那种绿。 */
-private val IosGreen = Color(0xFF34C759)
-
 /**
- * iOS 引擎：控件全部换成 bubbles（iOS 风格的那套库），剩下的壳自己画。
+ * iOS 引擎：控件全部用 Compose Cupertino 的组件，剩下的壳自己画。
  *
- * 开关、按钮、勾选、输入框、分隔线、卡片底都直接是 bubbles 的组件，
- * 所以开关是 iOS 那种绿色胶囊、勾选是方框打勾、输入框是圆角灰底无边框。
- * 库里没有的（底栏、分段筛选、弹窗、下拉、标题栏）由这里补，补出来也按 iOS 的样子。
- *
- * 点按反馈跟项目其它地方不一样：iOS 不用涟漪，这里全靠 bubbles 自己的按压态。
+ * 开关、按钮、图标按钮、勾选、输入框、分隔线、卡片底、页面容器、加载圈都是
+ * Cupertino 的（这正是苹果那套实现），所以形态、尺寸、按压反馈都是 iOS 原样。
+ * 库里没有对应物的（底栏、分段筛选、弹窗、下拉、信息胶囊）由这里补，
+ * 补出来的样子也按 iOS 的画。
  */
+@OptIn(ExperimentalCupertinoApi::class)
 internal object IosRenderer : SkinRenderer {
 
     @Composable
-    private fun iosColors() = MaterialTheme.colorScheme
+    private fun mdColors() = MaterialTheme.colorScheme
 
     @Composable
-    private fun bubblesColors() = BubblesTheme.colorScheme
+    private fun iosColors() = CupertinoTheme.colorScheme
 
     @Composable
     override fun Surface(
@@ -96,12 +93,12 @@ internal object IosRenderer : SkinRenderer {
         content: @Composable () -> Unit,
     ) {
         val colors = iosColors()
-        BubblesSurface(
+        CupertinoSurface(
             modifier = modifier,
             shape = shape,
-            color = if (color == Color.Unspecified) colors.surface else color,
+            color = if (color == Color.Unspecified) colors.systemBackground else color,
             shadowElevation = shadowElevation,
-            contentColor = if (contentColor == Color.Unspecified) colors.onSurface else contentColor,
+            contentColor = if (contentColor == Color.Unspecified) colors.label else contentColor,
         ) {
             content()
         }
@@ -116,14 +113,14 @@ internal object IosRenderer : SkinRenderer {
         content: @Composable RowScope.() -> Unit,
     ) {
         val colors = iosColors()
-        BubblesButton(
+        CupertinoButton(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
-            size = BubblesButtonSize.Regular,
-            colors = BubblesButtonDefaults.filledButtonColors(
-                contentColor = colors.onPrimary,
-                containerColor = colors.primary,
+            size = CupertinoButtonSize.Regular,
+            colors = CupertinoButtonDefaults.filledButtonColors(
+                contentColor = Color.White,
+                containerColor = colors.accent,
             ),
             shape = RoundedCornerShape(minOf(cornerRadius, 12.dp)),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
@@ -139,12 +136,12 @@ internal object IosRenderer : SkinRenderer {
         content: @Composable RowScope.() -> Unit,
     ) {
         val colors = iosColors()
-        BubblesButton(
+        CupertinoButton(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
-            size = BubblesButtonSize.Regular,
-            colors = BubblesButtonDefaults.clearButtonColors(contentColor = colors.primary),
+            size = CupertinoButtonSize.Regular,
+            colors = CupertinoButtonDefaults.plainButtonColors(contentColor = colors.accent),
             shape = RoundedCornerShape(8.dp),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
             content = content,
@@ -159,17 +156,16 @@ internal object IosRenderer : SkinRenderer {
         content: @Composable RowScope.() -> Unit,
     ) {
         val colors = iosColors()
-        BubblesButton(
+        CupertinoButton(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
-            size = BubblesButtonSize.Regular,
-            colors = BubblesButtonDefaults.filledButtonColors(
-                contentColor = colors.primary,
-                containerColor = colors.surface,
-                outlineColor = colors.outlineVariant,
+            size = CupertinoButtonSize.Regular,
+            colors = CupertinoButtonDefaults.filledButtonColors(
+                contentColor = colors.accent,
+                containerColor = colors.systemBackground,
             ),
-            border = BorderStroke(1.dp, colors.outlineVariant),
+            border = BorderStroke(1.dp, colors.separator),
             shape = RoundedCornerShape(12.dp),
             contentPadding = PaddingValues(horizontal = 18.dp, vertical = 11.dp),
             content = content,
@@ -184,29 +180,28 @@ internal object IosRenderer : SkinRenderer {
         content: @Composable () -> Unit,
     ) {
         val colors = iosColors()
-        BubblesIconButton(
+        CupertinoIconButton(
             onClick = onClick,
             modifier = modifier,
             enabled = enabled,
-            colors = BubblesButtonDefaults.clearButtonColors(contentColor = colors.primary),
+            colors = CupertinoButtonDefaults.plainButtonColors(contentColor = colors.accent),
             content = content,
         )
     }
 
     @Composable
     override fun Switch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier, enabled: Boolean) {
-        BubblesSwitch(
+        CupertinoSwitch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             modifier = modifier,
-            colors = BubblesSwitchDefaults.colors(checkedTrackColor = IosGreen),
             enabled = enabled,
         )
     }
 
     @Composable
     override fun Checkbox(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier, enabled: Boolean) {
-        BubblesCheckBox(
+        CupertinoCheckBox(
             checked = checked,
             onCheckedChange = onCheckedChange,
             modifier = modifier,
@@ -217,13 +212,12 @@ internal object IosRenderer : SkinRenderer {
     @Composable
     override fun CircularProgress(modifier: Modifier, strokeWidth: Dp, progress: Float?, color: Color) {
         if (progress == null) {
-            Md3CircularProgressIndicator(modifier = modifier, color = color, strokeWidth = strokeWidth)
+            CupertinoActivityIndicator(modifier = modifier, color = color)
         } else {
-            Md3CircularProgressIndicator(
-                progress = { progress },
+            CupertinoActivityIndicator(
                 modifier = modifier,
+                progress = progress.coerceIn(0f, 1f),
                 color = color,
-                strokeWidth = strokeWidth,
             )
         }
     }
@@ -246,21 +240,21 @@ internal object IosRenderer : SkinRenderer {
         content: @Composable (PaddingValues) -> Unit,
     ) {
         val colors = iosColors()
-        Md3Scaffold(
+        CupertinoScaffold(
             modifier = modifier,
-            containerColor = if (containerColor == Color.Unspecified) colors.background else containerColor,
             bottomBar = bottomBar,
-        ) { inner ->
-            MiuixTextColor(colors.onBackground) { content(inner) }
-        }
+            containerColor = if (containerColor == Color.Unspecified) colors.systemGroupedBackground else containerColor,
+            contentColor = colors.label,
+            content = content,
+        )
     }
 
     @Composable
     override fun Divider(modifier: Modifier) {
-        BubblesHorizontalDivider(
+        CupertinoHorizontalDivider(
             modifier = modifier,
             thickness = 0.5.dp,
-            color = bubblesColors().separator,
+            color = iosColors().separator,
         )
     }
 
@@ -273,7 +267,7 @@ internal object IosRenderer : SkinRenderer {
         confirmButton: @Composable () -> Unit,
         dismissButton: (@Composable () -> Unit)?,
     ) {
-        val colors = iosColors()
+        val colors = mdColors()
         Md3AlertDialog(
             onDismissRequest = onDismissRequest,
             modifier = modifier,
@@ -290,7 +284,7 @@ internal object IosRenderer : SkinRenderer {
 
     @Composable
     override fun FilterChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit) {
-        val colors = iosColors()
+        val colors = mdColors()
         val shape = RoundedCornerShape(9.dp)
         Box(
             modifier = Modifier
@@ -313,7 +307,7 @@ internal object IosRenderer : SkinRenderer {
         label: @Composable () -> Unit,
         trailingIcon: (@Composable () -> Unit)?,
     ) {
-        val colors = iosColors()
+        val colors = mdColors()
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(9.dp))
@@ -352,7 +346,7 @@ internal object IosRenderer : SkinRenderer {
         keyboardActions: androidx.compose.foundation.text.KeyboardActions,
         visualTransformation: androidx.compose.ui.text.input.VisualTransformation,
     ) {
-        BubblesTextField(
+        CupertinoTextField(
             value = value,
             onValueChange = onValueChange,
             modifier = modifier,
@@ -360,7 +354,7 @@ internal object IosRenderer : SkinRenderer {
             readOnly = readOnly,
             textStyle = textStyle,
             placeholder = if (placeholder.isNotEmpty()) {
-                { MiuixText(text = placeholder, style = textStyle) }
+                { CupertinoText(text = placeholder, style = textStyle) }
             } else {
                 null
             },
@@ -381,7 +375,7 @@ internal object IosRenderer : SkinRenderer {
         onDismissRequest: () -> Unit,
         content: @Composable ColumnScope.() -> Unit,
     ) {
-        val colors = iosColors()
+        val colors = mdColors()
         Md3DropdownMenu(
             expanded = expanded,
             onDismissRequest = onDismissRequest,
@@ -400,7 +394,7 @@ internal object IosRenderer : SkinRenderer {
         trailingIcon: (@Composable () -> Unit)?,
         enabled: Boolean,
     ) {
-        val colors = iosColors()
+        val colors = mdColors()
         Md3DropdownMenuItem(
             text = { MiuixTextColor(colors.onSurface) { text() } },
             onClick = onClick,
@@ -417,18 +411,18 @@ internal object IosRenderer : SkinRenderer {
 
     @Composable
     override fun PageTitle(text: String, modifier: Modifier) {
-        val colors = iosColors()
-        Md3Text(
+        CupertinoText(
             text = text,
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-            color = colors.onBackground,
             modifier = modifier,
+            style = CupertinoTheme.typography.largeTitle,
+            fontWeight = FontWeight.Bold,
+            color = iosColors().label,
         )
     }
 
     @Composable
     override fun InfoChip(text: String) {
-        val colors = iosColors()
+        val colors = mdColors()
         Box(
             Modifier
                 .clip(RoundedCornerShape(999.dp))
@@ -448,8 +442,7 @@ internal object IosRenderer : SkinRenderer {
 
     @Composable
     override fun Backdrop(modifier: Modifier) {
-        val colors = iosColors()
-        Box(modifier.fillMaxSize().background(colors.background))
+        Box(modifier.fillMaxSize().background(iosColors().systemGroupedBackground))
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -459,7 +452,7 @@ internal object IosRenderer : SkinRenderer {
             Box(modifier) { content() }
             return
         }
-        val colors = iosColors()
+        val colors = mdColors()
         val scope = rememberCoroutineScope()
         var refreshing by remember { mutableStateOf(false) }
         PullToRefreshBox(
@@ -483,11 +476,11 @@ internal object IosRenderer : SkinRenderer {
     override fun BottomBar(tabs: List<BottomBarTab>, selectedIndex: Int, onSelect: (Int) -> Unit) {
         val colors = iosColors()
         Column(Modifier.navigationBarsPadding()) {
-            Md3HorizontalDivider(color = colors.outlineVariant)
+            Md3HorizontalDivider(color = colors.separator)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(colors.surface)
+                    .background(colors.systemBackground)
                     .padding(vertical = 6.dp),
             ) {
                 tabs.forEachIndexed { index, tab ->
@@ -505,10 +498,10 @@ internal object IosRenderer : SkinRenderer {
                         PicaGlyph(
                             tab.icon,
                             Modifier.size(24.dp),
-                            if (active) colors.primary else colors.onSurfaceVariant,
+                            if (active) colors.accent else colors.tertiaryLabel,
                         )
                         Spacer(Modifier.height(2.dp))
-                        MiuixTextColor(if (active) colors.primary else colors.onSurfaceVariant) {
+                        MiuixTextColor(if (active) colors.accent else colors.tertiaryLabel) {
                             MiuixText(
                                 text = tab.label,
                                 style = MiuixTheme.textStyles.footnote2,

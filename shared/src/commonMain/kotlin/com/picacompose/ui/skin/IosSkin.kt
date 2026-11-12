@@ -8,9 +8,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.picacompose.ui.theme.toMiuixColors
-import io.github.kalist28.bubbles.BubblesTheme
-import io.github.kalist28.bubbles.core.theme.darkColorScheme as bubblesDarkColorScheme
-import io.github.kalist28.bubbles.core.theme.lightColorScheme as bubblesLightColorScheme
+import io.github.alexzhirkevich.cupertino.ExperimentalCupertinoApi
+import io.github.alexzhirkevich.cupertino.theme.CupertinoTheme
+import io.github.alexzhirkevich.cupertino.theme.darkColorScheme as cupertinoDarkColorScheme
+import io.github.alexzhirkevich.cupertino.theme.lightColorScheme as cupertinoLightColorScheme
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
@@ -87,15 +88,16 @@ object IosSkin : PicaSkin {
         cardColor = { MaterialTheme.colorScheme.surface },
     )
 
+    @OptIn(ExperimentalCupertinoApi::class)
     @Composable
     override fun Theme(darkTheme: Boolean, content: @Composable () -> Unit) {
         val scheme = remember(darkTheme) { iosScheme(darkTheme) }
-        val bubblesScheme = remember(darkTheme) {
-            if (darkTheme) bubblesDarkColorScheme() else bubblesLightColorScheme()
+        val iosScheme = remember(darkTheme) {
+            if (darkTheme) cupertinoDarkColorScheme() else cupertinoLightColorScheme()
         }
         MaterialTheme(colorScheme = scheme) {
             MiuixTheme(colors = remember(scheme) { scheme.toMiuixColors() }) {
-                BubblesTheme(colorScheme = bubblesScheme, content = content)
+                CupertinoTheme(colorScheme = iosScheme, content = content)
             }
         }
     }
