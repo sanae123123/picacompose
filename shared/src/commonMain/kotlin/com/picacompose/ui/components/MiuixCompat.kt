@@ -1,5 +1,6 @@
 package com.picacompose.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -99,10 +100,13 @@ fun PicaFilterChip(
         )
     } else {
         val colors = MiuixTheme.colorScheme
+        // 选中用实心的主色、未选中是白底加一圈描边：筛选弹窗本身是浅灰底，
+        // 两边都淡淡的会看不出哪个是选中的。
         Surface(
             shape = RoundedCornerShape(SkinTokens.chipRadius),
-            color = if (selected) colors.primary.copy(alpha = 0.15f) else colors.tertiaryContainer,
-            contentColor = if (selected) colors.primary else colors.onTertiaryContainer,
+            color = if (selected) colors.primary else colors.surface,
+            contentColor = if (selected) colors.onPrimary else colors.onSurface,
+            border = if (selected) null else BorderStroke(1.dp, colors.dividerLine),
             modifier = Modifier.clickable(onClick = onClick),
         ) {
             Row(
@@ -143,8 +147,9 @@ fun PicaInputChip(
         val colors = MiuixTheme.colorScheme
         Surface(
             shape = RoundedCornerShape(SkinTokens.chipRadius),
-            color = if (selected) colors.primary.copy(alpha = 0.15f) else colors.tertiaryContainer,
-            contentColor = if (selected) colors.primary else colors.onTertiaryContainer,
+            color = colors.surface,
+            contentColor = colors.onSurface,
+            border = BorderStroke(1.dp, colors.dividerLine),
             modifier = Modifier.clickable(onClick = onClick),
         ) {
             Row(
