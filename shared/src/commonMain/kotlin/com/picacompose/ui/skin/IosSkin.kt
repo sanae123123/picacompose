@@ -8,10 +8,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.picacompose.ui.theme.toMiuixColors
-import io.github.alexzhirkevich.cupertino.ExperimentalCupertinoApi
-import io.github.alexzhirkevich.cupertino.theme.CupertinoTheme
-import io.github.alexzhirkevich.cupertino.theme.darkColorScheme as cupertinoDarkColorScheme
-import io.github.alexzhirkevich.cupertino.theme.lightColorScheme as cupertinoLightColorScheme
+import com.slapps.cupertino.ExperimentalCupertinoApi
+import com.slapps.cupertino.theme.CupertinoTheme
+import com.slapps.cupertino.theme.darkColorScheme as cupertinoDarkColorScheme
+import com.slapps.cupertino.theme.lightColorScheme as cupertinoLightColorScheme
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**

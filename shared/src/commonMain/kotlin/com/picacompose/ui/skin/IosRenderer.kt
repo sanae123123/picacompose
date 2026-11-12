@@ -59,12 +59,12 @@ import com.picacompose.ui.components.MiuixTextColor
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.vector
-import io.github.alexzhirkevich.cupertino.CupertinoCheckBox
-import io.github.alexzhirkevich.cupertino.CupertinoHorizontalDivider
-import io.github.alexzhirkevich.cupertino.CupertinoSwitch
-import io.github.alexzhirkevich.cupertino.CupertinoText
-import io.github.alexzhirkevich.cupertino.ExperimentalCupertinoApi
-import io.github.alexzhirkevich.cupertino.theme.CupertinoTheme
+import com.slapps.cupertino.CupertinoCheckBox
+import com.slapps.cupertino.CupertinoHorizontalDivider
+import com.slapps.cupertino.CupertinoSwitch
+import com.slapps.cupertino.CupertinoText
+import com.slapps.cupertino.ExperimentalCupertinoApi
+import com.slapps.cupertino.theme.CupertinoTheme
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
 import top.yukonga.miuix.kmp.theme.MiuixTheme
