@@ -33,6 +33,7 @@ object SkinRegistry {
     init {
         register(MiuixSkin)
         register(MaterialYouSkin)
+        register(HarmonySkin)
     }
 
     /** 挂一套皮肤上来；同 id 的会替换掉旧的。 */
