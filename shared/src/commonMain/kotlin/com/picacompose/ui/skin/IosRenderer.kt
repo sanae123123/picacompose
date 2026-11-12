@@ -138,6 +138,8 @@ internal object IosRenderer : SkinRenderer {
             colors = CupertinoButtonDefaults.filledButtonColors(
                 contentColor = Color.White,
                 containerColor = colors.accent,
+                disabledContentColor = Color.White,
+                disabledContainerColor = colors.accent.copy(alpha = 0.35f),
             ),
             shape = RoundedCornerShape(minOf(cornerRadius, 12.dp)),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
@@ -183,6 +185,8 @@ internal object IosRenderer : SkinRenderer {
             colors = CupertinoButtonDefaults.filledButtonColors(
                 contentColor = colors.accent,
                 containerColor = colors.systemBackground,
+                disabledContentColor = colors.tertiaryLabel,
+                disabledContainerColor = colors.systemBackground,
             ),
             border = BorderStroke(1.dp, colors.separator),
             shape = RoundedCornerShape(12.dp),
