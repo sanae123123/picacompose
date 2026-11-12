@@ -82,8 +82,8 @@ object IosSkin : PicaSkin {
     override val description: String = "iOS 的灰底白卡片、绿色开关和分段筛选，控件全部重画。"
     override val engine: SkinEngine = SkinEngine.Ios
     override val tokens: SkinTokens = SkinTokens(
-        cardRadius = 12.dp,
-        rowRadius = 12.dp,
+        cardRadius = 10.dp,
+        rowRadius = 10.dp,
         fieldRadius = 10.dp,
         cardColor = { MaterialTheme.colorScheme.surface },
     )
