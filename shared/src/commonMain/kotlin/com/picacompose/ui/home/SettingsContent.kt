@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Arrangement
 import com.picacompose.ui.components.PicaAlertDialog
 import com.picacompose.ui.components.PicaCircularProgress
 import com.picacompose.ui.components.PicaFilterChip
-import com.picacompose.ui.theme.AppSkin
 import com.picacompose.ui.theme.SkinState
 import com.picacompose.ui.components.PicaDropdownMenu
 import com.picacompose.ui.components.PicaDropdownMenuItem
@@ -134,7 +133,7 @@ fun SettingsContent(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    AppSkin.entries.forEach { skin ->
+                    SkinState.skins.forEach { skin ->
                         PicaFilterChip(
                             selected = SkinState.current == skin,
                             onClick = { SkinState.select(skin) },

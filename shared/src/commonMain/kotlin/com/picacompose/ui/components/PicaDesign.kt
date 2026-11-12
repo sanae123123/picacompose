@@ -2,60 +2,31 @@ package com.picacompose.ui.components
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button as Md3Button
-import androidx.compose.material3.ButtonDefaults as Md3ButtonDefaults
-import androidx.compose.material3.Checkbox as Md3Checkbox
-import androidx.compose.material3.CircularProgressIndicator as Md3CircularProgressIndicator
-import androidx.compose.material3.IconButton as Md3IconButton
-import androidx.compose.material3.LinearProgressIndicator as Md3LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.HorizontalDivider as Md3HorizontalDivider
-import androidx.compose.material3.Scaffold as Md3Scaffold
-import androidx.compose.material3.contentColorFor
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.material3.OutlinedButton as Md3OutlinedButton
-import androidx.compose.material3.Switch as Md3Switch
-import androidx.compose.material3.TextButton as Md3TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.picacompose.ui.theme.AppSkin
-import com.picacompose.ui.theme.SkinState
-import top.yukonga.miuix.kmp.basic.Button as MiuixButton
-import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
-import top.yukonga.miuix.kmp.basic.Checkbox as MiuixCheckbox
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator as MiuixCircularProgressIndicator
-import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
-import top.yukonga.miuix.kmp.basic.LinearProgressIndicator as MiuixLinearProgressIndicator
-import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
-import top.yukonga.miuix.kmp.basic.Switch as MiuixSwitch
+import com.picacompose.ui.skin.SkinRegistry
+import com.picacompose.ui.skin.renderer
 import top.yukonga.miuix.kmp.theme.LocalContentColor as MiuixLocalContentColor
-import top.yukonga.miuix.kmp.basic.HorizontalDivider as MiuixHorizontalDivider
-import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
-import top.yukonga.miuix.kmp.basic.Surface as MiuixSurface
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import androidx.compose.ui.state.ToggleableState
 
 /**
- * 一套按皮肤选实现的基础控件。
+ * 页面用的基础控件。
  *
- * 页面只写一份逻辑，调 [PicaButton]、[PicaSwitch] 这些；里面会看当前皮肤：
- * MIUI 风格用 miuix 的组件，Material You 用 Material3 的组件。两套都从同一份
- * 色板取色，所以切换皮肤时颜色和形状一起换。
+ * 每个函数都是一层壳：皮肤决定样式和它用哪套控件库，这里只负责转发。
+ * 加一套新皮肤不用改这个文件，除非新皮肤要换第三家控件库（那时在 `ui/skin` 里加一个引擎）。
  *
  * 唯一的坑是内容颜色：miuix 的 Text/Icon 读 miuix 自己的 `LocalContentColor`，
- * Material3 组件提供的是 Material3 那一份。所以 Material3 分支里会用
- * [MiuixTextColor] 把颜色桥接给 miuix 的文字和图标。
+ * Material3 组件提供的是 Material3 那一份，所以 Material3 引擎里会用 [MiuixTextColor]
+ * 把颜色桥接给 miuix 的文字和图标。
  */
-internal val md3Skin: Boolean
-    get() = SkinState.current == AppSkin.MaterialYou
 
-/** Material3 分支里，把颜色喂给 miuix 的 Text / Icon / PicaGlyph。 */
+/** Material3 引擎里，把颜色喂给 miuix 的 Text / Icon / PicaGlyph。 */
 @Composable
 internal fun MiuixTextColor(color: Color, content: @Composable () -> Unit) {
     CompositionLocalProvider(MiuixLocalContentColor provides color, content = content)
@@ -72,44 +43,18 @@ fun PicaSurface(
     shadowElevation: Dp = 0.dp,
     content: @Composable () -> Unit,
 ) {
-    if (md3Skin) {
-        val colors = MaterialTheme.colorScheme
-        val resolved = if (contentColor == Color.Unspecified) contentColorFor(color) else contentColor
-        // 旧版 Material3 界面里，surface 底的卡片都带 1dp tonalElevation，卡片和背景才分得开。
-        val elevation = if (tonalElevation == 0.dp && color == colors.surface) 1.dp else tonalElevation
-        androidx.compose.material3.Surface(
-            modifier = modifier,
-            shape = shape,
-            color = color,
-            contentColor = resolved,
-            tonalElevation = elevation,
-            shadowElevation = shadowElevation,
-        ) {
-            MiuixTextColor(resolved) { content() }
-        }
-    } else {
-        if (contentColor == Color.Unspecified) {
-            MiuixSurface(
-                modifier = modifier,
-                shape = shape,
-                color = color,
-                shadowElevation = shadowElevation,
-                content = content,
-            )
-        } else {
-            MiuixSurface(
-                modifier = modifier,
-                shape = shape,
-                color = color,
-                contentColor = contentColor,
-                shadowElevation = shadowElevation,
-                content = content,
-            )
-        }
-    }
+    SkinRegistry.current.renderer.Surface(
+        modifier = modifier,
+        shape = shape,
+        color = color,
+        contentColor = contentColor,
+        tonalElevation = tonalElevation,
+        shadowElevation = shadowElevation,
+        content = content,
+    )
 }
 
-/** 主按钮：MIUI 用 miuix 的实心按钮，MD3 用 Material3 的 FilledButton。 */
+/** 主按钮。 */
 @Composable
 fun PicaButton(
     onClick: () -> Unit,
@@ -118,35 +63,13 @@ fun PicaButton(
     cornerRadius: Dp = 999.dp,
     content: @Composable RowScope.() -> Unit,
 ) {
-    if (md3Skin) {
-        val colors = MaterialTheme.colorScheme
-        Md3Button(
-            onClick = onClick,
-            modifier = modifier,
-            enabled = enabled,
-            shape = RoundedCornerShape(cornerRadius),
-            colors = Md3ButtonDefaults.buttonColors(
-                containerColor = colors.primary,
-                contentColor = colors.onPrimary,
-                disabledContainerColor = colors.onSurface.copy(alpha = 0.12f),
-                disabledContentColor = colors.onSurface.copy(alpha = 0.38f),
-            ),
-            content = { MiuixTextColor(colors.onPrimary) { content() } },
-        )
-    } else {
-        val colors = MiuixTheme.colorScheme
-        MiuixButton(
-            onClick = onClick,
-            modifier = modifier,
-            enabled = enabled,
-            cornerRadius = cornerRadius,
-            colors = MiuixButtonDefaults.buttonColors(
-                color = colors.primary,
-                contentColor = colors.onPrimary,
-            ),
-            content = content,
-        )
-    }
+    SkinRegistry.current.renderer.Button(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        cornerRadius = cornerRadius,
+        content = content,
+    )
 }
 
 /** 文字按钮：没有底色，只有主色文字。 */
@@ -157,32 +80,12 @@ fun PicaTextButton(
     enabled: Boolean = true,
     content: @Composable RowScope.() -> Unit,
 ) {
-    if (md3Skin) {
-        val colors = MaterialTheme.colorScheme
-        Md3TextButton(
-            onClick = onClick,
-            modifier = modifier,
-            enabled = enabled,
-            content = { MiuixTextColor(colors.primary) { content() } },
-        )
-    } else {
-        val colors = MiuixTheme.colorScheme
-        MiuixButton(
-            onClick = onClick,
-            modifier = modifier,
-            enabled = enabled,
-            minWidth = 0.dp,
-            minHeight = 36.dp,
-            insideMargin = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-            colors = MiuixButtonDefaults.buttonColors(
-                color = Color.Transparent,
-                disabledColor = Color.Transparent,
-                contentColor = colors.primary,
-                disabledContentColor = colors.disabledPrimary,
-            ),
-            content = content,
-        )
-    }
+    SkinRegistry.current.renderer.TextButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        content = content,
+    )
 }
 
 /** 描边按钮：细边 + 主色文字。 */
@@ -193,34 +96,15 @@ fun PicaOutlinedButton(
     enabled: Boolean = true,
     content: @Composable RowScope.() -> Unit,
 ) {
-    if (md3Skin) {
-        val colors = MaterialTheme.colorScheme
-        Md3OutlinedButton(
-            onClick = onClick,
-            modifier = modifier,
-            enabled = enabled,
-            content = { MiuixTextColor(colors.primary) { content() } },
-        )
-    } else {
-        val colors = MiuixTheme.colorScheme
-        MiuixButton(
-            onClick = onClick,
-            modifier = modifier,
-            enabled = enabled,
-            cornerRadius = 999.dp,
-            insideMargin = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-            colors = MiuixButtonDefaults.buttonColors(
-                color = colors.tertiaryContainer,
-                disabledColor = colors.tertiaryContainer,
-                contentColor = colors.primary,
-                disabledContentColor = colors.disabledOnSurface,
-            ),
-            content = content,
-        )
-    }
+    SkinRegistry.current.renderer.OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        content = content,
+    )
 }
 
-/** 图标按钮：两个皮肤都是 40dp 的圆形点击区。 */
+/** 图标按钮：40dp 的圆形点击区。 */
 @Composable
 fun PicaIconButton(
     onClick: () -> Unit,
@@ -228,14 +112,12 @@ fun PicaIconButton(
     enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    if (md3Skin) {
-        val colors = MaterialTheme.colorScheme
-        Md3IconButton(onClick = onClick, modifier = modifier, enabled = enabled) {
-            MiuixTextColor(colors.onSurfaceVariant) { content() }
-        }
-    } else {
-        MiuixIconButton(onClick = onClick, modifier = modifier, content = content)
-    }
+    SkinRegistry.current.renderer.IconButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        content = content,
+    )
 }
 
 /** 开关。 */
@@ -246,11 +128,12 @@ fun PicaSwitch(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    if (md3Skin) {
-        Md3Switch(checked = checked, onCheckedChange = onCheckedChange, modifier = modifier, enabled = enabled)
-    } else {
-        MiuixSwitch(checked = checked, onCheckedChange = onCheckedChange, modifier = modifier, enabled = enabled)
-    }
+    SkinRegistry.current.renderer.Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = modifier,
+        enabled = enabled,
+    )
 }
 
 /** 复选框。 */
@@ -261,16 +144,12 @@ fun PicaCheckbox(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    if (md3Skin) {
-        Md3Checkbox(checked = checked, onCheckedChange = onCheckedChange, modifier = modifier, enabled = enabled)
-    } else {
-        MiuixCheckbox(
-            state = ToggleableState(checked),
-            onClick = { onCheckedChange(!checked) },
-            modifier = modifier,
-            enabled = enabled,
-        )
-    }
+    SkinRegistry.current.renderer.Checkbox(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = modifier,
+        enabled = enabled,
+    )
 }
 
 /** 圆形进度：不确定进度时传 null。 */
@@ -281,25 +160,12 @@ fun PicaCircularProgress(
     progress: Float? = null,
     color: Color = MiuixTheme.colorScheme.primary,
 ) {
-    if (md3Skin) {
-        if (progress == null) {
-            Md3CircularProgressIndicator(modifier = modifier, color = color, strokeWidth = strokeWidth)
-        } else {
-            Md3CircularProgressIndicator(
-                progress = { progress },
-                modifier = modifier,
-                color = color,
-                strokeWidth = strokeWidth,
-            )
-        }
-    } else {
-        MiuixCircularProgressIndicator(
-            modifier = modifier,
-            strokeWidth = strokeWidth,
-            progress = progress,
-            colors = ProgressIndicatorDefaults.progressIndicatorColors(foregroundColor = color),
-        )
-    }
+    SkinRegistry.current.renderer.CircularProgress(
+        modifier = modifier,
+        strokeWidth = strokeWidth,
+        progress = progress,
+        color = color,
+    )
 }
 
 /** 条形进度。 */
@@ -310,26 +176,15 @@ fun PicaLinearProgress(
     color: Color = MiuixTheme.colorScheme.primary,
     trackColor: Color = MiuixTheme.colorScheme.surfaceVariant,
 ) {
-    if (md3Skin) {
-        Md3LinearProgressIndicator(
-            progress = { progress },
-            modifier = modifier,
-            color = color,
-            trackColor = trackColor,
-        )
-    } else {
-        MiuixLinearProgressIndicator(
-            progress = progress,
-            modifier = modifier,
-            colors = ProgressIndicatorDefaults.progressIndicatorColors(
-                foregroundColor = color,
-                backgroundColor = trackColor,
-            ),
-        )
-    }
+    SkinRegistry.current.renderer.LinearProgress(
+        progress = progress,
+        modifier = modifier,
+        color = color,
+        trackColor = trackColor,
+    )
 }
 
-/** 页面骨架：Material You 下用 MD3 的 Scaffold，MIUI 下用 miuix 的。 */
+/** 页面骨架。 */
 @Composable
 fun PicaScaffold(
     modifier: Modifier = Modifier,
@@ -337,34 +192,16 @@ fun PicaScaffold(
     bottomBar: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
-    if (md3Skin) {
-        Md3Scaffold(
-            modifier = modifier,
-            containerColor = containerColor,
-            bottomBar = bottomBar,
-        ) { inner ->
-            val contentColor = MiuixTheme.colorScheme.onBackground
-            MiuixTextColor(contentColor) { content(inner) }
-        }
-    } else {
-        MiuixScaffold(
-            modifier = modifier,
-            containerColor = if (containerColor == Color.Unspecified) MiuixTheme.colorScheme.background else containerColor,
-            bottomBar = bottomBar,
-            content = content,
-        )
-    }
+    SkinRegistry.current.renderer.Scaffold(
+        modifier = modifier,
+        containerColor = containerColor,
+        bottomBar = bottomBar,
+        content = content,
+    )
 }
 
-/** 分割线：Material You 用 MD3 的，MIUI 用 miuix 的。 */
+/** 分割线。 */
 @Composable
 fun PicaDivider(modifier: Modifier = Modifier) {
-    if (md3Skin) {
-        Md3HorizontalDivider(
-            modifier = modifier,
-            color = MaterialTheme.colorScheme.outlineVariant,
-        )
-    } else {
-        MiuixHorizontalDivider(modifier = modifier)
-    }
+    SkinRegistry.current.renderer.Divider(modifier = modifier)
 }

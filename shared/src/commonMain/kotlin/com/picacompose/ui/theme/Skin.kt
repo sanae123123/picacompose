@@ -1,36 +1,22 @@
 package com.picacompose.ui.theme
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import com.picacompose.data.platformKeyValueStore
+import com.picacompose.ui.skin.PicaSkin
+import com.picacompose.ui.skin.SkinRegistry
 
 /**
- * 皮肤。两套都跑在同一套 miuix 组件上，只换色板，所以切皮肤不会把界面结构换掉。
+ * 皮肤状态的门面。
  *
- * - [Miuix]：miuix 自带的 HyperOS / MIUI 配色，白色背景 + MIUI 蓝。
- * - [MaterialYou]：Material You 的动态取色（Android 12 起跟着壁纸走），其余平台用
- *   MD3 的基线色板；卡片、底栏这些用的还是同一批组件，只是色值换成 MD3 的色值。
+ * 真正的注册表在 [SkinRegistry]（`ui/skin` 包）里，页面和设置页只跟这里打交道。
+ * 加一套皮肤：在 `ui/skin` 里新增一个 [PicaSkin] 实现、注册进 [SkinRegistry] 就行，
+ * 设置页的列表会自己多出来一行，不用改 UI 代码。
  */
-enum class AppSkin(val label: String) {
-    Miuix("MIUI 风格"),
-    MaterialYou("Material You"),
-}
-
-/** 当前皮肤，改完直接落盘，下次冷启动照这个来。 */
 object SkinState {
-    private val kv by lazy { platformKeyValueStore() }
+    /** 当前皮肤。读它会订阅切换，皮肤一变整棵树重组。 */
+    val current: PicaSkin get() = SkinRegistry.current
 
-    var current: AppSkin by mutableStateOf(read())
-        private set
+    /** 所有注册过的皮肤，顺序就是设置页里的顺序。 */
+    val skins: List<PicaSkin> get() = SkinRegistry.skins
 
-    fun select(skin: AppSkin) {
-        current = skin
-        kv.put(KEY, skin.name)
-    }
-
-    private fun read(): AppSkin =
-        runCatching { AppSkin.valueOf(kv.get(KEY).orEmpty()) }.getOrDefault(AppSkin.Miuix)
-
-    private const val KEY = "ui.skin"
+    /** 切到某套皮肤，顺便落盘。 */
+    fun select(skin: PicaSkin) = SkinRegistry.select(skin)
 }

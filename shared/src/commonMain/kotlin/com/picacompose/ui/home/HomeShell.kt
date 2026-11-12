@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import com.picacompose.data.SavedAccount
 import com.picacompose.ui.components.PicaScaffold
+import com.picacompose.ui.skin.BottomBarTab
+import com.picacompose.ui.skin.SkinRegistry
+import com.picacompose.ui.skin.renderer
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.material3.Icon as Md3Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +56,6 @@ import com.picacompose.data.keepImageIpsFresh
 import com.picacompose.data.refreshImageHost
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
-import com.picacompose.ui.components.md3Skin
 import com.picacompose.ui.components.vector
 import com.picacompose.ui.components.overlayBounds
 import com.picacompose.ui.components.WebPageContent
@@ -879,49 +881,14 @@ fun HomeShell(
 
 @Composable
 private fun PicaNavigationBar(pagerState: PagerState, onSelect: (HomeTab) -> Unit) {
-    val colors = MiuixTheme.colorScheme
     val tabs = HomeTab.entries
     // 选中态只在这一层读：换页时整页不重组，只有底部栏这颗会跟着更新。
     val selected by remember(pagerState) {
         derivedStateOf { tabs[pagerState.currentPage.coerceIn(tabs.indices)] }
     }
-    if (md3Skin) {
-        val md3 = MaterialTheme.colorScheme
-        Md3NavigationBar(containerColor = md3.surfaceContainer) {
-            tabs.forEach { tab ->
-                val active = tab == selected
-                Md3NavigationBarItem(
-                    selected = active,
-                    onClick = { onSelect(tab) },
-                    icon = {
-                        Md3Icon(
-                            imageVector = tab.icon.vector(active),
-                            contentDescription = tab.label,
-                            tint = if (active) md3.onSecondaryContainer else md3.onSurfaceVariant,
-                        )
-                    },
-                    label = {
-                        Text(
-                            text = tab.label,
-                            style = MiuixTheme.textStyles.footnote2,
-                            color = if (active) md3.onSurface else md3.onSurfaceVariant,
-                        )
-                    },
-                )
-            }
-        }
-    } else {
-        NavigationBar(
-            color = colors.surfaceVariant.copy(alpha = 0.96f),
-        ) {
-            tabs.forEach { tab ->
-                NavigationBarItem(
-                    selected = tab == selected,
-                    onClick = { onSelect(tab) },
-                    icon = tab.icon.vector(tab == selected),
-                    label = tab.label,
-                )
-            }
-        }
-    }
+    SkinRegistry.current.renderer.BottomBar(
+        tabs = remember(tabs) { tabs.map { BottomBarTab(it.label, it.icon) } },
+        selectedIndex = tabs.indexOf(selected),
+        onSelect = { index -> onSelect(tabs[index]) },
+    )
 }

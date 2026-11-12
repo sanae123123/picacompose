@@ -40,6 +40,8 @@ import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridS
 import com.picacompose.ui.components.PicaAlertDialog
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
+import com.picacompose.ui.skin.SkinRegistry
+import com.picacompose.ui.skin.renderer
 import com.picacompose.ui.theme.SkinTokens
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,7 +50,6 @@ import androidx.compose.material3.Text as Md3Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import top.yukonga.miuix.kmp.basic.PullToRefresh
 import top.yukonga.miuix.kmp.basic.Text
-import com.picacompose.ui.components.md3Skin
 import com.picacompose.ui.components.PicaTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -88,21 +89,7 @@ fun PageHeader(
     action: (@Composable () -> Unit)? = null,
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        if (md3Skin) {
-            Md3Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f),
-            )
-        } else {
-            Text(
-                text = title,
-                style = MiuixTheme.textStyles.title2,
-                color = MiuixTheme.colorScheme.onBackground,
-                modifier = Modifier.weight(1f),
-            )
-        }
+        SkinRegistry.current.renderer.PageTitle(title, Modifier.weight(1f))
         if (action != null) action()
     }
 }
@@ -126,37 +113,7 @@ fun PicaCard(
 
 @Composable
 fun InfoChip(text: String) {
-    if (md3Skin) {
-        val colors = MaterialTheme.colorScheme
-        PicaSurface(
-            shape = CircleShape,
-            color = colors.secondaryContainer.copy(alpha = 0.85f),
-        ) {
-            Md3Text(
-                text = text,
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSecondaryContainer,
-                maxLines = 1,
-                softWrap = false,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            )
-        }
-    } else {
-        val colors = MiuixTheme.colorScheme
-        PicaSurface(
-            shape = RoundedCornerShape(SkinTokens.chipRadius),
-            color = colors.tertiaryContainer,
-        ) {
-            Text(
-                text = text,
-                style = MiuixTheme.textStyles.footnote1,
-                color = colors.onTertiaryContainer,
-                maxLines = 1,
-                softWrap = false,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            )
-        }
-    }
+    SkinRegistry.current.renderer.InfoChip(text)
 }
 
 /** 卡片里的一行：图标 + 标题 + 右侧说明。 */
@@ -328,38 +285,7 @@ private fun PullRefresh(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    if (onRefresh == null) {
-        Box(modifier) { content() }
-        return
-    }
-    val scope = rememberCoroutineScope()
-    var refreshing by remember { mutableStateOf(false) }
-    val refresh: () -> Unit = {
-        if (!refreshing) {
-            scope.launch {
-                refreshing = true
-                runCatching { onRefresh() }
-                refreshing = false
-            }
-        }
-    }
-    if (md3Skin) {
-        PullToRefreshBox(
-            isRefreshing = refreshing,
-            onRefresh = refresh,
-            modifier = modifier,
-        ) {
-            content()
-        }
-    } else {
-        PullToRefresh(
-            isRefreshing = refreshing,
-            onRefresh = refresh,
-            modifier = modifier,
-        ) {
-            content()
-        }
-    }
+    SkinRegistry.current.renderer.PullRefresh(onRefresh, modifier, content)
 }
 
 /**
