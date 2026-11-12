@@ -33,7 +33,13 @@ object SkinRegistry {
     init {
         register(MiuixSkin)
         register(MaterialYouSkin)
-        register(HarmonySkin)
+        // 鸿蒙风格还在调，先不上架；觉得差不多了把这里改成 true 就回来。
+        if (ENABLE_HARMONY) register(HarmonySkin)
+        // 之前选中的皮肤被下架了就退回第一套，别让界面停在别人家的配色上。
+        if (_skins.none { it.id == currentId }) {
+            currentId = MiuixSkin.id
+            writeId(currentId)
+        }
     }
 
     /** 挂一套皮肤上来；同 id 的会替换掉旧的。 */
@@ -75,4 +81,7 @@ object SkinRegistry {
     }
 
     private const val KEY = "ui.skin"
+
+    /** 鸿蒙皮肤先藏起来，实现还在 [HarmonySkin] 里。 */
+    private const val ENABLE_HARMONY = false
 }
