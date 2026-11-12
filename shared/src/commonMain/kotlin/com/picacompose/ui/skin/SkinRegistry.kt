@@ -18,6 +18,15 @@ import com.picacompose.data.platformKeyValueStore
  * 选中的皮肤按 [PicaSkin.id] 存进本地 KV，冷启动照这个恢复；存的值找不到对应皮肤时退回
  * 第一套，不会因为卸载了某个皮肤就直接崩掉。
  */
+/**
+ * 存储实例放在文件级懒加载里，不用 object 内部的 `by lazy`。
+ *
+ * 原因：`currentId` 的初始化器会立刻调 [SkinRegistry.readId] 读盘，而 object 内部属性是按
+ * 文本顺序初始化的——`kv` 要是声明在 `currentId` 后面，那一刻它的委托字段还是 null，
+ * 读盘会 NPE 并被 `runCatching` 吞掉，于是每次冷启动都退回第一套皮肤。
+ */
+private val skinStore by lazy { platformKeyValueStore() }
+
 object SkinRegistry {
     private val _skins = mutableStateListOf<PicaSkin>()
 
@@ -64,10 +73,8 @@ object SkinRegistry {
         writeId(id)
     }
 
-    private val kv by lazy { platformKeyValueStore() }
-
     private fun readId(): String {
-        val raw = runCatching { kv.get(KEY).orEmpty() }.getOrDefault("")
+        val raw = runCatching { skinStore.get(KEY).orEmpty() }.getOrDefault("")
         // 兼容旧版本存的是枚举名。
         val migrated = when (raw) {
             "Miuix" -> MiuixSkin.id
@@ -78,7 +85,7 @@ object SkinRegistry {
     }
 
     private fun writeId(id: String) {
-        runCatching { kv.put(KEY, id) }
+        runCatching { skinStore.put(KEY, id) }
     }
 
     private const val KEY = "ui.skin"
