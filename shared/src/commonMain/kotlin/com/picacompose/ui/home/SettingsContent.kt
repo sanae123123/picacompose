@@ -16,7 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import com.picacompose.ui.components.PicaAlertDialog
 import com.picacompose.ui.components.PicaCircularProgress
-import com.picacompose.ui.components.PicaFilterChip
+import com.picacompose.ui.components.PicaSlidingChipRow
 import com.picacompose.ui.theme.SkinState
 import com.picacompose.ui.components.PicaDropdownMenu
 import com.picacompose.ui.components.PicaDropdownMenuItem
@@ -133,23 +133,15 @@ fun SettingsContent(
         item {
             PicaCard {
                 DetailRow(icon = PicaIcon.Star, title = "皮肤", value = SkinState.current.label)
-                Row(
+                PicaSlidingChipRow(
+                    options = SkinState.skins.map { it.label },
+                    selectedIndex = SkinState.skins.indexOfFirst { it == SkinState.current }
+                        .coerceAtLeast(0),
+                    onSelect = { index -> SkinState.select(SkinState.skins[index]) },
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    SkinState.skins.forEach { skin ->
-                        PicaFilterChip(
-                            selected = SkinState.current == skin,
-                            onClick = { SkinState.select(skin) },
-                        ) {
-                            Text(
-                                text = skin.label,
-                                style = MiuixTheme.textStyles.footnote1,
-                                color = MiuixTheme.colorScheme.onSurface,
-                            )
-                        }
-                    }
-                }
+                    textStyle = MiuixTheme.textStyles.footnote1,
+                    spacing = 8.dp,
+                )
             }
             Spacer(Modifier.height(14.dp))
         }

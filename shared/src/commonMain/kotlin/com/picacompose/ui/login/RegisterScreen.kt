@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,7 +32,7 @@ import com.picacompose.ui.components.BackHandlerCompat
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaButton
 import com.picacompose.ui.components.PicaCircularProgress
-import com.picacompose.ui.components.PicaFilterChip
+import com.picacompose.ui.components.PicaSlidingChipRow
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaIconButton
@@ -169,23 +168,24 @@ fun RegisterScreen(
                             )
                         }
                         LabeledField("性别") {
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                PicaFilterChip(
-                                    selected = controller.gender == "m",
-                                    onClick = { controller.onGenderChange("m") },
-                                    label = { Text("男", style = MiuixTheme.textStyles.body1) },
-                                )
-                                PicaFilterChip(
-                                    selected = controller.gender == "f",
-                                    onClick = { controller.onGenderChange("f") },
-                                    label = { Text("女", style = MiuixTheme.textStyles.body1) },
-                                )
-                                PicaFilterChip(
-                                    selected = controller.gender == "bot",
-                                    onClick = { controller.onGenderChange("bot") },
-                                    label = { Text("机器人", style = MiuixTheme.textStyles.body1) },
-                                )
-                            }
+                            PicaSlidingChipRow(
+                                options = listOf("男", "女", "机器人"),
+                                selectedIndex = when (controller.gender) {
+                                    "f" -> 1
+                                    "bot" -> 2
+                                    else -> 0
+                                },
+                                onSelect = { index ->
+                                    controller.onGenderChange(
+                                        when (index) {
+                                            1 -> "f"
+                                            2 -> "bot"
+                                            else -> "m"
+                                        },
+                                    )
+                                },
+                                textStyle = MiuixTheme.textStyles.body1,
+                            )
                         }
                         Spacer(Modifier.height(4.dp))
                         Text(

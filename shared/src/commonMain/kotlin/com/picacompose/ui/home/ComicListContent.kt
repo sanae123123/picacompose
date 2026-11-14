@@ -6,6 +6,7 @@ import com.picacompose.ui.components.PicaIconButton
 import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.PicaTextButton
 import com.picacompose.ui.components.PicaFilterChip
+import com.picacompose.ui.components.PicaSlidingChipRow
 import com.picacompose.ui.components.PicaAlertDialog
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.background
@@ -402,18 +403,13 @@ internal fun ComicFilterDialog(
                 )
                 Spacer(Modifier.height(8.dp))
                 // 先选好这一条要加进哪一边，再输入 / 点标签，位置就在输入框上面，不用往下翻。
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PicaFilterChip(
-                        selected = !excludeMode,
-                        onClick = { excludeMode = false },
-                        label = { Text(text = "包含", style = MiuixTheme.textStyles.footnote1) },
-                    )
-                    PicaFilterChip(
-                        selected = excludeMode,
-                        onClick = { excludeMode = true },
-                        label = { Text(text = "排除", style = MiuixTheme.textStyles.footnote1) },
-                    )
-                }
+                PicaSlidingChipRow(
+                    options = listOf("包含", "排除"),
+                    selectedIndex = if (excludeMode) 1 else 0,
+                    onSelect = { index -> excludeMode = index == 1 },
+                    textStyle = MiuixTheme.textStyles.footnote1,
+                    spacing = 8.dp,
+                )
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     PicaTextField(
