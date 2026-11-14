@@ -48,8 +48,12 @@ import com.picacompose.ui.components.PicaToastHost
 import com.picacompose.ui.components.UpdatePromptHost
 import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.home.HomeShell
+import com.picacompose.ui.login.ForgotPasswordController
+import com.picacompose.ui.login.ForgotPasswordScreen
 import com.picacompose.ui.login.LoginController
 import com.picacompose.ui.login.LoginScreen
+import com.picacompose.ui.login.RegisterController
+import com.picacompose.ui.login.RegisterScreen
 import com.picacompose.ui.routing.RoutingScreen
 import com.picacompose.ui.theme.PicaTheme
 import io.ktor.client.HttpClient
@@ -58,6 +62,9 @@ import io.ktor.client.plugins.HttpTimeoutConfig
 
 /** 启动时要停在哪儿：先试着恢复上次的登录，恢复了就直接进首页。 */
 private enum class Screen { Restoring, Login, Home }
+
+/** 登录页下面挂的三个子页：登录本身、注册、找回密码。 */
+private enum class AuthPage { Login, Register, Forgot }
 
 /**
  * 应用根组件，Android / iOS / Desktop 共用这一份 UI。
@@ -162,7 +169,9 @@ fun App() {
 private fun MainScreens() {
     // 传 lambda 而不是客户端本身：换线路会把全局 `pica` 整个换掉。
     val controller = remember { LoginController({ pica }) }
-    var pendingFeature by remember { mutableStateOf<String?>(null) }
+    val registerController = remember { RegisterController({ pica }) }
+    val forgotController = remember { ForgotPasswordController({ pica }) }
+    var authPage by remember { mutableStateOf(AuthPage.Login) }
 
     LaunchedEffect(Unit) { controller.restoreSession() }
 
@@ -170,6 +179,11 @@ private fun MainScreens() {
         controller.restoring -> Screen.Restoring
         controller.profile == null -> Screen.Login
         else -> Screen.Home
+    }
+
+    // 登录成功或退出登录时，登录下面挂的子页都退回最外层。
+    LaunchedEffect(screen) {
+        if (screen != Screen.Login) authPage = AuthPage.Login
     }
 
     PicaSurface(
@@ -182,11 +196,36 @@ private fun MainScreens() {
                     hint = controller.restoringHint,
                     countdown = controller.restoringCountdown,
                 )
-                Screen.Login -> LoginScreen(
-                    controller = controller,
-                    onForgotPassword = { pendingFeature = "找回密码" },
-                    onRegister = { pendingFeature = "注册" },
-                )
+                Screen.Login -> when (authPage) {
+                    AuthPage.Login -> LoginScreen(
+                        controller = controller,
+                        onForgotPassword = {
+                            forgotController.prefillEmail(controller.email)
+                            authPage = AuthPage.Forgot
+                        },
+                        onRegister = { authPage = AuthPage.Register },
+                    )
+
+                    AuthPage.Register -> RegisterScreen(
+                        controller = registerController,
+                        onBack = { authPage = AuthPage.Login },
+                        onRegistered = { email ->
+                            controller.prefill(newEmail = email)
+                            PicaToast.show("注册成功，用这个邮箱登录")
+                            authPage = AuthPage.Login
+                        },
+                    )
+
+                    AuthPage.Forgot -> ForgotPasswordScreen(
+                        controller = forgotController,
+                        onBack = { authPage = AuthPage.Login },
+                        onLoginWithNewPassword = { email, password ->
+                            controller.prefill(newEmail = email, newPassword = password)
+                            PicaToast.show("新密码已填好，点登录就行")
+                            authPage = AuthPage.Login
+                        },
+                    )
+                }
 
                 Screen.Home -> controller.profile?.let { profile ->
                     // 主界面真的画出来了，启动阶段结束：之后请求失败就走正常的兜底逻辑。
@@ -202,18 +241,6 @@ private fun MainScreens() {
         }
     }
 
-    pendingFeature?.let { feature ->
-        val pop = rememberDialogPop(onDismiss = { pendingFeature = null })
-        PicaAlertDialog(
-            onDismissRequest = pop::dismiss,
-            modifier = pop.modifier,
-            title = { Text("$feature 还没做") },
-            text = { Text("先把登录流程跑通，$feature 页面排在下一步。") },
-            confirmButton = {
-                PicaTextButton(onClick = pop::dismiss) { Text("好") }
-            },
-        )
-    }
 }
 
 /**

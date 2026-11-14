@@ -95,6 +95,22 @@ class LoginController(
         passwordVisible = !passwordVisible
     }
 
+    /**
+     * 注册成功、或者找回密码拿到新密码时，把邮箱（和密码）预先填好。
+     *
+     * 两个参数都是可选的：注册回来只填邮箱，重置密码回来连新密码一起填上。
+     */
+    fun prefill(newEmail: String? = null, newPassword: String? = null) {
+        if (!newEmail.isNullOrBlank()) {
+            email = newEmail
+            error = null
+        }
+        if (!newPassword.isNullOrBlank()) {
+            password = newPassword
+            error = null
+        }
+    }
+
     fun onRememberChange(value: Boolean) {
         rememberAccount = value
         // 两处开关共用一个偏好：在登录页勾掉，设置页也应该是关的。

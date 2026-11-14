@@ -1,6 +1,8 @@
 package com.picacompose.ui.login
 
 import com.picacompose.ui.components.PicaSurface
+import com.picacompose.ui.components.rememberAppIcon
+import androidx.compose.foundation.Image
 import com.picacompose.ui.components.PicaButton
 import com.picacompose.ui.components.PicaIconButton
 import com.picacompose.ui.components.PicaCircularProgress
@@ -42,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
@@ -114,19 +117,36 @@ fun LoginScreen(
 @Composable
 private fun BrandRow() {
     val colors = MiuixTheme.colorScheme
+    val appIcon = rememberAppIcon()
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .size(46.dp)
-                .clip(RoundedCornerShape(15.dp))
-                .background(Brush.linearGradient(listOf(colors.primary, colors.tertiaryContainer))),
+                .clip(RoundedCornerShape(15.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = "P",
-                style = MiuixTheme.textStyles.title3,
-                color = colors.onPrimary,
-            )
+            if (appIcon != null) {
+                Image(
+                    bitmap = appIcon,
+                    contentDescription = "应用图标",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                // 桌面 / iOS 上取不到安装图标，退回原来的字标。
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Brush.linearGradient(listOf(colors.primary, colors.tertiaryContainer))),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "P",
+                        style = MiuixTheme.textStyles.title3,
+                        color = colors.onPrimary,
+                    )
+                }
+            }
         }
         Spacer(Modifier.width(12.dp))
         Column {
