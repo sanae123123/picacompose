@@ -68,6 +68,23 @@ object LineRouter {
     /** 换完线路想跟用户说一句时走这里（App 里接到 toast 上）。 */
     var onNotice: ((String) -> Unit)? = null
 
+    /**
+     * 还在启动阶段（登录校验那一屏还没让位给主界面）。
+     *
+     * 这段时间里请求连不上、兜底也换不到一条能用的线路，就直接回线路选择页 ——
+     * 启动阶段没有「稍后重试」的余地，停在哪儿都只会让人以为 App 坏了。
+     */
+    @Volatile
+    var inStartup: Boolean = true
+
+    /**
+     * 冷启动第一条请求就连不上、兜底也没能换到一条能用的线路时叫一声。
+     *
+     * 这时候光在登录页给句「网络不太稳」没用 —— 用户不知道是该换线路还是该换网络。
+     * App 收到就跳线路选择页，让手动挑一条（不管设置里「自动测速 / 快速进入」怎么选）。
+     */
+    var onStartupNoLine: (() -> Unit)? = null
+
     private var scope: CoroutineScope? = null
     private var probeJob: Job? = null
     private val switchLock = Mutex()
@@ -163,7 +180,13 @@ object LineRouter {
     /** 传输层失败时调（由 [picaNetworkFailureHandler] 转进来）。 */
     fun onNetworkFailure() {
         val scope = scope ?: return
-        scope.launch { recover() }
+        scope.launch {
+            val before = switchCount
+            val recovered = recover()
+            // 换成了一条新的（或者挪了地址）就还有指望，交给下一次请求去试；
+            // 一次都没换成、又还在启动阶段，那就是没有线路可用，回选择页。
+            if (!recovered && switchCount == before && inStartup) onStartupNoLine?.invoke()
+        }
     }
 
     /**

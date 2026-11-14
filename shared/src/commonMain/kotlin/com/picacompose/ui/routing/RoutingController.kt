@@ -56,6 +56,10 @@ class RoutingController(
     /** 上次用的线路，界面上标一下方便对比。 */
     val lastLine: PicaLine? = store.savedLine
 
+    /** 最近一次测速里至少有一条通。用来决定「测完能不能自动进去」。 */
+    val hasWorkingLine: Boolean
+        get() = probes.any { it.latencyMs != null }
+
     suspend fun run() {
         loading = true
         chosen = null

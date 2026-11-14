@@ -92,12 +92,20 @@ fun App() {
         var routed by remember { mutableStateOf(false) }
         // 有缓存线路时要先把它建成客户端，再让主界面发请求。
         var routeReady by remember { mutableStateOf(cachedLine == null) }
+        // 冷启动第一条请求就连不上、兜底也没找到能用的线路：不管设置怎么配，都回线路选择页。
+        var noLineFallback by remember { mutableStateOf(false) }
 
         LaunchedEffect(cachedLine) {
             // 上次跑过 /init 就把图床地址先摆上，别等这次 /init 回来才把首页封面拼对。
             ImageHosts.update(store.savedImageServer)
             picaNetworkFailureHandler = LineRouter::onNetworkFailure
             LineRouter.onNotice = PicaToast::show
+            LineRouter.inStartup = true
+            LineRouter.onStartupNoLine = {
+                // 又回到启动阶段：之后再失败还得能回来，所以这里顺手把这面旗重新立起来。
+                LineRouter.inStartup = true
+                noLineFallback = true
+            }
             LinePreferences.onDohDisabled = PicaToast::show
             // 没存过线路就只剩选择页可选，连「不测速」也用不了：得先有一条线路才能建客户端。
             if (cachedLine == null) return@LaunchedEffect
@@ -121,6 +129,14 @@ fun App() {
         Box(Modifier.fillMaxSize()) {
             if (!routeReady) {
                 RestoreScreen("正在准备线路…")
+            } else if (noLineFallback) {
+                // 兜底进来也照设置走：自动测速开着就照常测，测通了自动进；全不通才停在页面上。
+                RoutingScreen(
+                    manual = !autoProbe,
+                    forced = true,
+                    autoEnter = fastEntry,
+                    onReady = { noLineFallback = false },
+                )
             } else {
                 Crossfade(targetState = routed) { ready ->
                     if (ready) {
@@ -162,7 +178,10 @@ private fun MainScreens() {
     ) {
         Crossfade(targetState = screen) { current ->
             when (current) {
-                Screen.Restoring -> RestoreScreen(controller.restoringHint)
+                Screen.Restoring -> RestoreScreen(
+                    hint = controller.restoringHint,
+                    countdown = controller.restoringCountdown,
+                )
                 Screen.Login -> LoginScreen(
                     controller = controller,
                     onForgotPassword = { pendingFeature = "找回密码" },
@@ -170,6 +189,8 @@ private fun MainScreens() {
                 )
 
                 Screen.Home -> controller.profile?.let { profile ->
+                    // 主界面真的画出来了，启动阶段结束：之后请求失败就走正常的兜底逻辑。
+                    LaunchedEffect(Unit) { LineRouter.inStartup = false }
                     HomeShell(
                         profile = profile,
                         onSignOut = controller::signOut,
@@ -250,7 +271,7 @@ private fun imageFetcher(): NetworkFetcher.Factory {
  * [hint] 是给用户看的说明：这段时间里 App 在等网络，什么都不说就显得像卡住了。
  */
 @Composable
-private fun RestoreScreen(hint: String? = null) {
+private fun RestoreScreen(hint: String? = null, countdown: Int? = null) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         PicaBackdrop()
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -264,6 +285,14 @@ private fun RestoreScreen(hint: String? = null) {
                 Text(
                     text = hint,
                     style = MiuixTheme.textStyles.footnote1,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                )
+            }
+            if (countdown != null) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "还没连上，最多再等 $countdown 秒",
+                    style = MiuixTheme.textStyles.footnote2,
                     color = MiuixTheme.colorScheme.onSurfaceSecondary,
                 )
             }

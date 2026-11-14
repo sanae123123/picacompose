@@ -46,12 +46,23 @@ import kotlinx.coroutines.launch
  *
  * - [manual] = false（开着自动测速）：进来先测一遍，最快的默认选中，过一秒自动进。
  * - [manual] = true（关掉自动测速）：不测速、也不自动挑，就摆着几条线路等人点一条再进。
+ * - [forced] = true：不是正常启动，而是冷启动请求失败、兜底也没换到能用的线路，被传到这儿来的。
+ *   这时照常测速（[manual] 仍按设置里的「自动测速」走），只有真的测通一条才自动进去，
+ *   全不通就停在页面上，别自动送进一个同样连不上的主界面。
+ * - [autoEnter]：测完要不要自己进主界面；调用方传设置里的「快速进入」。
  */
 @Composable
-fun RoutingScreen(manual: Boolean = false, onReady: () -> Unit) {
+fun RoutingScreen(
+    manual: Boolean = false,
+    forced: Boolean = false,
+    autoEnter: Boolean = true,
+    onReady: () -> Unit,
+) {
     val controller = remember { RoutingController() }
     val scope = rememberCoroutineScope()
     var entering by remember { mutableStateOf(false) }
+    // 兜底进来、又一条线路都没测通：停在这页，告诉用户为什么没进去。
+    var stuck by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (manual) {
@@ -60,9 +71,12 @@ fun RoutingScreen(manual: Boolean = false, onReady: () -> Unit) {
         } else {
             controller.run()
             delay(1_100)
-            if (!entering) {
+            val canEnter = !forced || (autoEnter && controller.hasWorkingLine)
+            if (!entering && canEnter) {
                 entering = true
                 onReady()
+            } else if (!canEnter) {
+                stuck = true
             }
         }
     }
@@ -98,10 +112,13 @@ fun RoutingScreen(manual: Boolean = false, onReady: () -> Unit) {
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = if (manual) {
-                        "自动测速关着，这里不会测速也不会自动挑。点哪条就用哪条，进主界面后才开始加载。"
-                    } else {
-                        "启动时会先拉一次线路列表，这里已经自动测好速，最快的那条默认选中，过一秒自动进去。"
+                    text = when {
+                        forced && !manual ->
+                            "刚才那条线路连不上，这里重新测一遍：有能通的会自动进去，都不通就手动点一条。"
+                        forced ->
+                            "刚才那条线路连不上，自动兜底也没找到能用的。这里不测速，手动点一条进去；还不通就再回来换一条。"
+                        manual -> "自动测速关着，这里不会测速也不会自动挑。点哪条就用哪条，进主界面后才开始加载。"
+                        else -> "启动时会先拉一次线路列表，这里已经自动测好速，最快的那条默认选中，过一秒自动进去。"
                     },
                     style = MiuixTheme.textStyles.body1,
                     color = MiuixTheme.colorScheme.onSurfaceSecondary,
@@ -129,6 +146,19 @@ fun RoutingScreen(manual: Boolean = false, onReady: () -> Unit) {
                     )
                 }
 
+                if (stuck) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = if (controller.hasWorkingLine) {
+                            "已经测通了，点上面任意一条进去。"
+                        } else {
+                            "一条都没连上：点「重新测速」再试，或者检查一下网络。"
+                        },
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = if (controller.hasWorkingLine) MiuixTheme.colorScheme.onSurfaceSecondary else MiuixTheme.colorScheme.error,
+                    )
+                }
+
                 Spacer(Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -148,7 +178,18 @@ fun RoutingScreen(manual: Boolean = false, onReady: () -> Unit) {
                         onClick = {
                             scope.launch {
                                 entering = false
+                                stuck = false
                                 controller.run()
+                                val hasLine = !manual && controller.hasWorkingLine
+                                if (hasLine) {
+                                    stuck = false
+                                    if (forced && autoEnter) {
+                                        entering = true
+                                        onReady()
+                                    }
+                                } else {
+                                    stuck = true
+                                }
                             }
                         },
                         enabled = !controller.loading,

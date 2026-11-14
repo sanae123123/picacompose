@@ -9,6 +9,14 @@ import com.picacompose.data.SessionStore
 import com.picacompose.picaapi.PicaClient
 import com.picacompose.picaapi.PicaException
 import com.picacompose.picaapi.model.UserProfile
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+
+/** 启动时校验登录最多等多久：比客户端自己 30 秒的请求超时短，界面才不至于长时间不动。 */
+private const val STARTUP_TIMEOUT_MS = 20_000L
+private const val STARTUP_TIMEOUT_SECONDS = 20
 
 /**
  * 登录页的状态。
@@ -62,6 +70,10 @@ class LoginController(
     var restoringHint by mutableStateOf<String?>(null)
         private set
 
+    /** 校验登录时的倒计时（秒），从 [STARTUP_TIMEOUT_SECONDS] 往下数；不在校验时为 null。 */
+    var restoringCountdown by mutableStateOf<Int?>(null)
+        private set
+
     var error by mutableStateOf<String?>(null)
         private set
 
@@ -99,7 +111,28 @@ class LoginController(
         restoringHint = "正在校验登录状态…"
         client().updateToken(token)
         try {
-            profile = loadProfileWithFailover()
+            // 一边等一边数：让人看见还在动，而且数到 0 就不再干等（见 STARTUP_TIMEOUT_MS）。
+            val restored = coroutineScope {
+                val ticker = launch {
+                    var left = STARTUP_TIMEOUT_SECONDS
+                    while (left > 0) {
+                        restoringCountdown = left
+                        delay(1_000)
+                        left -= 1
+                    }
+                }
+                try {
+                    withTimeoutOrNull(STARTUP_TIMEOUT_MS) { loadProfileWithFailover() }
+                } finally {
+                    ticker.cancel()
+                }
+            }
+            if (restored != null) {
+                profile = restored
+            } else {
+                // 超时当成连不上：直接回线路选择页，别在登录页留一句「网络不太稳」。
+                LineRouter.onStartupNoLine?.invoke()
+            }
         } catch (e: PicaException) {
             if (e.errorCode == "1005" || e.httpCode == 401) {
                 client().updateToken("")
@@ -107,12 +140,17 @@ class LoginController(
                 error = "上次的登录过期了，重新登录一下"
             } else {
                 error = e.toUserMessage()
+                // httpCode 为空 = 根本没连上（不是服务端在回话）：兜底换线也没救，
+                // 交给 App 跳线路选择页，比在这里说「网络不太稳」有用。
+                if (e.httpCode == null) LineRouter.onStartupNoLine?.invoke()
             }
         } catch (e: Exception) {
             error = "网络不太稳，稍后再试"
+            LineRouter.onStartupNoLine?.invoke()
         } finally {
             restoring = false
             restoringHint = null
+            restoringCountdown = null
         }
     }
 
