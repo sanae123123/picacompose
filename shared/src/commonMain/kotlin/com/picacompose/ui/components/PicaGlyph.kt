@@ -8,6 +8,7 @@ import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.FilterList
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.rounded.ArrowForward as RoundedArrowForwa
 import androidx.compose.material.icons.rounded.Category as RoundedCategory
 import androidx.compose.material.icons.rounded.Check as RoundedCheck
 import androidx.compose.material.icons.rounded.Close as RoundedClose
+import androidx.compose.material.icons.rounded.Download as RoundedDownload
 import androidx.compose.material.icons.rounded.Edit as RoundedEdit
 import androidx.compose.material.icons.rounded.Email as RoundedEmail
 import androidx.compose.material.icons.rounded.FilterList as RoundedFilterList
@@ -69,7 +71,7 @@ import androidx.compose.ui.unit.dp
  */
 enum class PicaIcon {
     Mail, Back, Lock, Person, Eye, EyeOff, ArrowRight, Logout, Home, Grid, Gamepad, Gear, CheckIn, Notice, Like, Edit,
-    Menu, Check, Sort, Star, Close, Search, Filter, Speed, Bolt, Shield,
+    Menu, Check, Sort, Star, Close, Search, Filter, Speed, Bolt, Shield, Download,
 }
 
 internal fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
@@ -99,6 +101,7 @@ internal fun PicaIcon.vector(filled: Boolean): ImageVector = when (this) {
     PicaIcon.Speed -> if (filled) Icons.Rounded.RoundedSpeed else Icons.Outlined.Speed
     PicaIcon.Bolt -> if (filled) Icons.Rounded.RoundedBolt else Icons.Outlined.Bolt
     PicaIcon.Shield -> if (filled) Icons.Rounded.RoundedShield else Icons.Outlined.Shield
+    PicaIcon.Download -> if (filled) Icons.Rounded.RoundedDownload else Icons.Outlined.Download
 }
 
 @Composable

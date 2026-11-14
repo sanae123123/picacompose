@@ -42,6 +42,7 @@ import com.picacompose.picaapi.imageEngine
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaToast
 import com.picacompose.ui.components.PicaToastHost
+import com.picacompose.ui.components.UpdatePromptHost
 import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.home.HomeShell
 import com.picacompose.ui.login.LoginController
@@ -126,6 +127,7 @@ fun App() {
                     }
                 }
             }
+            UpdatePromptHost()
             PicaToastHost(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

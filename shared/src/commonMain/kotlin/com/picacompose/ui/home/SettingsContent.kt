@@ -45,6 +45,7 @@ import com.picacompose.data.REPO_URL
 import com.picacompose.data.RouteStore
 import com.picacompose.data.SavedAccount
 import com.picacompose.data.SessionStore
+import com.picacompose.data.UpdateResult
 import com.picacompose.data.clearImageCache
 import com.picacompose.data.formatBytes
 import com.picacompose.data.imageCacheBytes
@@ -54,6 +55,8 @@ import kotlinx.coroutines.launch
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaTextButton
+import com.picacompose.ui.components.UpdatePrompt
+import com.picacompose.ui.components.PicaToast
 import com.picacompose.ui.components.rememberBrowserOpener
 import com.picacompose.ui.components.rememberDialogPop
 
@@ -102,6 +105,7 @@ fun SettingsContent(
     var cacheBytes by remember { mutableStateOf(-1L) }
     LaunchedEffect(platformContext) { cacheBytes = imageCacheBytes(platformContext) }
     var clearing by remember { mutableStateOf(false) }
+    var checkingUpdate by remember { mutableStateOf(false) }
     val route = remember { RouteStore() }
     val preferences = remember { LinePreferences() }
     var qualityIndex by remember { mutableStateOf(preferences.imageQuality) }
@@ -329,7 +333,23 @@ fun SettingsContent(
         item {
             PicaCard {
                 DetailRow(PicaIcon.Grid, "主题", "Material You 基线配色")
-                DetailRow(PicaIcon.Gear, "版本", APP_VERSION)
+                PickerRow(
+                    icon = PicaIcon.Download,
+                    title = "检查更新",
+                    value = if (checkingUpdate) "检查中…" else APP_VERSION,
+                    onClick = {
+                        if (checkingUpdate) return@PickerRow
+                        checkingUpdate = true
+                        scope.launch {
+                            when (val result = UpdatePrompt.checkNow()) {
+                                is UpdateResult.Ok ->
+                                    if (result.info == null) PicaToast.show("已经是最新版本 $APP_VERSION")
+                                is UpdateResult.Failed -> PicaToast.show("连不上 GitHub：${result.reason}")
+                            }
+                            checkingUpdate = false
+                        }
+                    },
+                )
                 LinkRow(
                     icon = PicaIcon.Star,
                     title = "GitHub",
