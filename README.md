@@ -102,6 +102,10 @@ profgen 转成 HRF 文本。构建时 AGP 会把它编成 `assets/dexopt/baselin
 `-dontoptimize`）：只删没用到的代码和资源，类名保持原样，所以崩溃栈不用 mapping
 也能直接读。代码里没有反射，只给 ServiceLoader 那四条服务留了 keep。
 
+「热门分类」那几张配图（`hot_cat_*.jpg`）是按名字现查的，压缩器看不到引用，
+所以白名单放在 `androidApp/src/main/res/raw/keep.xml` 里钉住；以后再有这种
+「运行时拼名字找资源」的东西，也得往那儿加。
+
 顺带记一笔：资源压缩必须让 R8 参与，AGP 不允许「只压资源不裁代码」，所以想省体积
 就绕不开这一步——能选的是要不要在同一趟里改名和优化，我们选了不要。
 

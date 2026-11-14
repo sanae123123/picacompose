@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  资源压缩的白名单。
+
+  「热门分类」那几块配图是 shared 模块按名字现查的：
+      resources.getIdentifier("hot_cat_$name", "drawable", packageName)
+  （shared/src/androidMain/kotlin/com/picacompose/ui/home/HotTileArt.android.kt）
+
+  这种查法在编译期看不到引用，shrinkResources 会把 hot_cat_*.jpg 当成没人用来删掉，
+  结果就只剩文字、配图全空。这里按名字前缀把这一组图钉住，一个不放宽到整包。
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/hot_cat_*" />
