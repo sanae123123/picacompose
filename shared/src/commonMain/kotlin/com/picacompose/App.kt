@@ -4,6 +4,9 @@ import com.picacompose.ui.components.PicaSurface
 import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -117,7 +120,7 @@ fun App() {
 
         Box(Modifier.fillMaxSize()) {
             if (!routeReady) {
-                RestoreScreen()
+                RestoreScreen("正在准备线路…")
             } else {
                 Crossfade(targetState = routed) { ready ->
                     if (ready) {
@@ -159,7 +162,7 @@ private fun MainScreens() {
     ) {
         Crossfade(targetState = screen) { current ->
             when (current) {
-                Screen.Restoring -> RestoreScreen()
+                Screen.Restoring -> RestoreScreen(controller.restoringHint)
                 Screen.Login -> LoginScreen(
                     controller = controller,
                     onForgotPassword = { pendingFeature = "找回密码" },
@@ -241,15 +244,29 @@ private fun imageFetcher(): NetworkFetcher.Factory {
     return KtorNetworkFetcherFactory(httpClient = client)
 }
 
-/** 拿旧 token 恢复会话时的一小段过渡，免得先闪一下登录页。 */
+/**
+ * 恢复登录 / 准备线路时的一小段过渡，免得先闪一下登录页。
+ *
+ * [hint] 是给用户看的说明：这段时间里 App 在等网络，什么都不说就显得像卡住了。
+ */
 @Composable
-private fun RestoreScreen() {
+private fun RestoreScreen(hint: String? = null) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         PicaBackdrop()
-        PicaCircularProgress(
-            modifier = Modifier.size(28.dp),
-            strokeWidth = 3.dp,
-            color = MiuixTheme.colorScheme.primary,
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            PicaCircularProgress(
+                modifier = Modifier.size(28.dp),
+                strokeWidth = 3.dp,
+                color = MiuixTheme.colorScheme.primary,
+            )
+            if (hint != null) {
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = hint,
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                )
+            }
+        }
     }
 }

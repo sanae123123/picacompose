@@ -53,6 +53,15 @@ class LoginController(
     var restoring by mutableStateOf(false)
         private set
 
+    /**
+     * 恢复会话走到哪一步了，给转圈下面那行字用。
+     *
+     * 这段时间看着像「卡住」，其实是在等一次网络往返；换线路重试还要再等一轮，
+     * 所以至少让界面说清在等什么，别让人以为 App 挂了。
+     */
+    var restoringHint by mutableStateOf<String?>(null)
+        private set
+
     var error by mutableStateOf<String?>(null)
         private set
 
@@ -87,6 +96,7 @@ class LoginController(
     suspend fun restoreSession() {
         val token = session.savedToken ?: return
         restoring = true
+        restoringHint = "正在校验登录状态…"
         client().updateToken(token)
         try {
             profile = loadProfileWithFailover()
@@ -102,6 +112,7 @@ class LoginController(
             error = "网络不太稳，稍后再试"
         } finally {
             restoring = false
+            restoringHint = null
         }
     }
 
@@ -118,6 +129,7 @@ class LoginController(
         } catch (e: Exception) {
             // 只有「连不上」才值得换线路，HTTP 4xx/5xx 是服务端在说话。
             if (e is PicaException && e.httpCode != null) throw e
+            restoringHint = "这条线路连不上，正在换线路重试…"
             val switched = LineRouter.recover() || LineRouter.switchCount != before
             if (!switched) throw e
             client().users.profile()
