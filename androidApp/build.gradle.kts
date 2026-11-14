@@ -26,6 +26,11 @@ android {
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+            // 发出去的那个包用 release 构建：只有非 debuggable 的包，系统才会在安装时
+            // 按 assets/dexopt/baseline.prof 做 AOT 编译（debug 包的 dexopt 状态是
+            // run-from-apk，profile 直接被忽略）。签名沿用 debug key，跟以前发出去的
+            // 包同一个证书，老用户能直接覆盖安装。
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

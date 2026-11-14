@@ -9,7 +9,8 @@ Compose Multiplatform 跨平台项目 —— 一份 Kotlin 代码，同时跑在
 [![Release](https://img.shields.io/github/v/release/sanae123123/picacompose)](https://github.com/sanae123123/picacompose/releases)
 
 Android 安装包在 [Releases](https://github.com/sanae123123/picacompose/releases) 里，下 `picacompose-*.apk` 侧载就行
-（minSdk 24，Android 7.0 起；包用的是 debug 签名，方便和日常调试包互相覆盖安装）。
+（minSdk 24，Android 7.0 起；发版包用 `assembleRelease` 出，签名仍用 debug key，
+跟日常调试包能互相覆盖安装）。发版包里带一份基线配置（Baseline Profile），见下方「基线配置」。
 
 ## 技术栈
 
@@ -82,6 +83,20 @@ iOS 用 NSUserDefaults），下次打开直接恢复会话进首页；只存 tok
 
 daemon 常驻会占 ~2G 内存，不用了可以 `./gradlew --stop` 还回去。
 
+## 基线配置
+
+`androidApp/src/main/baselineProfiles/baseline-prof.txt` 是一份 Baseline Profile：把 app 正常用一遍，
+从 ART 的 `/data/misc/profiles/cur/0/com.picacompose/primary.prof` 里录出来的启动热点，再用 AGP 自带的
+profgen 转成 HRF 文本。构建时 AGP 会把它编成 `assets/dexopt/baseline.prof` 塞进包里。
+
+两点要知道：
+
+- **只有 release 包会带**：AGP 只对非调试变体做 profile 编译，`assembleDebug` 出的包里没有这份文件。
+- **系统什么时候用它是系统说了算**：安装时那一步 dexopt 是 `verify`，profile 由系统后台 dexopt
+  （一般充电闲置时）或 `androidx.profileinstaller` 应用，不是装上就立刻见效。
+
+改了启动路径（换皮肤引擎、改首屏结构）之后值得重录一遍。
+
 ## 环境要求
 
 - JDK 17 及以上（项目按 JDK 21 验证）
@@ -98,6 +113,10 @@ daemon 常驻会占 ~2G 内存，不用了可以 `./gradlew --stop` 还回去。
 # Android 调试包
 ./gradlew :androidApp:assembleDebug
 # 产物：androidApp/build/outputs/apk/debug/androidApp-debug.apk
+
+# Android 发版包（带基线配置，签名同调试包，能直接覆盖安装）
+./gradlew :androidApp:assembleRelease
+# 产物：androidApp/build/outputs/apk/release/androidApp-release.apk
 
 # 桌面安装包（dmg / msi / deb）
 ./gradlew :desktopApp:packageDistributionForCurrentOS
