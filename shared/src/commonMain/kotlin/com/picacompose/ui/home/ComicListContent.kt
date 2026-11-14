@@ -343,20 +343,14 @@ internal fun ComicFilterDialog(
                     color = colors.onSurfaceSecondary,
                 )
                 Spacer(Modifier.height(8.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    ComicSort.entries.forEach { option ->
-                        PicaFilterChip(
-                            selected = draftSort == option.value,
-                            onClick = { draftSort = option.value },
-                            label = {
-                                Text(text = option.label, style = MiuixTheme.textStyles.footnote1)
-                            },
-                        )
-                    }
-                }
+                PicaSlidingChipRow(
+                    options = ComicSort.entries.map { it.label },
+                    selectedIndex = ComicSort.entries.indexOfFirst { it.value == draftSort }
+                        .coerceAtLeast(0),
+                    onSelect = { index -> draftSort = ComicSort.entries[index].value },
+                    textStyle = MiuixTheme.textStyles.footnote1,
+                    spacing = 8.dp,
+                )
                 Spacer(Modifier.height(14.dp))
                 Text(
                     text = "完结状态",
@@ -364,20 +358,13 @@ internal fun ComicFilterDialog(
                     color = colors.onSurfaceSecondary,
                 )
                 Spacer(Modifier.height(8.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    ComicFinished.entries.forEach { option ->
-                        PicaFilterChip(
-                            selected = draftFinished == option,
-                            onClick = { draftFinished = option },
-                            label = {
-                                Text(text = option.label, style = MiuixTheme.textStyles.footnote1)
-                            },
-                        )
-                    }
-                }
+                PicaSlidingChipRow(
+                    options = ComicFinished.entries.map { it.label },
+                    selectedIndex = ComicFinished.entries.indexOf(draftFinished).coerceAtLeast(0),
+                    onSelect = { index -> draftFinished = ComicFinished.entries[index] },
+                    textStyle = MiuixTheme.textStyles.footnote1,
+                    spacing = 8.dp,
+                )
                 Spacer(Modifier.height(14.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(

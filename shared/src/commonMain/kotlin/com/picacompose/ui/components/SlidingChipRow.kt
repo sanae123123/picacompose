@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -50,8 +51,9 @@ import kotlin.math.roundToInt
  * 胶囊在容器里的位置；色块用 [Animatable] 追过去，换宽度时连宽一起变，看起来像一整块
  * 蓝在排里滑，而不是两块蓝色淡入淡出。
  *
- * 只适合「一排、单选」的组。多选（标签筛选）或者会换行的（排序方式那种 FlowRow）
- * 还是走 [PicaFilterChip] 的淡入淡出，因为一个色块没法同时盖住两行里的两个选项。
+ * 只适合单选的组，用 [FlowRow] 摆，选项多了一行放不下会自动换行；换行时蓝块会
+ * 跨过行间空白飞到新位置，所以「排序方式」这种一排摆不下的也能用。
+ * 多选（标签筛选那种）还是走 [PicaFilterChip] 的淡入淡出：几个选项同时亮，只有一块蓝。
  *
  * @param options 每个胶囊上的文字，顺序就是显示顺序。
  * @param selectedIndex 当前选中项，越界按 none 处理（色块保持不动）。
@@ -137,9 +139,10 @@ fun PicaSlidingChipRow(
                 .clip(RoundedCornerShape(chipRadius))
                 .background(colors.primary),
         )
-        Row(
+        FlowRow(
             modifier = modifier.onGloballyPositioned { rowBounds = it.boundsInRoot() },
             horizontalArrangement = Arrangement.spacedBy(spacing),
+            verticalArrangement = Arrangement.spacedBy(spacing),
         ) {
             options.forEachIndexed { index, label ->
                 val chipRect = chipBounds[index]
