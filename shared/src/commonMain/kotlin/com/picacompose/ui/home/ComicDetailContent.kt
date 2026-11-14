@@ -115,6 +115,10 @@ class ComicDetailState(comicId: String) {
             page = page.coerceAtLeast(0),
             pages = pages,
             title = detail?.title ?: progress?.title,
+            // 封面/作者是 [ReadingProgressStore.recordOpen] 记的，这里别覆盖成空，
+            // 不然读完一话浏览历史里的封面就没了。
+            cover = progress?.cover,
+            author = progress?.author,
         )
         progress = next
         progressStore.save(next)
@@ -341,7 +345,9 @@ fun ComicDetailContent(
 
             if (loaded != null) {
                 item(key = "detail-resume") {
-                    val savedProgress = state.progress
+                    // order 0 是「打开过、还没读」的占位，不算真进度：当作没读过处理，
+                    // 不然会显示「上次读到 第 0 话」，点下去拿 0 去拉图，一本图全失败。
+                    val savedProgress = state.progress?.takeIf { it.order > 0 }
                     ResumeCard(
                         progress = savedProgress,
                         onResume = {
@@ -355,7 +361,8 @@ fun ComicDetailContent(
                                     if (pager.items.isEmpty()) pager.loadNext()
                                     // 章节是倒序给的，第一话在最后一页里。
                                     if (pager.lastPage > 1) pager.jumpTo(pager.lastPage)
-                                    pager.items.minOfOrNull { it.order }
+                                    // 序号 0 的章节是坏的，找第一话时跳过。
+                                    pager.items.filter { it.order > 0 }.minOfOrNull { it.order }
                                         ?.let { onResume(it, 0) }
                                 }
                             }
@@ -374,7 +381,8 @@ fun ComicDetailContent(
 
             when (tab) {
                 DetailTab.Chapters -> {
-                    val chapters = state.episodePager.items
+                    // 序号 0 的章节是坏的（拿它拉图会全失败），不显示、也不让人点进去。
+                    val chapters = state.episodePager.items.filter { it.order > 0 }
                     if (chapters.isEmpty()) {
                         item(key = "chapter-state") {
                             when {
@@ -393,7 +401,8 @@ fun ComicDetailContent(
                         val key = "episode-${episode.order}"
                         EpisodeRow(
                             episode = episode,
-                            resumed = state.progress?.order == episode.order,
+                            resumed = (state.progress?.order ?: 0) > 0 &&
+                                state.progress?.order == episode.order,
                             modifier = episodeRowModifier(key),
                             onClick = { onOpenEpisode(episode, key) },
                         )

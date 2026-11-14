@@ -120,7 +120,22 @@ fun ReaderContent(
     /** 读到哪里就报一下，外面存起来。 */
     onProgress: (order: Int, page: Int, pages: Int) -> Unit = { _, _, _ -> },
 ) {
-    var order by remember(startOrder) { mutableIntStateOf(startOrder) }
+    // 服务端偶尔会冒出序号 0 的章节：那种章节没有图，拿它去拉图会一路失败。
+    // 先剔掉，翻上一话 / 下一话也不会翻到它。
+    val validEpisodes = remember(episodes) { episodes.filter { it.order > 0 } }
+
+    // 兜底：startOrder 是 0 / 负数、或者章节里根本没有这个序号时，从最小的一话开始看。
+    // 不这样拿 order=0 去拉图，图片请求会一路失败，看起来像整本都打不开。
+    val resolvedStart = remember {
+        when {
+            validEpisodes.isEmpty() -> startOrder
+            validEpisodes.any { it.order == startOrder } -> startOrder
+            else -> validEpisodes.minOf { it.order }
+        }
+    }
+    // 起始话被兜底换掉了，页码也就作废了，从头看。
+    val resumePage = if (resolvedStart == startOrder) startPage else 0
+    var order by remember(resolvedStart) { mutableIntStateOf(resolvedStart) }
     val pager = remember(comicId, order) {
         Pager(
             load = { page -> pica.comics.pages(comicId, order, page).pages },
@@ -143,7 +158,7 @@ fun ReaderContent(
     val platformContext = LocalPlatformContext.current
 
     // 只有刚进来那次才恢复进度；同一话里换上下话就从头看。
-    var resuming by remember { mutableStateOf(startPage > 0) }
+    var resuming by remember { mutableStateOf(resumePage > 0) }
 
     // 换一话回到 1 倍，别把上一话的缩放带过去。
     LaunchedEffect(order) {
@@ -154,7 +169,7 @@ fun ReaderContent(
 
     LaunchedEffect(pager) {
         if (pager.items.isEmpty()) {
-            val resumeTo = if (resuming && order == startOrder) startPage else 0
+            val resumeTo = if (resuming && order == resolvedStart) resumePage else 0
             if (resumeTo > 0) {
                 // 接着上次读的那一话：先把前面几页补齐，再滚到那一页。
                 var guard = 0
@@ -196,7 +211,7 @@ fun ReaderContent(
     }
 
     // 读到哪一页了：滚停的时候往上报一次，别每一帧都落盘。
-    val lastPage = remember { mutableIntStateOf(startPage) }
+    val lastPage = remember { mutableIntStateOf(resumePage) }
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }
             .distinctUntilChanged()
@@ -232,9 +247,9 @@ fun ReaderContent(
             }
     }
 
-    val prevOrder = episodes.filter { it.order < order }.maxOfOrNull { it.order }
-    val nextOrder = episodes.filter { it.order > order }.minOfOrNull { it.order }
-    val title = episodes.firstOrNull { it.order == order }?.title.orEmpty()
+    val prevOrder = validEpisodes.filter { it.order < order }.maxOfOrNull { it.order }
+    val nextOrder = validEpisodes.filter { it.order > order }.minOfOrNull { it.order }
+    val title = validEpisodes.firstOrNull { it.order == order }?.title.orEmpty()
     val shown = (listState.firstVisibleItemIndex + 1).coerceAtLeast(1)
     val totalPages = pager.total
     // 总页数：服务端给了就用它，还没拉到就用已经有的条数。

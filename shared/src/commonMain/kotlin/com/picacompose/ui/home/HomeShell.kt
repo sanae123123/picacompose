@@ -844,10 +844,14 @@ fun HomeShell(
                                         },
                                         // 「继续阅读」：没有对应的章节行，直接用兜底的 key，纯淡入。
                                         onResume = { order, page ->
-                                            readerOrder = order
-                                            readerPage = page
-                                            readerKey = "episode"
-                                            overlayOrdinal = OverlayPage.Reader.ordinal
+                                            // order 0 是「打开过还没读」的占位，不是真章节；
+                                            // 真传进来也当没读过处理，0 拿去拉图会全失败。
+                                            if (order > 0) {
+                                                readerOrder = order
+                                                readerPage = page
+                                                readerKey = "episode"
+                                                overlayOrdinal = OverlayPage.Reader.ordinal
+                                            }
                                         },
                                     )
                                 }
