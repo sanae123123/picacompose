@@ -25,7 +25,13 @@ android {
 
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
+            // 开着 R8：省体积（主要是没被用到的库代码和资源表索引）、也顺带做点优化。
+            // 规则放在 androidApp/proguard-rules.pro，只钉 ServiceLoader 那几处。
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             // 发出去的那个包用 release 构建：只有非 debuggable 的包，系统才会在安装时
             // 按 assets/dexopt/baseline.prof 做 AOT 编译（debug 包的 dexopt 状态是
             // run-from-apk，profile 直接被忽略）。签名沿用 debug key，跟以前发出去的
