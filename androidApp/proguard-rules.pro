@@ -1,4 +1,8 @@
-# picacompose 的 R8 规则。
+# picacompose 的裁剪规则。
+#
+# 这里只让 R8 干一件事：删掉没用到的代码和资源。改名和优化都关掉（见文件末尾），
+# 所以类名原样保留 —— 崩溃栈不用 mapping 也能读，基线配置里的类名 1:1 对得上，
+# 也就没有「按名字反射找类」被改坏的那类风险。
 #
 # 代码里一行反射都没有（shared / picaapi 全搜过 javaClass、Class.forName、
 # kotlin.reflect、getDeclaredMethod），所以真正会被裁坏的地方只有一类：
@@ -17,9 +21,9 @@
 -keep class kotlinx.coroutines.android.AndroidDispatcherFactory { <init>(); }
 -keep class kotlinx.coroutines.android.AndroidExceptionPreHandler { <init>(); }
 
-# picaapi 的模型里有一批 enum，序列化按名字对；名字被改成 a/b/c 就对不上了
--keepclassmembers enum * { *; }
-
-# 崩溃栈要能看出是哪个文件哪一行
+# 崩溃栈要能看出是哪个文件哪一行（不改名了，源文件名也照原样留）
 -keepattributes SourceFile,LineNumberTable
--renamesourcefileattribute SourceFile
+
+# 只裁剪：不改名、不做优化（-dontoptimize 也免掉 R8 那些重排/内联）
+-dontobfuscate
+-dontoptimize

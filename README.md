@@ -97,9 +97,13 @@ profgen 转成 HRF 文本。构建时 AGP 会把它编成 `assets/dexopt/baselin
 
 改了启动路径（换皮肤引擎、改首屏结构）之后值得重录一遍。
 
-另外发版包开着 R8（`isMinifyEnabled = true`，规则在 `androidApp/proguard-rules.pro`）。
-代码里没有反射，只给 ServiceLoader 那几条服务留了 keep；R8 会把类名改乱，
-release 包的崩溃栈需要配合 `mapping.txt` 才能读，出包后记得别把 mapping 删了。
+另外发版包开着 R8 的裁剪（`isMinifyEnabled = true` + `isShrinkResources = true`，
+规则在 `androidApp/proguard-rules.pro`），但**关掉了混淆和优化**（`-dontobfuscate` /
+`-dontoptimize`）：只删没用到的代码和资源，类名保持原样，所以崩溃栈不用 mapping
+也能直接读。代码里没有反射，只给 ServiceLoader 那四条服务留了 keep。
+
+顺带记一笔：资源压缩必须让 R8 参与，AGP 不允许「只压资源不裁代码」，所以想省体积
+就绕不开这一步——能选的是要不要在同一趟里改名和优化，我们选了不要。
 
 ## 环境要求
 
@@ -118,10 +122,9 @@ release 包的崩溃栈需要配合 `mapping.txt` 才能读，出包后记得别
 ./gradlew :androidApp:assembleDebug
 # 产物：androidApp/build/outputs/apk/debug/androidApp-debug.apk
 
-# Android 发版包（R8 已开，带基线配置，签名同调试包，能直接覆盖安装）
+# Android 发版包（裁剪已开，带基线配置，签名同调试包，能直接覆盖安装）
 ./gradlew :androidApp:assembleRelease
-# 产物：androidApp/build/outputs/apk/release/androidApp-release.apk（约 3.9MB）
-# 崩溃栈要反混淆：mapping 在 androidApp/build/outputs/mapping/release/mapping.txt
+# 产物：androidApp/build/outputs/apk/release/androidApp-release.apk（约 4.9MB）
 
 # 桌面安装包（dmg / msi / deb）
 ./gradlew :desktopApp:packageDistributionForCurrentOS

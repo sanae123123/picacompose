@@ -25,9 +25,11 @@ android {
 
     buildTypes {
         getByName("release") {
-            // 开着 R8：省体积（主要是没被用到的库代码和资源表索引）、也顺带做点优化。
-            // 规则放在 androidApp/proguard-rules.pro，只钉 ServiceLoader 那几处。
+            // 只裁剪，不做混淆和优化：删掉没用到的库代码和资源，但类名保持原样
+            // （-dontobfuscate / -dontoptimize 写在 proguard-rules.pro 末尾）。
+            // 资源压缩必须有 R8 参与，AGP 不允许「只裁资源不裁代码」。
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
