@@ -50,6 +50,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import com.picacompose.data.ContentFilter
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.ComicSummary
 import com.picacompose.ui.components.PicaGlyph
@@ -104,6 +105,8 @@ fun RandomComicsContent(
     suspend fun fetch(): List<ComicSummary>? =
         withTimeoutOrNull(SWAP_TIMEOUT_MS) {
             catchingLoad { pica.comics.random() }.getOrNull()
+                ?.filter { ContentFilter.allows(it) }
+                ?.ifEmpty { null }
         }
 
     suspend fun loadFirst() {
@@ -114,7 +117,8 @@ fun RandomComicsContent(
         loading = false
     }
 
-    LaunchedEffect(Unit) { loadFirst() }
+    // 内容过滤开关切了也重新抽一批，别把不合规的封面留在屏幕上。
+    LaunchedEffect(ContentFilter.version) { loadFirst() }
 
     // 换一批：抽新的一批，抽到了就整块滑上来；抽不到就给个准话。
     LaunchedEffect(swapRequest) {

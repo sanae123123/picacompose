@@ -51,6 +51,7 @@ import com.picacompose.data.pica
 import com.picacompose.picaapi.model.ComicSummary
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.BackHandlerCompat
+import com.picacompose.data.ContentFilter
 import com.picacompose.data.NoticeUnread
 import com.picacompose.data.keepImageIpsFresh
 import com.picacompose.data.refreshImageHost
@@ -166,7 +167,16 @@ fun HomeShell(
     val comicExcludedTags = remember(comicExcludedTagsRaw) {
         comicExcludedTagsRaw.split('\n').filter { it.isNotBlank() }
     }
-    val comicPager = remember(comicTitle, comicSort, comicFinished, comicTagsRaw, comicExcludedTagsRaw) {
+    // 内容过滤开关的版本号：切完开关把列表重拉一遍，别把旧结果留在屏幕上。
+    val contentFilterVersion = ContentFilter.version
+    val comicPager = remember(
+        comicTitle,
+        comicSort,
+        comicFinished,
+        comicTagsRaw,
+        comicExcludedTagsRaw,
+        contentFilterVersion,
+    ) {
         val extraTags = comicTags.drop(1)
         val excluded = comicExcludedTags
         Pager(
@@ -180,13 +190,11 @@ fun HomeShell(
                 )
             },
             itemKey = { it.id },
-            filter = if (extraTags.isEmpty() && excluded.isEmpty()) {
-                null
-            } else {
-                { comic: ComicSummary ->
-                    extraTags.all { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } } &&
-                        excluded.none { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } }
-                }
+            // 标签条件和内容过滤一起筛：内容过滤能筛掉不少，Pager 会自己多往下拉几页。
+            filter = { comic: ComicSummary ->
+                extraTags.all { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } } &&
+                    excluded.none { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } } &&
+                    ContentFilter.allows(comic)
             },
         )
     }
@@ -202,7 +210,13 @@ fun HomeShell(
     val tagPageExcludedTags = remember(tagPageExcludedTagsRaw) {
         tagPageExcludedTagsRaw.split('\n').filter { it.isNotBlank() }
     }
-    val tagPagePager = remember(tagPageTagsRaw, tagPageSort, tagPageFinished, tagPageExcludedTagsRaw) {
+    val tagPagePager = remember(
+        tagPageTagsRaw,
+        tagPageSort,
+        tagPageFinished,
+        tagPageExcludedTagsRaw,
+        contentFilterVersion,
+    ) {
         val extraTags = tagPageTags.drop(1)
         val excluded = tagPageExcludedTags
         Pager(
@@ -215,13 +229,11 @@ fun HomeShell(
                 )
             },
             itemKey = { it.id },
-            filter = if (extraTags.isEmpty() && excluded.isEmpty()) {
-                null
-            } else {
-                { comic: ComicSummary ->
-                    extraTags.all { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } } &&
-                        excluded.none { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } }
-                }
+            // 标签条件和内容过滤一起筛：内容过滤能筛掉不少，Pager 会自己多往下拉几页。
+            filter = { comic: ComicSummary ->
+                extraTags.all { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } } &&
+                    excluded.none { tag -> comic.tags.any { it.equals(tag, ignoreCase = true) } } &&
+                    ContentFilter.allows(comic)
             },
         )
     }
@@ -268,10 +280,11 @@ fun HomeShell(
     }
     val messageListState = rememberLazyListState()
     // 我的页那三张入口卡打开的整页：分页和滚动位置都提上来，退出去再进来不用重拉。
-    val favouritePager = remember {
+    val favouritePager = remember(contentFilterVersion) {
         Pager(
             load = { page -> pica.comics.favourites(page = page) },
             itemKey = { it.id },
+            filter = { comic -> ContentFilter.allows(comic) },
         )
     }
     val favouriteListState = rememberLazyListState()

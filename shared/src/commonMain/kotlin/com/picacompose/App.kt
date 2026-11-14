@@ -31,6 +31,7 @@ import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.setSingletonImageLoaderFactory
 import coil3.network.NetworkFetcher
 import coil3.network.ktor3.KtorNetworkFetcherFactory
+import com.picacompose.data.ContentFilter
 import com.picacompose.data.LinePreferences
 import com.picacompose.picaapi.ImageQuality
 import com.picacompose.picaapi.ImageQualitySetting
@@ -175,6 +176,12 @@ private fun MainScreens() {
 
     LaunchedEffect(Unit) { controller.restoreSession() }
 
+    // 第一次登录（含之前就登录着、升级上来第一次打开）问一次要不要开内容过滤。
+    var askNoHFilter by remember { mutableStateOf(false) }
+    LaunchedEffect(controller.profile) {
+        if (controller.profile != null && !ContentFilter.prompted) askNoHFilter = true
+    }
+
     val screen = when {
         controller.restoring -> Screen.Restoring
         controller.profile == null -> Screen.Login
@@ -241,6 +248,37 @@ private fun MainScreens() {
         }
     }
 
+    if (askNoHFilter) {
+        // 这个询问只算「问过一次」不算「开过」：选先不用，开关保持关。
+        val pop = rememberDialogPop(onDismiss = {
+            ContentFilter.prompted = true
+            askNoHFilter = false
+        })
+        PicaAlertDialog(
+            onDismissRequest = pop::dismiss,
+            modifier = pop.modifier,
+            title = { Text("要不要只看无 H 的作品？", style = MiuixTheme.textStyles.title4) },
+            text = {
+                Text(
+                    text = "打开后列表里只留下带「無H內容」这类标签、或简介里写了无 H 的作品，" +
+                        "适合在公共场合翻。随时能在设置里改。",
+                    style = MiuixTheme.textStyles.body1,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                )
+            },
+            confirmButton = {
+                PicaTextButton(onClick = {
+                    ContentFilter.enabled = true
+                    pop.dismiss()
+                }) {
+                    Text("只看无 H")
+                }
+            },
+            dismissButton = {
+                PicaTextButton(onClick = pop::dismiss) { Text("先不用") }
+            },
+        )
+    }
 }
 
 /**

@@ -40,6 +40,11 @@ data class ComicSummary(
     @SerialName("epsCount") val episodesCount: Int = 0,
     val finished: Boolean = false,
     val categories: List<String> = emptyList(),
+    /**
+     * 简介。只有高级搜索的列表项带这个字段（实测 `/comics`、排行榜、收藏都不返回），
+     * 所以内容过滤里当补充条件用，缺了也不影响。
+     */
+    val description: String? = null,
     /** 列表接口也带着标签，筛多标签时靠它本地过滤。 */
     val tags: List<String> = emptyList(),
     val thumb: Thumbnail? = null,

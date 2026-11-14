@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.picacompose.data.ContentFilter
 import com.picacompose.data.readingProgressStore
 import com.picacompose.ui.components.PicaTextField
 import com.picacompose.picaapi.model.ComicSummary
@@ -115,6 +116,16 @@ fun ComicListContent(
         if (pager.items.isEmpty()) pager.loadNext()
     }
 
+    // 本地筛选（标签、内容过滤）可能把整整一页都筛掉：那时列表是空的、也滚不动，
+    // 得自己接着翻下一页，不然会停在「这个分类还没有本子」上，其实后面还有。
+    LaunchedEffect(listState, pager) {
+        snapshotFlow { pager.items.isEmpty() to (pager.hasMore && !pager.loading && pager.error == null) }
+            .distinctUntilChanged()
+            .collect { (empty, canLoad) ->
+                if (empty && canLoad) pager.loadNext()
+            }
+    }
+
     // 滚到离底部还剩四五条的时候续页；pager.loading 挡住重复请求。
     LaunchedEffect(listState, pager) {
         snapshotFlow {
@@ -146,8 +157,9 @@ fun ComicListContent(
                 Box(Modifier.weight(1f)) {
                     PageHeader(title = title)
                 }
-                // 官方列表右上角有个总数，这里也给一个；加了标签筛之后总数没意义，显示筛出来的条数。
-                val countText = if (tags.isEmpty() && excludedTags.isEmpty()) {
+                // 官方列表右上角有个总数，这里也给一个；加了标签筛或内容过滤之后
+                // 服务端总数就偏大了，改成显示这一页筛出来的条数。
+                val countText = if (tags.isEmpty() && excludedTags.isEmpty() && !ContentFilter.enabled) {
                     if (pager.total > 0) "${compactCount(pager.total)} 本" else null
                 } else {
                     "已筛 ${pager.items.size} 本"
@@ -234,6 +246,7 @@ fun ComicListContent(
                     }
 
                     pager.loading -> LoadingBlock("正在拉本子…")
+                    ContentFilter.enabled -> EmptyBlock("开着「只看无 H」，这一页里没有带标记的本子，往下翻翻看")
                     else -> EmptyBlock("这个分类还没有本子")
                 }
             }

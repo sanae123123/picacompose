@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.picacompose.data.ContentFilter
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.ComicSummary
 import com.picacompose.picaapi.model.Paged
@@ -87,11 +88,17 @@ fun LeaderboardContent(
     val tab = LeaderboardTab.entries.getOrElse(tabOrdinal) { LeaderboardTab.Popular }
     val range = PopularRange.entries.getOrElse(rangeOrdinal) { PopularRange.Day }
 
-    val popularPagers = remember {
+    // 内容过滤开关切了要重拉：排行榜接口一次给完，本地筛掉就行。
+    val popularPagers = remember(ContentFilter.version) {
         PopularRange.entries.associateWith { item ->
             Pager<ComicSummary>(
                 load = { page ->
-                    val comics = if (page == 1) pica.comics.leaderboard(timeType = item.tt) else emptyList()
+                    val comics = if (page == 1) {
+                        pica.comics.leaderboard(timeType = item.tt)
+                            .filter { ContentFilter.allows(it) }
+                    } else {
+                        emptyList()
+                    }
                     Paged(
                         total = comics.size,
                         limit = comics.size,

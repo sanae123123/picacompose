@@ -48,6 +48,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.picacompose.data.ContentFilter
 import com.picacompose.data.pica
 import com.picacompose.ui.components.PicaTextField
 import com.picacompose.picaapi.model.ComicSummary
@@ -135,6 +136,12 @@ class SearchState {
         pager = pagerFor(keyword, value)
     }
 
+    /** 设置里切了内容过滤：同一个关键词按新条件重搜一遍，别把旧结果留在屏幕上。 */
+    fun reloadForContentFilter() {
+        if (keyword.isBlank() || pager == null) return
+        pager = pagerFor(keyword, sort)
+    }
+
     /** 关掉搜索页时清空：词、排序、结果都回到刚进来的样子，热搜词留着不用重拉。 */
     fun reset() {
         query = ""
@@ -181,18 +188,17 @@ class SearchState {
         val want = finished.value
         val wantedTags = tags
         val unwantedTags = excludedTags
-        val filter: ((ComicSummary) -> Boolean)? = when {
-            want == null && wantedTags.isEmpty() && unwantedTags.isEmpty() -> null
-            else -> { comic ->
-                val finishedOk = want == null || comic.finished == want
-                val tagsOk = wantedTags.all { tag ->
-                    comic.tags.any { it.equals(tag, ignoreCase = true) }
-                }
-                val excludedOk = unwantedTags.none { tag ->
-                    comic.tags.any { it.equals(tag, ignoreCase = true) }
-                }
-                finishedOk && tagsOk && excludedOk
+        // 完结、标签、内容过滤都在本地筛；全是放行条件也照样过一遍 filter，
+        // 这样筛得太狠时 Pager 会自己多翻几页。
+        val filter: (ComicSummary) -> Boolean = { comic ->
+            val finishedOk = want == null || comic.finished == want
+            val tagsOk = wantedTags.all { tag ->
+                comic.tags.any { it.equals(tag, ignoreCase = true) }
             }
+            val excludedOk = unwantedTags.none { tag ->
+                comic.tags.any { it.equals(tag, ignoreCase = true) }
+            }
+            finishedOk && tagsOk && excludedOk && ContentFilter.allows(comic)
         }
         return Pager(
             load = { page -> pica.comics.advancedSearch(keyword = keyword, sort = sort, page = page) },
@@ -238,6 +244,8 @@ fun SearchContent(
     val pager = state.pager
 
     LaunchedEffect(state) { state.ensureHotKeywords() }
+    // 设置里切了「只看无 H」：现在这页结果按新条件重拉。
+    LaunchedEffect(ContentFilter.version) { state.reloadForContentFilter() }
     // 等整页淡进来再弹键盘，不然跟变形动画挤在一起。
     // 从本子详情退回搜索页时不弹：那时候要接着看刚才的结果，不该再顶一层键盘上来。
     LaunchedEffect(Unit) {

@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import com.picacompose.data.APP_VERSION
+import com.picacompose.data.ContentFilter
 import com.picacompose.data.ImageIpsStatus
 import com.picacompose.data.LinePreferences
 import com.picacompose.data.LineRouter
@@ -119,6 +120,7 @@ fun SettingsContent(
     var fastEntry by remember { mutableStateOf(preferences.fastEntry) }
     var doh by remember { mutableStateOf(preferences.doh) }
     var useImageIps by remember { mutableStateOf(preferences.imageIps) }
+    var noHOnly by remember { mutableStateOf(ContentFilter.enabled) }
     // 「几分钟前」要自己走：没有系统时钟依赖，用单调时间算相对时长。
     val imageIpsAgo by produceState(-1L) {
         while (true) {
@@ -141,6 +143,23 @@ fun SettingsContent(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                     textStyle = MiuixTheme.textStyles.footnote1,
                     spacing = 8.dp,
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+        }
+        item {
+            PicaCard {
+                SwitchRow(
+                    icon = PicaIcon.Filter,
+                    title = "只看无 H",
+                    summary = "打开后列表只保留标签或简介里带「无 H / 無 H」的作品，平台上一般打成" +
+                        "「無H內容」标签。搜索结果带简介，别的列表接口不带，所以主要看标签。" +
+                        "默认关；第一次登录时会问一次。",
+                    checked = noHOnly,
+                    onCheckedChange = { on ->
+                        noHOnly = on
+                        ContentFilter.enabled = on
+                    },
                 )
             }
             Spacer(Modifier.height(14.dp))

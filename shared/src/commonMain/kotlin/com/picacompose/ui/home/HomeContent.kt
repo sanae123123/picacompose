@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.picacompose.data.ContentFilter
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.CollectionGroup
 import com.picacompose.picaapi.model.ComicSummary
@@ -73,12 +74,24 @@ class HomeFeedState {
         load()
     }
 
+    /** 上次拉的时候内容过滤是第几版；开关切了要重拉。 */
+    private var loadedFilterVersion = -1
+
     internal suspend fun load() {
-        // 已经拉到了就不动，免得每次回到首页都闪一下 loading。
-        if (collections != null) return
+        // 已经拉到了就不动，免得每次回到首页都闪一下 loading；
+        // 但内容过滤开关变过就得重来，不然旧列表会一直留在屏幕上。
+        if (collections != null && loadedFilterVersion == ContentFilter.version) return
+        loadedFilterVersion = ContentFilter.version
         error = null
         catchingLoad { pica.comics.collections() }
-            .onSuccess { collections = it }
+            .onSuccess { groups ->
+                // 开关开着时，把筛完一组都不剩的分组也去掉，免得首页一堆空行。
+                collections = groups
+                    .map { group ->
+                        group.copy(comics = group.comics.filter { ContentFilter.allows(it) })
+                    }
+                    .filter { it.comics.isNotEmpty() }
+            }
             .onFailure { error = it.message ?: "推荐没拉到" }
     }
 }
@@ -105,7 +118,7 @@ fun HomeContent(
     val collectionError = feed.error
     var showAnnouncements by remember { mutableStateOf(false) }
 
-    LaunchedEffect(feed.reload) { feed.load() }
+    LaunchedEffect(feed.reload, ContentFilter.version) { feed.load() }
 
     PageScaffold(
         state = listState,
@@ -180,7 +193,13 @@ fun HomeContent(
             }
 
             groups == null -> item { LoadingBlock("正在拉推荐…") }
-            groups.isEmpty() -> item { EmptyBlock("这次没拿到推荐") }
+            groups.isEmpty() -> item {
+                // 开着「只看无 H」时，推荐本来就不带简介、只能看标签，命中率很低，
+                // 空着的时候得说清楚是被筛掉了，不然会以为接口坏了。
+                EmptyBlock(
+                    if (ContentFilter.enabled) "开着「只看无 H」，这批推荐里没有带标记的作品" else "这次没拿到推荐",
+                )
+            }
             else -> groups.forEach { group ->
                 item(key = "collection-${group.title}") {
                     CollectionSection(
