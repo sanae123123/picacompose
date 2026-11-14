@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -156,6 +158,12 @@ fun PicaSlidingChipRow(
                     animationSpec = tween(durationMillis = 140),
                     label = "chipText$index",
                 )
+                // 没被蓝块盖住的胶囊留一圈描边，不然选中项一跑，别的胶囊就只剩字悬在那。
+                val borderColor by animateColorAsState(
+                    targetValue = if (covered) Color.Transparent else colors.dividerLine,
+                    animationSpec = tween(durationMillis = 180),
+                    label = "chipBorder$index",
+                )
                 Box(
                     modifier = Modifier
                         // 布局完了把位置报上去；值没变就不写，免得每帧触发重组。
@@ -164,6 +172,7 @@ fun PicaSlidingChipRow(
                             if (rect != chipBounds[index]) chipBounds[index] = rect
                         }
                         .clip(RoundedCornerShape(chipRadius))
+                        .border(1.dp, borderColor, RoundedCornerShape(chipRadius))
                         .clickable { onSelect(index) }
                         .padding(horizontal = 14.dp, vertical = 7.dp),
                     contentAlignment = Alignment.Center,
