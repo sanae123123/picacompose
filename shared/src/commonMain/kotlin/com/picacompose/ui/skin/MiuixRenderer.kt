@@ -1,8 +1,16 @@
 package com.picacompose.ui.skin
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
@@ -253,13 +262,47 @@ internal object MiuixRenderer : SkinRenderer {
     @Composable
     override fun FilterChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit) {
         val colors = MiuixTheme.colorScheme
+        // 底色、文字色、描边都过一遍动画：一排胶囊来回切的时候不要硬跳。
+        val container by animateColorAsState(
+            targetValue = if (selected) colors.primary else colors.surface,
+            animationSpec = tween(durationMillis = 180),
+            label = "chipContainer",
+        )
+        val content by animateColorAsState(
+            targetValue = if (selected) colors.onPrimary else colors.onSurface,
+            animationSpec = tween(durationMillis = 180),
+            label = "chipContent",
+        )
+        // 选中时描边淡掉而不是直接撤掉，边框宽度始终占着，免得选中瞬间整体宽一点。
+        val borderColor by animateColorAsState(
+            targetValue = if (selected) Color.Transparent else colors.dividerLine,
+            animationSpec = tween(durationMillis = 180),
+            label = "chipBorder",
+        )
+        // 按下去微微缩一下，手指下有反馈。
+        val interaction = remember { MutableInteractionSource() }
+        val pressed by interaction.collectIsPressedAsState()
+        val scale by animateFloatAsState(
+            targetValue = if (pressed) 0.94f else 1f,
+            animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+            label = "chipScale",
+        )
         // 选中用实心主色、未选中白底加描边：筛选弹窗本身是浅灰底，两边都淡会看不出选没选中。
         MiuixSurface(
             shape = RoundedCornerShape(SkinRegistry.current.tokens.chipRadius),
-            color = if (selected) colors.primary else colors.surface,
-            contentColor = if (selected) colors.onPrimary else colors.onSurface,
-            border = if (selected) null else BorderStroke(1.dp, colors.dividerLine),
-            modifier = Modifier.clickable(onClick = onClick),
+            color = container,
+            contentColor = content,
+            border = BorderStroke(1.dp, borderColor),
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clickable(
+                    interactionSource = interaction,
+                    indication = LocalIndication.current,
+                    onClick = onClick,
+                ),
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),

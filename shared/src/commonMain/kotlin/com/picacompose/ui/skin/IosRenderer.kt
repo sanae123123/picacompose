@@ -1,12 +1,17 @@
 package com.picacompose.ui.skin
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,6 +57,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -315,18 +321,45 @@ internal object IosRenderer : SkinRenderer {
     override fun FilterChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit) {
         val colors = mdColors()
         val shape = RoundedCornerShape(9.dp)
+        // 选中跟 iOS 的 segmented 一样是白底浮起来，底色、字色、投影都过渡一下。
+        val background by animateColorAsState(
+            targetValue = if (selected) colors.surface else colors.surfaceContainer,
+            animationSpec = tween(durationMillis = 180),
+            label = "chipBackground",
+        )
+        val contentColor by animateColorAsState(
+            targetValue = if (selected) colors.onSurface else colors.onSurfaceVariant,
+            animationSpec = tween(durationMillis = 180),
+            label = "chipContent",
+        )
+        val elevation by animateDpAsState(
+            targetValue = if (selected) 1.dp else 0.dp,
+            animationSpec = tween(durationMillis = 180),
+            label = "chipElevation",
+        )
+        val interaction = remember { MutableInteractionSource() }
+        val pressed by interaction.collectIsPressedAsState()
+        val scale by animateFloatAsState(
+            targetValue = if (pressed) 0.94f else 1f,
+            animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+            label = "chipScale",
+        )
         Box(
             modifier = Modifier
-                .then(if (selected) Modifier.shadow(1.dp, shape) else Modifier)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .shadow(elevation, shape)
                 .clip(shape)
-                .background(if (selected) colors.surface else colors.surfaceContainer)
+                .background(background)
                 .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = interaction,
                     indication = null,
                 ) { onClick() }
                 .padding(horizontal = 12.dp, vertical = 7.dp),
         ) {
-            MiuixTextColor(if (selected) colors.onSurface else colors.onSurfaceVariant) { label() }
+            MiuixTextColor(contentColor) { label() }
         }
     }
 
