@@ -30,7 +30,7 @@ class RegisterController(private val client: () -> PicaClient) {
     var birthday by mutableStateOf("")
         private set
 
-    /** `m` / `f`，跟官方一样只给这两个选项。 */
+    /** `m` / `f` / `bot`（机器人），跟官方一致的三个取值。 */
     var gender by mutableStateOf("m")
         private set
 

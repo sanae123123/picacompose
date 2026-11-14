@@ -180,6 +180,11 @@ fun RegisterScreen(
                                     onClick = { controller.onGenderChange("f") },
                                     label = { Text("女", style = MiuixTheme.textStyles.body1) },
                                 )
+                                PicaFilterChip(
+                                    selected = controller.gender == "bot",
+                                    onClick = { controller.onGenderChange("bot") },
+                                    label = { Text("机器人", style = MiuixTheme.textStyles.body1) },
+                                )
                             }
                         }
                         Spacer(Modifier.height(4.dp))
