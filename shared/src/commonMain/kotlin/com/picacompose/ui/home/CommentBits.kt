@@ -91,6 +91,23 @@ class CommentFeed(comicId: String) {
     var topComments by mutableStateOf<List<Comment>>(emptyList())
         private set
 
+    /**
+     * 刚回复了哪条根评论：id + 自增的 tick。
+     *
+     * 回复成功后不去重拉整个评论列表（那样列表会缩回第一页，正看着的位置一下就跳走了），
+     * 只让对应的那一行自己去刷新楼中楼。
+     */
+    var repliedRootId by mutableStateOf<String?>(null)
+        private set
+    var repliedTick by mutableStateOf(0)
+        private set
+
+    fun notifyReplied(rootId: String) {
+        if (rootId.isBlank()) return
+        repliedRootId = rootId
+        repliedTick++
+    }
+
     val pager: Pager<Comment> = Pager(
         load = { page ->
             val data = pica.comments.list(comicId, page)
@@ -455,6 +472,9 @@ fun LazyListScope.commentItems(
     topComments: List<Comment> = emptyList(),
     loadingText: String = "正在拉评论…",
     emptyText: String = "还没有评论",
+    /** 刚回复过哪条根评论（id + tick）：那一行自己刷新楼中楼，主列表不动。 */
+    repliedRootId: String? = null,
+    repliedTick: Int = 0,
 ) {
     // 置顶单独一份，普通列表里要是也出现同一个 id 就剔掉，免得 LazyColumn 撞 key。
     val pinned = topComments.distinctBy { it.id }
@@ -463,7 +483,13 @@ fun LazyListScope.commentItems(
 
     if (pinned.isNotEmpty()) {
         items(pinned, key = { "pinned-${it.id}" }) { comment ->
-            CommentRow(comment = comment, onReply = onReply, pinned = true)
+            CommentRow(
+                comment = comment,
+                onReply = onReply,
+                pinned = true,
+                repliedRootId = repliedRootId,
+                repliedTick = repliedTick,
+            )
         }
         // 置顶和普通评论之间拉一条淡分隔线，视觉上分开。
         item(key = "comment-pinned-divider") {
@@ -487,7 +513,12 @@ fun LazyListScope.commentItems(
         }
     }
     items(rows, key = { it.id }) { comment ->
-        CommentRow(comment = comment, onReply = onReply)
+        CommentRow(
+            comment = comment,
+            onReply = onReply,
+            repliedRootId = repliedRootId,
+            repliedTick = repliedTick,
+        )
     }
     if (pager.items.isNotEmpty()) {
         item {
@@ -565,6 +596,9 @@ fun CommentRow(
     pinned: Boolean = false,
     /** 自己的评论没有头像可拿（历史评论接口不带作者），关掉就只排名字和正文，不留空头像框。 */
     showAvatar: Boolean = true,
+    /** 刚回复过哪条根评论（id + tick）：命中这一行时刷新楼中楼，不碰主列表的滚动位置。 */
+    repliedRootId: String? = null,
+    repliedTick: Int = 0,
 ) {
     val colors = MiuixTheme.colorScheme
     val avatar = comment.user?.avatar.url()
@@ -588,6 +622,14 @@ fun CommentRow(
     LaunchedEffect(comment.childsCount) {
         if (comment.childsCount > seenReplies && expanded) replyPager.reloadFirstPage()
         seenReplies = comment.childsCount
+    }
+
+    // 刚回复了这条：只刷新它自己的楼中楼。别去重拉整个评论列表——那样列表只剩第一页，
+    // 正看着的位置一下就跳走了。没展开就不动，保持当前视图。
+    LaunchedEffect(repliedTick) {
+        if (repliedTick > 0 && repliedRootId == comment.id && expanded) {
+            replyPager.reloadFirstPage()
+        }
     }
 
     PicaCard(

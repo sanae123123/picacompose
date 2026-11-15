@@ -48,6 +48,11 @@ fun ForumContent(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     topComments: List<Comment> = emptyList(),
+    /** 刚回复过哪条根评论（id + tick）：那一行自己刷新楼中楼，主列表不动。 */
+    repliedRootId: String? = null,
+    repliedTick: Int = 0,
+    /** 收到回复成功的通知，记到 [CommentFeed] 里让对应那一行去刷新。 */
+    onReplied: (rootId: String) -> Unit = {},
 ) {
     val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -97,6 +102,8 @@ fun ForumContent(
                 topComments = topComments,
                 loadingText = "正在拉留言…",
                 emptyText = "还没有人留言",
+                repliedRootId = repliedRootId,
+                repliedTick = repliedTick,
             )
         }
         CommentComposer(
@@ -121,7 +128,8 @@ fun ForumContent(
         CommentReplyDialog(
             target = target,
             onDismiss = { replyTarget = null },
-            onReplied = { scope.launch { pager.reloadFirstPage() } },
+            // 只让被回复的那一行刷新楼中楼：重拉整个列表会缩回第一页，滚动位置就乱了。
+            onReplied = { onReplied(target.root.id) },
         )
     }
 }

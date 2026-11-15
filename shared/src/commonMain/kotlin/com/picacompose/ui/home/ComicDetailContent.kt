@@ -424,6 +424,8 @@ fun ComicDetailContent(
                     onRetry = { scope.launch { state.commentFeed.pager.retry() } },
                     onReply = { replyTarget = it },
                     topComments = state.commentFeed.topComments,
+                    repliedRootId = state.commentFeed.repliedRootId,
+                    repliedTick = state.commentFeed.repliedTick,
                 )
             }
         }
@@ -470,7 +472,8 @@ fun ComicDetailContent(
         CommentReplyDialog(
             target = target,
             onDismiss = { replyTarget = null },
-            onReplied = { scope.launch { state.commentFeed.pager.reloadFirstPage() } },
+            // 只让被回复的那一行刷新楼中楼：重拉整个列表会缩回第一页，滚动位置就乱了。
+            onReplied = { state.commentFeed.notifyReplied(target.root.id) },
         )
     }
 }

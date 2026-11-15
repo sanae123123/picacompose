@@ -646,6 +646,9 @@ fun HomeShell(
                                     listState = forumListState,
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
                                     topComments = forumFeed.topComments,
+                                    repliedRootId = forumFeed.repliedRootId,
+                                    repliedTick = forumFeed.repliedTick,
+                                    onReplied = forumFeed::notifyReplied,
                                 )
 
                                 OverlayPage.Leaderboard -> LeaderboardContent(
