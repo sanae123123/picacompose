@@ -370,6 +370,12 @@ fun HomeShell(
         }
     }
 
+    // 只有真的换了分页器（换分类 / 换排序 / 换标签 / 重新搜）才回顶部：
+    // 从详情页退回来时这个页面会重建，但 pager 还是原来那个，位置得留着。
+    LaunchedEffect(comicPager) { comicListState.scrollToItem(0) }
+    LaunchedEffect(tagPagePager) { tagPageListState.scrollToItem(0) }
+    LaunchedEffect(searchState.pager) { searchListState.scrollToItem(0) }
+
     // 各栏的滚动位置在滑走再回来时也能接上（懒列表的状态本身是可保存的）。
     val tabStates = rememberSaveableStateHolder()
 

@@ -110,9 +110,9 @@ fun ComicListContent(
         .map { it.key }
         .take(40)
 
+    // 这里只管补拉第一页。回顶部挪到 [HomeShell] 了：从详情退回来时这个页面会重建，
+    // 在这里滚会一路跳回顶部，得只在真的换了 pager（换排序/标签）时才滚。
     LaunchedEffect(pager) {
-        // 换排序会换一个 pager，回到顶部重新看。
-        listState.scrollToItem(0)
         if (pager.items.isEmpty()) pager.loadNext()
     }
 

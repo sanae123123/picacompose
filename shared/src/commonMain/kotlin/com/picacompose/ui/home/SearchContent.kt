@@ -254,10 +254,10 @@ fun SearchContent(
         runCatching { focus.requestFocus() }
     }
 
-    // 换关键词 / 换排序就回顶部、拉第一页；同一个 pager 不重拉。
+    // 这里只管补拉第一页；回顶挪到 [HomeShell] 了——从详情退回来时这个页面会重建，
+    // 在这儿滚会把刚翻到的位置冲掉。
     LaunchedEffect(pager) {
         if (pager == null) return@LaunchedEffect
-        listState.scrollToItem(0)
         if (pager.items.isEmpty()) pager.loadNext()
     }
 
