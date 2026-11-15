@@ -624,11 +624,17 @@ fun CommentRow(
         seenReplies = comment.childsCount
     }
 
-    // 刚回复了这条：只刷新它自己的楼中楼。别去重拉整个评论列表——那样列表只剩第一页，
-    // 正看着的位置一下就跳走了。没展开就不动，保持当前视图。
+    // 刚回复了这条：展开它的楼中楼、把回复列表刷新一遍。别去重拉整个评论列表——
+    // 那样列表只剩第一页，正看着的位置一下就跳走了。
     LaunchedEffect(repliedTick) {
-        if (repliedTick > 0 && repliedRootId == comment.id && expanded) {
-            replyPager.reloadFirstPage()
+        if (repliedTick <= 0 || repliedRootId != comment.id) return@LaunchedEffect
+        expanded = true
+        replyPager.reloadFirstPage()
+        // 新回复排在最后：接着往后拉到底，不然看着像没发出去。
+        var rounds = 0
+        while (replyPager.hasMore && replyPager.loadedPage < replyPager.lastPage && rounds < 10) {
+            replyPager.loadNext()
+            rounds++
         }
     }
 
