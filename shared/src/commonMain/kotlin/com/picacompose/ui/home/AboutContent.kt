@@ -161,13 +161,6 @@ fun AboutScreen(onDismiss: () -> Unit) {
                             color = colors.onSurfaceSecondary,
                             textAlign = TextAlign.Center,
                         )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = "小提示：点一下图标，星星会掉下来",
-                            style = MiuixTheme.textStyles.footnote2,
-                            color = colors.onSurfaceSecondary.copy(alpha = 0.7f),
-                            textAlign = TextAlign.Center,
-                        )
                     }
                 }
                 item {
