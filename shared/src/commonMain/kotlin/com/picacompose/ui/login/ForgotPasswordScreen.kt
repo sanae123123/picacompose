@@ -52,7 +52,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.ui.text.font.FontWeight
 
 /**
- * 找回密码页：邮箱 → 密保问题 → 新密码。
+ * 找回密码页：账号 → 密保问题 → 新密码。
  *
  * 官方流程不给你发邮件，答对密保问题就当场把新密码给出来，所以最后一步直接把新密码
  * 摆在屏幕上，顺手能复制，再回登录页填上。
@@ -107,13 +107,13 @@ fun ForgotPasswordScreen(
 private fun EmailStep(controller: ForgotPasswordController, onSubmit: () -> Unit) {
     val colors = MiuixTheme.colorScheme
     Text(
-        text = "用邮箱找回",
+        text = "用账号找回",
         style = MiuixTheme.textStyles.title1,
         color = colors.onBackground,
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "填注册时用的邮箱，我们把当时设的密保问题取回来。",
+        text = "填注册时用的账号，邮箱或用户名都行，我们把当时设的密保问题取回来。",
         style = MiuixTheme.textStyles.body1,
         color = colors.onSurfaceSecondary,
     )
@@ -130,14 +130,14 @@ private fun EmailStep(controller: ForgotPasswordController, onSubmit: () -> Unit
                 onValueChange = controller::onEmailChange,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !controller.loading,
-                placeholder = "注册邮箱",
+                placeholder = "注册账号",
                 singleLine = true,
                 cornerRadius = 16.dp,
                 leadingIcon = {
                     PicaGlyph(PicaIcon.Mail, Modifier.size(20.dp), colors.onSurfaceSecondary)
                 },
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
+                    keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Done,
                 ),
                 keyboardActions = KeyboardActions(onDone = { onSubmit() }),
@@ -252,7 +252,7 @@ private fun AnswerStep(controller: ForgotPasswordController, onSubmit: () -> Uni
                     .fillMaxWidth()
                     .height(46.dp),
             ) {
-                Text("换个邮箱", style = MiuixTheme.textStyles.button)
+                Text("换个账号", style = MiuixTheme.textStyles.button)
             }
         }
     }

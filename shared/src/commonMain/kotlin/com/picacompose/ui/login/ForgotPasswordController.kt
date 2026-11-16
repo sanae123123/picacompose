@@ -7,10 +7,12 @@ import com.picacompose.picaapi.PicaClient
 import com.picacompose.picaapi.PicaException
 
 /**
- * 找回密码的状态：填邮箱 → 拉回三个密保问题 → 答对一个换新密码。
+ * 找回密码的状态：填账号 → 拉回三个密保问题 → 答对一个换新密码。
  *
  * 走的是官方两步接口：`auth/forgot-password` 返回问题，`auth/reset-password` 提交
  * 问题编号 + 答案，服务端直接把新密码返回（不是发邮件的那种流程）。
+ *
+ * 账号不一定是邮箱（官方也允许用用户名注册），所以前端不拦格式，原样发给服务端判断。
  */
 class ForgotPasswordController(private val client: () -> PicaClient) {
 
@@ -42,7 +44,7 @@ class ForgotPasswordController(private val client: () -> PicaClient) {
     var error by mutableStateOf<String?>(null)
         private set
 
-    /** 从登录页过来时把已经填好的邮箱带过来，省得再敲一遍。 */
+    /** 从登录页过来时把已经填好的账号带过来，省得再敲一遍。 */
     fun prefillEmail(value: String) {
         if (email.isBlank()) email = value
     }
@@ -62,7 +64,7 @@ class ForgotPasswordController(private val client: () -> PicaClient) {
         error = null
     }
 
-    /** 换一个邮箱重来：问题列表和答案都清掉。 */
+    /** 换个账号重来：问题列表和答案都清掉。 */
     fun backToEmail() {
         step = Step.Email
         questions = emptyList()
@@ -73,8 +75,9 @@ class ForgotPasswordController(private val client: () -> PicaClient) {
 
     suspend fun submitEmail() {
         if (loading) return
-        if (!EMAIL.matches(email.trim())) {
-            error = "先填注册时用的邮箱"
+        // 账号不一定是邮箱，别在本地拦：填什么就发什么，让服务端判断有没有这个账号。
+        if (email.isBlank()) {
+            error = "先填注册时用的账号"
             return
         }
         loading = true
@@ -87,7 +90,7 @@ class ForgotPasswordController(private val client: () -> PicaClient) {
                 data.question3?.takeIf { it.isNotBlank() }?.let { 3 to it },
             )
             if (list.isEmpty()) {
-                error = "这个邮箱没查到密保问题，确认下是不是注册时那个邮箱"
+                error = "这个账号没查到密保问题，确认下是不是注册时那个账号"
             } else {
                 questions = list
                 chosenNo = list.first().first
@@ -129,9 +132,6 @@ class ForgotPasswordController(private val client: () -> PicaClient) {
         }
     }
 
-    private companion object {
-        val EMAIL = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
-    }
 }
 
 private fun PicaException.forgotMessage(): String {
@@ -139,7 +139,7 @@ private fun PicaException.forgotMessage(): String {
     return when {
         httpCode == 400 && raw.isNotBlank() -> raw
         httpCode == null -> raw.ifBlank { "连不上服务器，稍后再试" }
-        errorCode == "1004" -> "这个邮箱没注册过，检查一下"
+        errorCode == "1004" -> "这个账号没注册过，检查一下"
         else -> raw.ifBlank { "没办成（HTTP $httpCode），稍后再试" }
     }
 }
