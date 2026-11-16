@@ -1,13 +1,10 @@
 package com.picacompose.ui.home
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -37,7 +34,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -58,8 +56,8 @@ import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.PI
-import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.random.Random
 
 /**
  * 关于页：图标、彩蛋、开发名单和几句话介绍。
@@ -72,14 +70,15 @@ fun AboutScreen(onDismiss: () -> Unit) {
     val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
     val openBrowser = rememberBrowserOpener()
-    var pokes by remember { mutableIntStateOf(0) }
-    var burstKey by remember { mutableIntStateOf(0) }
-    val burst = remember { Animatable(0f) }
+    var fallKey by remember { mutableIntStateOf(0) }
+    var fallX by remember { mutableStateOf(0.5f) }
+    val fall = remember { Animatable(0f) }
     val bounce = remember { Animatable(1f) }
 
     fun poke() {
-        pokes += 1
-        burstKey += 1
+        // 每次点都换一个落点，让心从屏幕上边掉下来。
+        fallX = 0.2f + Random.nextFloat() * 0.6f
+        fallKey += 1
         scope.launch {
             bounce.snapTo(0.86f)
             bounce.animateTo(
@@ -92,10 +91,10 @@ fun AboutScreen(onDismiss: () -> Unit) {
         }
     }
 
-    LaunchedEffect(burstKey) {
-        if (burstKey == 0) return@LaunchedEffect
-        burst.snapTo(0f)
-        burst.animateTo(1f, tween(durationMillis = 1800, easing = LinearEasing))
+    LaunchedEffect(fallKey) {
+        if (fallKey == 0) return@LaunchedEffect
+        fall.snapTo(0f)
+        fall.animateTo(1f, tween(durationMillis = 1600, easing = LinearEasing))
     }
 
     Dialog(
@@ -128,12 +127,7 @@ fun AboutScreen(onDismiss: () -> Unit) {
                         modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Box(Modifier.size(176.dp), contentAlignment = Alignment.Center) {
-                            Canvas(Modifier.matchParentSize()) {
-                                drawHeartBurst(burst.value, colors.primary)
-                            }
-                            AppIcon(scale = bounce.value, onPoke = ::poke)
-                        }
+                        AppIcon(scale = bounce.value, onPoke = ::poke)
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = "❤️lyx致最可爱的zqs妹妹❤️",
@@ -149,20 +143,8 @@ fun AboutScreen(onDismiss: () -> Unit) {
                             textAlign = TextAlign.Center,
                         )
                         Spacer(Modifier.height(8.dp))
-                        AnimatedVisibility(
-                            visible = pokes > 0,
-                            enter = fadeIn(tween(200)),
-                            exit = fadeOut(tween(120)),
-                        ) {
-                            Text(
-                                text = EASTER_EGGS[(pokes - 1).coerceAtLeast(0) % EASTER_EGGS.size],
-                                style = MiuixTheme.textStyles.footnote2,
-                                color = colors.primary,
-                                textAlign = TextAlign.Center,
-                            )
-                        }
                         Text(
-                            text = "小提示：戳一下图标",
+                            text = "小提示：戳一下图标，会掉下一颗心",
                             style = MiuixTheme.textStyles.footnote2,
                             color = colors.onSurfaceSecondary.copy(alpha = 0.7f),
                             textAlign = TextAlign.Center,
@@ -223,6 +205,9 @@ fun AboutScreen(onDismiss: () -> Unit) {
                     )
                 }
             }
+            if (fallKey > 0) {
+                FallingHeart(progress = fall.value, fromX = fallX, color = colors.primary)
+            }
         }
     }
 }
@@ -278,19 +263,21 @@ private fun Paragraph(text: String) {
     Spacer(Modifier.height(8.dp))
 }
 
-/** 点图标时从中心散出去的一圈小心心：进度 0 → 1，越散越远、越淡。 */
-private fun DrawScope.drawHeartBurst(progress: Float, color: Color) {
-    if (progress <= 0f || progress >= 1f) return
-    val count = 8
-    val maxRadius = size.minDimension * 0.42f
-    repeat(count) { index ->
-        val angle = (2.0 * PI * index / count + 0.4).toFloat()
-        val radius = maxRadius * (0.30f + 0.70f * progress)
-        val heartSize = size.minDimension * 0.14f * (1f - 0.35f * progress)
-        val cx = center.x + radius * cos(angle)
-        val cy = center.y + radius * sin(angle)
-        translate(left = cx - heartSize / 2f, top = cy - heartSize / 2f) {
-            drawPath(heartPath(heartSize), color.copy(alpha = (1f - progress) * 0.85f))
+/** 点图标后从上边掉下来的一颗心：边落边左右摆，落到底之前淡出。 */
+@Composable
+private fun FallingHeart(progress: Float, fromX: Float, color: Color) {
+    Canvas(Modifier.fillMaxSize()) {
+        if (progress <= 0f || progress >= 1f) return@Canvas
+        val heartSize = size.minDimension * 0.17f
+        val sway = sin((progress * 2f * PI).toDouble()).toFloat() * heartSize * 0.45f
+        val x = size.width * fromX + sway - heartSize / 2f
+        val y = -heartSize + (size.height + heartSize * 2f) * progress
+        val alpha = if (progress < 0.8f) 1f else ((1f - progress) / 0.2f).coerceIn(0f, 1f)
+        val tilt = sin((progress * 3f * PI).toDouble()).toFloat() * 18f
+        rotate(degrees = tilt, pivot = Offset(x + heartSize / 2f, y + heartSize / 2f)) {
+            translate(left = x, top = y) {
+                drawPath(heartPath(heartSize), color.copy(alpha = alpha))
+            }
         }
     }
 }
@@ -302,13 +289,3 @@ private fun heartPath(size: Float): Path = Path().apply {
     cubicTo(size * 0.90f, size * 0.16f, size * 0.96f, size * 0.62f, size * 0.5f, size * 0.94f)
     close()
 }
-
-/** 戳图标时轮着蹦出来的话。 */
-private val EASTER_EGGS = listOf(
-    "彩蛋：lyx 说，zqs 妹妹要天天开心 ❤️",
-    "被你点到了，图标害羞地跳了一下",
-    "auayy~：再点要收费了（开玩笑的）",
-    "亿只鱼路过：看到彩蛋就算自己人了",
-    "gskhaa：zqs 妹妹天下第一可爱",
-    "CoooC：这个彩蛋是大家一起想的",
-)
