@@ -107,6 +107,7 @@ fun SettingsContent(
     LaunchedEffect(platformContext) { cacheBytes = imageCacheBytes(platformContext) }
     var clearing by remember { mutableStateOf(false) }
     var checkingUpdate by remember { mutableStateOf(false) }
+    var showAbout by remember { mutableStateOf(false) }
     val route = remember { RouteStore() }
     val preferences = remember { LinePreferences() }
     var qualityIndex by remember { mutableStateOf(preferences.imageQuality) }
@@ -361,6 +362,12 @@ fun SettingsContent(
                         }
                     },
                 )
+                PickerRow(
+                    icon = PicaIcon.Notice,
+                    title = "关于",
+                    value = "PicaCompose",
+                    onClick = { showAbout = true },
+                )
                 LinkRow(
                     icon = PicaIcon.Star,
                     title = "GitHub",
@@ -381,6 +388,10 @@ fun SettingsContent(
                 Text("退出登录", style = MiuixTheme.textStyles.button)
             }
         }
+    }
+
+    if (showAbout) {
+        AboutScreen(onDismiss = { showAbout = false })
     }
 
     if (switchOpen) {
