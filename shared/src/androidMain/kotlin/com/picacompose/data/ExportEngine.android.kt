@@ -24,25 +24,52 @@ internal object ExportEngine {
         encodeDefaults = true
     }
 
-    fun export(context: Context, uri: Uri, format: ExportFormat, comicId: String, title: String) {
+    /**
+     * [onProgress] 报进度：第一个参数 0..1，第二个是一句人话（`第 12/200 页` 之类）。
+     * 在 IO 线程上回调，别在里面碰界面。
+     */
+    fun export(
+        context: Context,
+        uri: Uri,
+        format: ExportFormat,
+        comicId: String,
+        title: String,
+        onProgress: (Float, String) -> Unit,
+    ) {
         val zipPath = ComicDownloader.cachedZipPath(comicId) ?: error("这本还没缓存好")
         if (!File(zipPath).exists()) error("缓存包不见了，可能刚被删掉")
         val output = context.contentResolver.openOutputStream(uri) ?: error("打不开保存位置")
         output.use { stream ->
             when (format) {
-                ExportFormat.Zip -> copyZip(zipPath, stream)
-                ExportFormat.Pdf -> writePdf(zipPath, stream)
-                ExportFormat.Epub -> writeEpub(zipPath, title, stream)
+                ExportFormat.Zip -> copyZip(zipPath, stream, onProgress)
+                ExportFormat.Pdf -> writePdf(zipPath, stream, onProgress)
+                ExportFormat.Epub -> writeEpub(zipPath, title, stream, onProgress)
             }
         }
     }
 
     /** 导出 zip 就是把缓存包原样搬出去。 */
-    private fun copyZip(zipPath: String, output: OutputStream) {
-        File(zipPath).inputStream().use { input -> input.copyTo(output, DEFAULT_BUFFER_SIZE) }
+    private fun copyZip(zipPath: String, output: OutputStream, onProgress: (Float, String) -> Unit) {
+        val file = File(zipPath)
+        val total = file.length().coerceAtLeast(1)
+        var copied = 0L
+        file.inputStream().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                output.write(buffer, 0, read)
+                copied += read
+                onProgress(
+                    (copied.toDouble() / total).toFloat().coerceIn(0f, 1f),
+                    "已写 ${formatSize(copied)} / ${formatSize(total)}",
+                )
+            }
+        }
+        onProgress(1f, "完成")
     }
 
-    private fun writePdf(zipPath: String, output: OutputStream) {
+    private fun writePdf(zipPath: String, output: OutputStream, onProgress: (Float, String) -> Unit) {
         ZipFile(zipPath).use { zip ->
             val pages = imageEntries(zip)
             if (pages.isEmpty()) error("包里没有图片，导不出来")
@@ -62,6 +89,10 @@ internal object ExportEngine {
                     } finally {
                         bitmap.recycle()
                     }
+                    onProgress(
+                        (index + 1).toFloat() / pages.size,
+                        "第 ${index + 1}/${pages.size} 页",
+                    )
                 }
                 document.writeTo(output)
             } finally {
@@ -70,7 +101,12 @@ internal object ExportEngine {
         }
     }
 
-    private fun writeEpub(zipPath: String, fallbackTitle: String, output: OutputStream) {
+    private fun writeEpub(
+        zipPath: String,
+        fallbackTitle: String,
+        output: OutputStream,
+        onProgress: (Float, String) -> Unit,
+    ) {
         ZipFile(zipPath).use { zip ->
             val pages = imageEntries(zip)
             if (pages.isEmpty()) error("包里没有图片，导不出来")
@@ -91,15 +127,29 @@ internal object ExportEngine {
                 )
                 out.write(mimetype)
                 out.closeEntry()
+                onProgress(0f, "准备中")
 
                 putText(out, "META-INF/container.xml", CONTAINER_XML)
                 putText(out, "OEBPS/nav.xhtml", navXhtml(pages, chapterTitles))
                 putText(out, "OEBPS/content.opf", contentOpf(title, pages))
-                pages.forEach { entry ->
+                // 每页两步：先写图，再写那一页的 xhtml。
+                val steps = pages.size * 2
+                var step = 0
+                pages.forEachIndexed { index, entry ->
                     out.putNextEntry(ZipEntry("OEBPS/images/${entry.name.substringAfterLast('/')}"))
                     zip.getInputStream(entry).use { it.copyTo(out) }
                     out.closeEntry()
+                    step++
+                    onProgress(
+                        step.toFloat() / steps,
+                        "第 ${index + 1}/${pages.size} 页",
+                    )
                     putText(out, "OEBPS/p_${pageId(entry.name)}.xhtml", pageXhtml(entry.name))
+                    step++
+                    onProgress(
+                        step.toFloat() / steps,
+                        "第 ${index + 1}/${pages.size} 页",
+                    )
                 }
             }
         }

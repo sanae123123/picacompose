@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.picacompose.data.initDownloadNotifier
+import com.picacompose.data.initExportNotifier
 import com.picacompose.data.initDownloadStorage
 import com.picacompose.data.initPicaStorage
 
@@ -18,6 +19,7 @@ class MainActivity : ComponentActivity() {
         initPicaStorage(applicationContext)
         initDownloadStorage(applicationContext)
         initDownloadNotifier(applicationContext)
+        initExportNotifier(applicationContext)
         // 缓存进度挂在通知栏上，Android 13 起要先问一句；不给也不影响下载，只是没有通知。
         // 只问第一次：拒了之后每次启动都弹一遍太烦。
         val notifyPrefs = getSharedPreferences("download_notify", MODE_PRIVATE)

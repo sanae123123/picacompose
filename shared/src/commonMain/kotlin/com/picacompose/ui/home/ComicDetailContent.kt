@@ -45,6 +45,7 @@ import com.picacompose.data.ReadingProgress
 import com.picacompose.data.DownloadStatus
 import com.picacompose.data.ComicDownloader
 import com.picacompose.data.ExportFormat
+import com.picacompose.data.ExportProgressStore
 import com.picacompose.data.exportSupported
 import com.picacompose.data.rememberExportLauncher
 import com.picacompose.data.pica
@@ -204,14 +205,20 @@ fun ComicDetailContent(
     // 这本的缓存状态：没下过、正在拉清单、下图进度、还是已经打包好了。
     val downloadStates by ComicDownloader.status.collectAsState()
     val downloadStatus = downloadStates[state.comicId] ?: DownloadStatus.Idle
-    // 缓存好的本子可以导出：先拉系统保存对话框，选完位置再在后台写文件。
+    // 缓存好的本子可以导出：先拉系统保存对话框，选完位置后在后台写文件，进度在这儿看。
     var showExport by remember { mutableStateOf(false) }
-    val exportLauncher = rememberExportLauncher { ok, message ->
-        when {
-            ok -> PicaToast.show("导出好了，文件在你选的地方")
-            message != null -> PicaToast.show(message)
-            else -> Unit
+    val exportProgress by ExportProgressStore.state.collectAsState()
+    val exportLauncher = rememberExportLauncher()
+
+    // 后台执行时没有弹窗，完成/失败用 Toast 说一声；前台的结果弹窗自己会显示。
+    LaunchedEffect(exportProgress) {
+        val progress = exportProgress ?: return@LaunchedEffect
+        if (!progress.finished && progress.error == null) return@LaunchedEffect
+        if (progress.background) {
+            PicaToast.show(progress.error ?: "导出好了，文件在你选的地方")
         }
+        delay(2500)
+        if (ExportProgressStore.state.value == progress) ExportProgressStore.set(null)
     }
 
     LaunchedEffect(state) { state.ensureLoaded() }
@@ -273,6 +280,18 @@ fun ComicDetailContent(
                     state.detail?.title ?: seedTitle.orEmpty(),
                 )
             },
+        )
+    }
+
+    exportProgress?.takeIf { !it.background }?.let { progress ->
+        ExportProgressDialog(
+            progress = progress,
+            onBackground = { exportLauncher.moveToBackground() },
+            onCancel = {
+                exportLauncher.cancel()
+                ExportProgressStore.set(null)
+            },
+            onDismiss = { ExportProgressStore.set(null) },
         )
     }
 
