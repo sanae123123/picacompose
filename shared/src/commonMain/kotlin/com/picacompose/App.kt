@@ -31,6 +31,7 @@ import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.setSingletonImageLoaderFactory
 import coil3.network.NetworkFetcher
 import coil3.network.ktor3.KtorNetworkFetcherFactory
+import com.picacompose.data.ComicDownloader
 import com.picacompose.data.ContentFilter
 import com.picacompose.data.LinePreferences
 import com.picacompose.picaapi.ImageQuality
@@ -237,6 +238,8 @@ private fun MainScreens() {
                 Screen.Home -> controller.profile?.let { profile ->
                     // 主界面真的画出来了，启动阶段结束：之后请求失败就走正常的兜底逻辑。
                     LaunchedEffect(Unit) { LineRouter.inStartup = false }
+                    // 上次没下完的本子接着下（只跑一次；没登录/没线路时都还没到这一步）。
+                    LaunchedEffect(Unit) { ComicDownloader.resumePending() }
                     HomeShell(
                         profile = profile,
                         onSignOut = controller::signOut,

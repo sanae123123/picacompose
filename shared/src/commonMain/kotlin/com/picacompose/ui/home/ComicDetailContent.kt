@@ -31,6 +31,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -41,12 +42,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.ReadingProgress
+import com.picacompose.data.DownloadStatus
+import com.picacompose.data.ComicDownloader
 import com.picacompose.data.pica
 import com.picacompose.data.readingProgressStore
 import com.picacompose.picaapi.model.ComicDetail
 import com.picacompose.picaapi.model.Creator
 import com.picacompose.picaapi.model.Episode
 import com.picacompose.ui.components.PicaGlyph
+import com.picacompose.ui.components.PicaToast
+import com.picacompose.ui.components.PicaCircularProgress
 import com.picacompose.ui.components.PicaImageViewer
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaImage
@@ -191,6 +196,9 @@ fun ComicDetailContent(
     val scope = rememberCoroutineScope()
     val listState = state.listState
     val tab = DetailTab.entries[state.tabOrdinal.coerceIn(0, DetailTab.entries.lastIndex)]
+    // 这本的缓存状态：没下过、正在拉清单、下图进度、还是已经打包好了。
+    val downloadStates by ComicDownloader.status.collectAsState()
+    val downloadStatus = downloadStates[state.comicId] ?: DownloadStatus.Idle
 
     LaunchedEffect(state) { state.ensureLoaded() }
     LaunchedEffect(state.reloadTick) { if (state.reloadTick > 0) state.load() }
@@ -265,6 +273,18 @@ fun ComicDetailContent(
                         PageHeader(
                             title = state.detail?.title
                                 ?: seedTitle.orEmpty().ifBlank { "本子" },
+                        )
+                    }
+                    if (ComicDownloader.supported) {
+                        DownloadAction(
+                            status = downloadStatus,
+                            onStart = {
+                                PicaToast.show("开始缓存这本，可以去逛别的")
+                                ComicDownloader.start(
+                                    comicId = state.comicId,
+                                    titleHint = state.detail?.title ?: seedTitle,
+                                )
+                            },
                         )
                     }
                     if (tab == DetailTab.Comments) {
@@ -850,6 +870,68 @@ private fun EpisodeRow(
                     color = colors.onSurfaceSecondary,
                 )
             }
+        }
+    }
+}
+
+/**
+ * 详情页右上角的缓存按钮：[首屏] 一个下载图标，点一下开始把整本存到本机。
+ *
+ * 下载中显示进度环，缓存好了变成勾，失败变回下载图标（再点一次会接着下，已下好的图不会重下）。
+ */
+@Composable
+private fun DownloadAction(status: DownloadStatus, onStart: () -> Unit) {
+    val colors = MiuixTheme.colorScheme
+    when (status) {
+        DownloadStatus.Idle -> PicaIconButton(onClick = onStart, modifier = Modifier.size(40.dp)) {
+            PicaGlyph(
+                icon = PicaIcon.Download,
+                modifier = Modifier.size(20.dp),
+                tint = colors.onBackground,
+            )
+        }
+
+        DownloadStatus.Preparing -> Box(
+            modifier = Modifier.size(40.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            PicaCircularProgress(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+        }
+
+        is DownloadStatus.Running -> Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .clickable {
+                    val percent = if (status.total > 0) status.done * 100 / status.total else 0
+                    PicaToast.show("正在缓存 $percent%")
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            PicaCircularProgress(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp,
+                progress = if (status.total > 0) status.done.toFloat() / status.total else null,
+            )
+        }
+
+        is DownloadStatus.Completed -> PicaIconButton(
+            onClick = { PicaToast.show("这本已经缓存好了") },
+            modifier = Modifier.size(40.dp),
+        ) {
+            PicaGlyph(
+                icon = PicaIcon.Check,
+                modifier = Modifier.size(20.dp),
+                tint = colors.primary,
+            )
+        }
+
+        is DownloadStatus.Failed -> PicaIconButton(onClick = onStart, modifier = Modifier.size(40.dp)) {
+            PicaGlyph(
+                icon = PicaIcon.Download,
+                modifier = Modifier.size(20.dp),
+                tint = colors.error,
+            )
         }
     }
 }

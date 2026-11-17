@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 // 模型类在 :picaapi 里编译，Compose 编译器看不到它们的字段全是 val，默认当成不稳定类型；
@@ -58,5 +59,12 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
         }
+
+        // Desktop 和 Android 都是 JVM：下载用的文件操作只写一份，两边共用。
+        val jvmCommonMain by creating {
+            dependsOn(commonMain.get())
+        }
+        androidMain.get().dependsOn(jvmCommonMain)
+        jvmMain.get().dependsOn(jvmCommonMain)
     }
 }

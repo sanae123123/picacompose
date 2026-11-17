@@ -15,10 +15,13 @@ import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.HttpTimeoutConfig
 import io.ktor.client.request.header
 import io.ktor.client.request.request
+import io.ktor.client.request.get
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.URLBuilder
@@ -109,6 +112,39 @@ class PicaClient(
     fun imageUrl(thumbnail: Thumbnail?): String? = PicaImage.url(thumbnail, imageServer.value)
 
     fun avatarUrl(profile: UserProfile?): String? = PicaImage.avatarUrl(profile, imageServer.value)
+
+    /**
+     * 下载图片用的 HTTP 客户端：和阅读器画图走同一套引擎（[imageEngine] 把图床域名钉到能连的地址），
+     * 但单独一个客户端 —— 缓存整本时请求量比接口大得多，超时给宽一点，别把慢图掐死。
+     */
+    private val imageHttp: HttpClient by lazy {
+        val engine = imageEngine()
+        val timeouts: HttpTimeoutConfig.() -> Unit = {
+            requestTimeoutMillis = 90_000
+            connectTimeoutMillis = 15_000
+            socketTimeoutMillis = 30_000
+        }
+        if (engine != null) {
+            HttpClient(engine) { install(HttpTimeout) { timeouts() } }
+        } else {
+            HttpClient { install(HttpTimeout) { timeouts() } }
+        }
+    }
+
+    /**
+     * 拉一张图的字节（本子缓存用）。
+     *
+     * 图片地址和接口是两套：不带签名、也不走 `{code, data}` 信封，所以单独发、单独判错误。
+     * 非 2xx 抛 [PicaImageException]，调用方靠 [PicaImageException.httpCode] 区分
+     * 「这张图本来就没有」（4xx，别重试）和「网络不行」（5xx / 无状态码，值得再试）。
+     */
+    suspend fun fetchImageBytes(url: String): ByteArray {
+        val response = imageHttp.get(url)
+        if (response.status.value !in 200..299) {
+            throw PicaImageException(response.status.value, url)
+        }
+        return response.bodyAsBytes()
+    }
 
     internal fun updateImageServer(value: String?) {
         if (!value.isNullOrBlank()) imageServer.value = value
