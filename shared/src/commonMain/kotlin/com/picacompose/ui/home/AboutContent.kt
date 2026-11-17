@@ -156,7 +156,7 @@ fun AboutScreen(onDismiss: () -> Unit) {
                         )
                         Spacer(Modifier.height(12.dp))
                         Text(
-                            text = "开发：auayy~（zsq）、亿只鱼（ljl）、gskhaa（lyx）、CoooC（zsw）",
+                            text = "开发：auayy~（zqs）、亿只鱼（ljl）、gskhaa（lyx）、CoooC（zsw）",
                             style = MiuixTheme.textStyles.footnote1,
                             color = colors.onSurfaceSecondary,
                             textAlign = TextAlign.Center,
