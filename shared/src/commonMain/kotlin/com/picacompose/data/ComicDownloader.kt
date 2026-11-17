@@ -21,9 +21,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlin.time.TimeSource
 
 /**
  * 本子缓存：把整本的图下下来，打包成一个 zip 放到 APP 私有目录。
@@ -46,8 +49,16 @@ import kotlinx.serialization.json.Json
  */
 object ComicDownloader {
 
-    /** 同时下几张图。手机流量/图床并发都扛得住，再多也快不了多少。 */
+    /** 单本里同时下几张图。 */
     private const val CONCURRENCY = 4
+
+    /**
+     * 所有本子共用的网络并发上限。
+     *
+     * 同时缓存几本的时候不是每本各开 4 个请求：加起来也就在这个数附近，
+     * 免得多本一起把图床和手机流量打满。
+     */
+    private const val NETWORK_CONCURRENCY = 5
 
     /** 一次准备阶段（拉每话图片列表）同时请求几话。 */
     private const val PREPARE_CONCURRENCY = 4
@@ -77,6 +88,19 @@ object ComicDownloader {
     private val lock = Mutex()
     private var resumed = false
 
+    /** 所有请求共用的名额：图片和「拉图片列表」都从这里拿。 */
+    private val networkPermits = Semaphore(NETWORK_CONCURRENCY)
+
+    /** 这次缓存一共下了多少字节（没有活跃任务时清零）。 */
+    private val transferredBytes = MutableStateFlow(0L)
+
+    /** 正在缓存的本子叫什么：通知栏要显示，不能只报一个 id。 */
+    private val titles = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    private var speedAnchor = TimeSource.Monotonic.markNow()
+    private var speedBytes = 0L
+    private var speedPerSecond = 0L
+
     fun statusOf(comicId: String): DownloadStatus = _status.value[comicId] ?: DownloadStatus.Idle
 
     /**
@@ -90,6 +114,9 @@ object ComicDownloader {
         scope.launch {
             lock.withLock {
                 if (jobs[comicId]?.isActive == true) return@withLock
+                if (!titleHint.isNullOrBlank()) {
+                    titles.update { it + (comicId to titleHint) }
+                }
                 val zip = zipPath(comicId)
                 if (store.exists(zip)) {
                     setStatus(comicId, DownloadStatus.Completed(store.size(zip)))
@@ -170,6 +197,7 @@ object ComicDownloader {
     private suspend fun runTaskBody(comicId: String, titleHint: String?) {
         setStatus(comicId, DownloadStatus.Preparing)
         val task = loadTask(comicId, titleHint)
+        titles.update { it + (comicId to task.title) }
         val total = prepareChapters(comicId, task.chapters)
         setStatus(comicId, DownloadStatus.Running(0, total))
         downloadPages(comicId, task.chapters, total)
@@ -254,6 +282,7 @@ object ComicDownloader {
         removed: Set<Int>,
     ) {
         setStatus(comicId, DownloadStatus.Preparing)
+        titles.update { it + (comicId to local.title) }
         val dir = workDir(comicId)
         // 上次中断留下的临时目录先清掉：增量只是补变化的话，重来一遍最省心。
         store.deleteTree(dir)
@@ -435,10 +464,11 @@ object ComicDownloader {
             var lastError: Exception? = null
             for (candidate in candidates) {
                 try {
-                    val bytes = pica.fetchImageBytes(candidate)
+                    val bytes = networkPermits.withPermit { pica.fetchImageBytes(candidate) }
                     val ext = imageKind(bytes).ext
                     store.writeBytesAtomic(imagePath(comicId, item.order, item.index, ext), bytes)
                     cleanOldVariants(comicId, item.order, item.index, ext)
+                    transferredBytes.updateAndGet { it + bytes.size }
                     return
                 } catch (e: CancellationException) {
                     throw e
@@ -525,7 +555,7 @@ object ComicDownloader {
         var attempt = 0
         while (true) {
             try {
-                return block()
+                return networkPermits.withPermit { block() }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: PicaException) {
@@ -554,27 +584,57 @@ object ComicDownloader {
     /** 通知栏跟着进度走：只在有活干的时候挂出来，全下完就撤掉。 */
     private fun refreshNotice() {
         if (!DownloadNotifier.supported) return
-        var books = 0
-        var done = 0
-        var total = 0
-        for (status in _status.value.values) {
+        val statuses = _status.value
+        val names = titles.value
+        val items = statuses.mapNotNull { (id, status) ->
             when (status) {
-                is DownloadStatus.Preparing -> {
-                    books++
-                }
-                is DownloadStatus.Running -> {
-                    books++
-                    done += status.done
-                    total += status.total
-                }
-                else -> Unit
+                is DownloadStatus.Running -> DownloadNoticeItem(
+                    title = names[id].orEmpty(),
+                    done = status.done,
+                    total = status.total,
+                )
+                is DownloadStatus.Preparing -> DownloadNoticeItem(
+                    title = names[id].orEmpty(),
+                    done = 0,
+                    total = 0,
+                )
+                else -> null
             }
         }
-        if (books == 0) {
+        if (items.isEmpty()) {
+            // 全部收工：通知撤掉，把它攒的数字清零，下一轮从头算。
+            transferredBytes.value = 0
+            speedBytes = 0
+            speedPerSecond = 0
+            speedAnchor = TimeSource.Monotonic.markNow()
             DownloadNotifier.update(null)
-        } else {
-            DownloadNotifier.update(DownloadNotice(books = books, done = done, total = total))
+            return
         }
+        val now = TimeSource.Monotonic.markNow()
+        val elapsed = (now - speedAnchor).inWholeMilliseconds
+        if (elapsed >= 800) {
+            val current = transferredBytes.value
+            speedPerSecond = ((current - speedBytes) * 1000 / elapsed).coerceAtLeast(0)
+            speedBytes = current
+            speedAnchor = now
+        }
+        var done = 0
+        var total = 0
+        for (status in statuses.values) {
+            if (status is DownloadStatus.Running) {
+                done += status.done
+                total += status.total
+            }
+        }
+        DownloadNotifier.update(
+            DownloadNotice(
+                items = items,
+                done = done,
+                total = total,
+                bytes = transferredBytes.value,
+                bytesPerSecond = speedPerSecond,
+            ),
+        )
     }
 
     /**
@@ -634,6 +694,7 @@ object ComicDownloader {
             lock.withLock {
                 jobs.remove(comicId)?.cancel()
                 _status.update { it - comicId }
+                titles.update { it - comicId }
                 refreshNotice()
             }
         }
@@ -645,6 +706,7 @@ object ComicDownloader {
         scope.launch {
             lock.withLock {
                 jobs.remove(comicId)?.cancel()
+                titles.update { it - comicId }
                 store.delete(zipPath(comicId))
                 store.delete(OfflineLibrary.metaPath(comicId))
                 store.deleteTree(workDir(comicId))

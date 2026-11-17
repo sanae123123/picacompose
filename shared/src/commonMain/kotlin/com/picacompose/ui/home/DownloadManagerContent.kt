@@ -1,5 +1,6 @@
 package com.picacompose.ui.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -48,6 +49,8 @@ import com.picacompose.ui.theme.SkinTokens
 @Composable
 fun DownloadManagerContent(
     onBack: () -> Unit,
+    onOpenComic: (comicId: String, title: String, key: String) -> Unit = { _, _, _ -> },
+    comicRowModifier: @Composable (String) -> Modifier = { Modifier },
     modifier: Modifier = Modifier,
 ) {
     val colors = MiuixTheme.colorScheme
@@ -87,9 +90,12 @@ fun DownloadManagerContent(
         }
         items(books, key = { it.comicId }) { book ->
             val status = statuses[book.comicId] ?: book.status
+            val rowKey = "dl-${book.comicId}"
             DownloadRow(
                 book = book,
                 status = status,
+                modifier = comicRowModifier(rowKey),
+                onClick = { onOpenComic(book.comicId, book.title, rowKey) },
                 onCancel = {
                     ComicDownloader.cancel(book.comicId)
                     scope.launch { reload() }
@@ -111,15 +117,17 @@ fun DownloadManagerContent(
 private fun DownloadRow(
     book: DownloadedBook,
     status: DownloadStatus,
+    onClick: () -> Unit,
     onCancel: () -> Unit,
     onRetry: () -> Unit,
     onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = MiuixTheme.colorScheme
     PicaSurface(
         shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = colors.surface,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+        modifier = modifier.fillMaxWidth().padding(bottom = 12.dp).clickable(onClick = onClick),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),

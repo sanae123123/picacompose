@@ -797,6 +797,16 @@ fun HomeShell(
 
                                 OverlayPage.Downloads -> DownloadManagerContent(
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
+                                    comicRowModifier = { key ->
+                                        with(shared) { overlayBounds(key, contentScope) }
+                                    },
+                                    onOpenComic = { comicId, title, key ->
+                                        detailComicId = comicId
+                                        detailTitle = title
+                                        detailKey = key
+                                        detailReturnOrdinal = OverlayPage.Downloads.ordinal
+                                        overlayOrdinal = OverlayPage.Detail.ordinal
+                                    },
                                 )
 
                                 OverlayPage.ReadHistory -> ReadHistoryContent(

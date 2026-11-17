@@ -3,14 +3,23 @@ package com.picacompose.data
 /**
  * 通知栏里的缓存进度，Android 才有；别的地方 [supported] 是 false，调用方直接跳过。
  *
- * 只报「整体」：几本、多少页，不按本拆。多本一起下的时候通知栏换来换去反而乱。
+ * 每本一行（进度）+ 整体页数 + 速度，展开通知能看到明细。
  */
 internal data class DownloadNotice(
-    /** 正在缓存几本。 */
-    val books: Int,
-    /** 已下页数（所有本加起来）。 */
+    /** 正在缓存的本子，按开始顺序排。 */
+    val items: List<DownloadNoticeItem>,
+    /** 所有活跃任务加起来：已下页数 / 总页数（准备阶段的还没算进来）。 */
     val done: Int,
-    /** 总页数；准备阶段还不知道，传 0 让通知栏画不确定进度。 */
+    val total: Int,
+    /** 这次缓存已经下了多少字节。 */
+    val bytes: Long,
+    /** 当前速度（字节/秒），0 表示还测不出来。 */
+    val bytesPerSecond: Long,
+)
+
+internal data class DownloadNoticeItem(
+    val title: String,
+    val done: Int,
     val total: Int,
 )
 

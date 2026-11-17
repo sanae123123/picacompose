@@ -4,7 +4,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -26,7 +25,7 @@ fun initDownloadNotifier(context: Context) {
     val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     manager.createNotificationChannel(
         NotificationChannel(CHANNEL_ID, "本子缓存", NotificationManager.IMPORTANCE_LOW).apply {
-            description = "缓存整本时的进度"
+            description = "缓存整本时的进度和速度"
             setShowBadge(false)
         },
     )
@@ -72,21 +71,61 @@ private fun postProgress(context: Context) {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
     }
-    val total = notice.total
+
+    val books = notice.items.size
+    val speed = formatSpeed(notice.bytesPerSecond)
+    val title = when {
+        books == 1 -> "正在缓存：${notice.items[0].title}"
+        books > 1 -> "正在缓存 $books 本"
+        else -> "正在缓存本子"
+    }
+    val text = buildString {
+        if (notice.total > 0) {
+            append("${notice.done}/${notice.total} 页")
+        } else {
+            append("正在拉图片列表")
+        }
+        if (notice.bytes > 0) {
+            append(" · 已下 ${formatSize(notice.bytes)}")
+        }
+        if (notice.bytesPerSecond > 0) {
+            append(" · $speed")
+        }
+    }
+    val detail = buildString {
+        for (item in notice.items.take(6)) {
+            if (!item.title.isBlank()) {
+                append(item.title)
+                append("：")
+            }
+            append(if (item.total > 0) "${item.done}/${item.total} 页" else "准备中")
+            append('\n')
+        }
+        if (notice.items.size > 6) append("…\n")
+        append("总进度 ${notice.done}/${notice.total.coerceAtLeast(notice.done)} 页")
+        if (notice.bytesPerSecond > 0) append(" · $speed")
+    }
+
     val builder = NotificationCompat.Builder(context, CHANNEL_ID)
         .setSmallIcon(android.R.drawable.stat_sys_download)
-        .setContentTitle("正在缓存本子")
-        .setContentText(
-            if (total > 0) {
-                "${notice.books} 本 · ${notice.done}/$total 页"
-            } else {
-                "${notice.books} 本 · 正在拉图片列表"
-            },
-        )
-        .setProgress(total.coerceAtLeast(1), notice.done, total <= 0)
+        .setContentTitle(title)
+        .setContentText(text)
+        .setStyle(NotificationCompat.BigTextStyle().bigText(detail))
+        .setProgress(notice.total.coerceAtLeast(1), notice.done, notice.total <= 0)
         .setOngoing(true)
         .setOnlyAlertOnce(true)
         .setPriority(NotificationCompat.PRIORITY_LOW)
         .setContentIntent(contentIntent)
     runCatching { manager.notify(NOTIFICATION_ID, builder.build()) }
 }
+
+private fun formatSize(bytes: Long): String {
+    if (bytes < 1024) return "$bytes B"
+    val kb = bytes / 1024.0
+    if (kb < 1024) return "${(kb * 10).toInt() / 10.0} KB"
+    val mb = kb / 1024.0
+    if (mb < 1024) return "${(mb * 10).toInt() / 10.0} MB"
+    return "${(mb / 1024.0 * 10).toInt() / 10.0} GB"
+}
+
+private fun formatSpeed(bytesPerSecond: Long): String = "${formatSize(bytesPerSecond)}/s"
