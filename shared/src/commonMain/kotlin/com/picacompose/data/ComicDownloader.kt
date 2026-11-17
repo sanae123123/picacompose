@@ -26,6 +26,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlin.concurrent.Volatile
 import kotlin.time.TimeSource
 
 /**
@@ -49,16 +50,17 @@ import kotlin.time.TimeSource
  */
 object ComicDownloader {
 
-    /** 单本里同时下几张图。 */
-    private const val CONCURRENCY = 4
+    /** 默认的页并发；设置页能改，实际值存在 [DownloadPreferences] 里。 */
+    private const val DEFAULT_CONCURRENCY = DownloadPreferences.DEFAULT_CONCURRENCY
 
     /**
-     * 所有本子共用的网络并发上限。
+     * 当前每本同时下几页，也当全局网络并发上限用。
      *
-     * 同时缓存几本的时候不是每本各开 4 个请求：加起来也就在这个数附近，
-     * 免得多本一起把图床和手机流量打满。
+     * 多本一起缓存时所有请求合计不超过这个数，免得把图床和手机流量打满；
+     * 设置里改完会走 [onConcurrencyChanged] 立刻换新值。
      */
-    private const val NETWORK_CONCURRENCY = 5
+    @Volatile
+    private var concurrency = DEFAULT_CONCURRENCY
 
     /** 一次准备阶段（拉每话图片列表）同时请求几话。 */
     private const val PREPARE_CONCURRENCY = 4
@@ -88,8 +90,39 @@ object ComicDownloader {
     private val lock = Mutex()
     private var resumed = false
 
-    /** 所有请求共用的名额：图片和「拉图片列表」都从这里拿。 */
-    private val networkPermits = Semaphore(NETWORK_CONCURRENCY)
+    /** 所有请求共用的名额：图片和「拉图片列表」都从这里拿。并发数改了会整个换掉。 */
+    @Volatile
+    private var networkPermits = Semaphore(DEFAULT_CONCURRENCY)
+
+    /** 设置里的并发数有没有读过。 */
+    @Volatile
+    private var concurrencyLoaded = false
+
+    private val downloadPreferences by lazy { DownloadPreferences() }
+
+    /** 当前并发数：第一次用时从设置里读，之后直接用缓存的值。 */
+    private fun pageConcurrency(): Int {
+        if (!concurrencyLoaded) {
+            concurrencyLoaded = true
+            val saved = runCatching { downloadPreferences.concurrency }
+                .getOrDefault(DEFAULT_CONCURRENCY)
+            concurrency = saved
+            networkPermits = Semaphore(saved)
+        }
+        return concurrency
+    }
+
+    /**
+     * 设置里换了并发数：立刻换新的 Semaphore。
+     *
+     * 已经在跑的请求拿着旧名额，释放时还给旧对象，没影响；之后新起来的请求用新的。
+     */
+    internal fun onConcurrencyChanged(value: Int) {
+        val clamped = DownloadPreferences.clamp(value)
+        concurrency = clamped
+        concurrencyLoaded = true
+        networkPermits = Semaphore(clamped)
+    }
 
     /** 这次缓存一共下了多少字节（没有活跃任务时清零）。 */
     private val transferredBytes = MutableStateFlow(0L)
@@ -431,18 +464,24 @@ object ComicDownloader {
                 items += PlanItem(chapter.order, index, page)
             }
         }
+        // 滑动窗口：每页一个协程，谁先空出来谁先上。分块的话每块都要等最慢那页，
+        // 页多了进度就会一顿一顿的。
+        val gate = Semaphore(pageConcurrency())
         coroutineScope {
-            items.chunked(CONCURRENCY).forEach { chunk ->
-                chunk.map { item ->
-                    async {
+            items.map { item ->
+                async {
+                    gate.withPermit {
                         // 上次已经下好的直接算数，不用再看网络。
                         if (findImageFile(comicId, item.order, item.index) == null) {
                             downloadPage(comicId, item)
                         }
-                        setStatus(comicId, DownloadStatus.Running(done.updateAndGet { it + 1 }, total))
+                        setStatus(
+                            comicId,
+                            DownloadStatus.Running(done.updateAndGet { it + 1 }, total),
+                        )
                     }
-                }.awaitAll()
-            }
+                }
+            }.awaitAll()
         }
     }
 
@@ -464,7 +503,8 @@ object ComicDownloader {
             var lastError: Exception? = null
             for (candidate in candidates) {
                 try {
-                    val bytes = networkPermits.withPermit { pica.fetchImageBytes(candidate) }
+                    val permits = networkPermits
+                    val bytes = permits.withPermit { pica.fetchImageBytes(candidate) }
                     val ext = imageKind(bytes).ext
                     store.writeBytesAtomic(imagePath(comicId, item.order, item.index, ext), bytes)
                     cleanOldVariants(comicId, item.order, item.index, ext)
@@ -555,7 +595,9 @@ object ComicDownloader {
         var attempt = 0
         while (true) {
             try {
-                return networkPermits.withPermit { block() }
+                // 本地拿一份引用：并发数中途被改掉也不影响这次名额的归还。
+                val permits = networkPermits
+                return permits.withPermit { block() }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: PicaException) {

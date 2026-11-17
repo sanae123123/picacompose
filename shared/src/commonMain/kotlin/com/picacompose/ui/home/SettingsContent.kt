@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import com.picacompose.data.APP_VERSION
 import com.picacompose.data.ContentFilter
+import com.picacompose.data.DownloadPreferences
 import com.picacompose.data.ImageIpsStatus
 import com.picacompose.data.LinePreferences
 import com.picacompose.data.LineRouter
@@ -112,6 +113,13 @@ fun SettingsContent(
     val preferences = remember { LinePreferences() }
     var qualityIndex by remember { mutableStateOf(preferences.imageQuality) }
     var qualityMenuOpen by remember { mutableStateOf(false) }
+    val downloadPrefs = remember { DownloadPreferences() }
+    var concurrencyIndex by remember {
+        mutableStateOf(
+            DownloadPreferences.CHOICES.indexOf(downloadPrefs.concurrency).coerceAtLeast(0),
+        )
+    }
+    var concurrencyMenuOpen by remember { mutableStateOf(false) }
     val openBrowser = rememberBrowserOpener()
     val line = route.savedLine
     val latency = route.savedLatencyMs
@@ -304,6 +312,38 @@ fun SettingsContent(
                                     qualityIndex = index
                                     preferences.imageQuality = index
                                     // 偏好 setter 会同步 ImageQualitySetting，下一张图就按新档位来。
+                                },
+                            )
+                        }
+                    }
+                }
+                // 缓存并发：每本同时下几页，也当全局网络上限用；改完立刻生效。
+                Box {
+                    PickerRow(
+                        icon = PicaIcon.Download,
+                        title = "缓存并发",
+                        value = "${DownloadPreferences.CHOICES[concurrencyIndex]} 页",
+                        onClick = { concurrencyMenuOpen = true },
+                    )
+                    PicaDropdownMenu(
+                        expanded = concurrencyMenuOpen,
+                        onDismissRequest = { concurrencyMenuOpen = false },
+                    ) {
+                        DownloadPreferences.CHOICES.forEachIndexed { index, value ->
+                            PicaDropdownMenuItem(
+                                text = {
+                                    Text(
+                                        if (value == DownloadPreferences.DEFAULT_CONCURRENCY) {
+                                            "$value 页（默认）"
+                                        } else {
+                                            "$value 页"
+                                        },
+                                    )
+                                },
+                                onClick = {
+                                    concurrencyMenuOpen = false
+                                    concurrencyIndex = index
+                                    downloadPrefs.concurrency = value
                                 },
                             )
                         }
