@@ -5,6 +5,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.zip.Deflater
 import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 
 /**
@@ -94,6 +95,59 @@ internal class JvmDownloadStore(private val rootDir: File) : DownloadStore {
             true
         }.getOrElse {
             runCatching { File(zipPath + ".tmp").delete() }
+            false
+        }
+    }
+
+    override fun rewriteZip(
+        srcZip: String,
+        keep: (entryName: String) -> Boolean,
+        appendDir: String?,
+    ): Boolean {
+        return runCatching {
+            val src = File(srcZip)
+            if (!src.isFile) return@runCatching false
+            val tmp = File(src.parentFile ?: File("."), src.name + ".tmp")
+            tmp.delete()
+            val written = HashSet<String>()
+            BufferedOutputStream(FileOutputStream(tmp), 64 * 1024).use { buffered ->
+                ZipOutputStream(buffered).use { zos ->
+                    zos.setLevel(Deflater.NO_COMPRESSION)
+                    ZipFile(src).use { zf ->
+                        zf.entries().asSequence()
+                            .filter { !it.isDirectory && keep(it.name) }
+                            .sortedBy { it.name }
+                            .forEach { entry ->
+                                zos.putNextEntry(ZipEntry(entry.name).apply { time = entry.time })
+                                zf.getInputStream(entry).use { it.copyTo(zos, 64 * 1024) }
+                                zos.closeEntry()
+                                written += entry.name
+                            }
+                    }
+                    if (appendDir != null) {
+                        val dir = File(appendDir)
+                        if (dir.isDirectory) {
+                            dir.walkTopDown()
+                                .filter { it.isFile }
+                                .map { it.relativeTo(dir) }
+                                .sortedBy { it.invariantSeparatorsPath }
+                                .forEach { relative ->
+                                    val name = relative.invariantSeparatorsPath
+                                    if (!written.add(name)) return@forEach
+                                    val f = File(dir, name)
+                                    zos.putNextEntry(ZipEntry(name).apply { time = f.lastModified() })
+                                    f.inputStream().use { it.copyTo(zos, 64 * 1024) }
+                                    zos.closeEntry()
+                                }
+                        }
+                    }
+                }
+            }
+            src.delete()
+            if (!tmp.renameTo(src)) return@runCatching false
+            true
+        }.getOrElse {
+            runCatching { File(srcZip + ".tmp").delete() }
             false
         }
     }

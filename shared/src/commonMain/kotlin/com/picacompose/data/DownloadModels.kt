@@ -27,6 +27,8 @@ data class DownloadedChapter(
     val order: Int,
     val title: String = "",
     val pages: Int = 0,
+    /** 服务端这一话的更新时间；下次同步时和它对一下就知道有没有变。 */
+    val updatedAt: String? = null,
 )
 
 /**
@@ -51,6 +53,8 @@ data class ChapterPlan(
     val order: Int,
     val title: String = "",
     val pages: List<PagePlan> = emptyList(),
+    /** 服务端这一话的更新时间，打包时带进元数据。 */
+    val updatedAt: String? = null,
 )
 
 /**

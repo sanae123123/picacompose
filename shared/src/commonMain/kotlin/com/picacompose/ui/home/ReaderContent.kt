@@ -34,7 +34,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
@@ -80,6 +80,8 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.size.Size
 import com.picacompose.data.pica
+import com.picacompose.data.OfflineImageKey
+import com.picacompose.data.OfflineLibrary
 import com.picacompose.picaapi.model.Episode
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
@@ -138,7 +140,13 @@ fun ReaderContent(
     var order by remember(resolvedStart) { mutableIntStateOf(resolvedStart) }
     val pager = remember(comicId, order) {
         Pager(
-            load = { page -> pica.comics.pages(comicId, order, page).pages },
+            load = { page ->
+                runCatching { pica.comics.pages(comicId, order, page).pages }
+                    .getOrElse { error ->
+                        // 没网、接口挂了：本地有包就用包里的页列表兜着，下好的部分还能翻。
+                        OfflineLibrary.localPage(comicId, order, page) ?: throw error
+                    }
+            },
             itemKey = { it.id },
         )
     }
@@ -199,10 +207,10 @@ fun ReaderContent(
                 val from = (index - PRELOAD_BEHIND).coerceAtLeast(0)
                 for (i in from..until) {
                     if (i == index) continue
-                    val url = pager.items[i].media.url() ?: continue
+                    val model = offlineAwareModel(comicId, order, i, pager.items[i].media.url()) ?: continue
                     loader.enqueue(
                         ImageRequest.Builder(platformContext)
-                            .data(url)
+                            .data(model)
                             .size(Size.ORIGINAL)
                             .build(),
                     )
@@ -348,10 +356,10 @@ fun ReaderContent(
                             modifier = Modifier.fillMaxSize(),
                             userScrollEnabled = !zoomed,
                         ) {
-                            items(pager.items, key = { it.id }) { page ->
-                                val url = page.media.url()
-                                if (url != null) {
-                                    ReaderPage(url = url, platformContext = platformContext)
+                            itemsIndexed(pager.items, key = { _, page -> page.id }) { index, page ->
+                                val model = offlineAwareModel(comicId, order, index, page.media.url())
+                                if (model != null) {
+                                    ReaderPage(model = model, platformContext = platformContext)
                                 }
                             }
                             if (pager.items.isEmpty()) {
@@ -573,23 +581,39 @@ private fun ReaderSeekBar(
 }
 
 /**
+ * 这页该从哪拿图：本地包里下好了就直接给 Coil 一个 zip 内的 key（不走网络），
+ * 没下好还是用图床地址。图片本身不解压，Fetcher 打开 zip 直接读那一条。
+ */
+private fun offlineAwareModel(comicId: String, order: Int, index: Int, url: String?): Any? =
+    if (OfflineLibrary.hasPage(comicId, order, index)) {
+        OfflineImageKey(
+            comicId = comicId,
+            order = order,
+            index = index,
+            stamp = OfflineLibrary.meta(comicId)?.downloadedAt ?: 0,
+        )
+    } else {
+        url
+    }
+
+/**
  * 一页图：还没来时占一块 3:4 的转圈，图片落地后按真实尺寸重新测量。
  *
  * 不这样的话，未加载的项高度是 0，往下划时看不出还剩多少、也容易一划就跳过去。
  */
 @Composable
 private fun ReaderPage(
-    url: String,
+    model: Any,
     platformContext: PlatformContext,
 ) {
-    var state by remember(url) {
+    var state by remember(model) {
         mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty)
     }
-    var retryTick by remember(url) { mutableIntStateOf(0) }
+    var retryTick by remember(model) { mutableIntStateOf(0) }
     // 和预抓用同一套请求参数，缓存才对得上。
-    val request = remember(url) {
+    val request = remember(model) {
         ImageRequest.Builder(platformContext)
-            .data(url)
+            .data(model)
             .size(Size.ORIGINAL)
             .build()
     }

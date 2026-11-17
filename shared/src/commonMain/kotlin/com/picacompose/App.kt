@@ -42,6 +42,7 @@ import com.picacompose.data.applyPicaRoute
 import com.picacompose.data.pica
 import com.picacompose.data.ImageHosts
 import com.picacompose.data.ImageRetryInterceptor
+import com.picacompose.data.OfflineImageFetcherFactory
 import com.picacompose.data.picaNetworkFailureHandler
 import com.picacompose.picaapi.imageEngine
 import com.picacompose.ui.components.PicaBackdrop
@@ -300,6 +301,8 @@ private fun InstallImageLoader() {
             ImageLoader.Builder(context).components {
                 add(ImageRetryInterceptor())
                 add(fetcher)
+                // 已缓存的本子直接去 zip 里取图，不走网络。
+                add(OfflineImageFetcherFactory)
             }.build()
         }
     }

@@ -3,6 +3,7 @@ package com.picacompose.data
 import com.picacompose.picaapi.PicaException
 import com.picacompose.picaapi.PicaImage
 import com.picacompose.picaapi.PicaImageException
+import com.picacompose.picaapi.model.Episode
 import com.picacompose.picaapi.model.Thumbnail
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -28,10 +29,10 @@ import kotlinx.serialization.json.Json
  *
  * 目录长这样（`files/downloads`）：
  * - `{comicId}.zip`：下好的包。根目录 `metadata.json`，图片在 `image/` 下。
+ * - `{comicId}.meta.json`：和 zip 里同一份元数据，给详情页/阅读器快速查询，不打开 zip。
  * - `work/{comicId}/task.json`：任务清单（有哪些话）。
  * - `work/{comicId}/plan/{order}.json`：每话的图片列表，拉过一次就缓存着，续下不用重拉。
  * - `work/{comicId}/data/image/{order}_{index}.{ext}`：下好的图。
- * - `work/{comicId}/data/metadata.json`：打包前的元数据。
  *
  * 中断恢复全靠目录本身：
  * - 每张图先写 `.part` 再改名，半截文件不会被当成下好了；
@@ -39,8 +40,8 @@ import kotlinx.serialization.json.Json
  * - 打包先写 `.zip.tmp`，打完再改名 —— `{comicId}.zip` 要么没有、要么完整；
  * - 重启后扫 `work/` 里还有 `task.json` 的目录接着下，已存在的图直接跳过。
  *
- * 整本放在一个 zip 里（而不是每话一个），是照着「本子」的粒度来的：
- * 分享、导出、删除都是一个文件，元数据还能带着标题和话数。
+ * 本子更新时按「增量」走：只下变了的话，旧包里没变的图原样搬进新包（不解压整包），
+ * 最后原子替换。变太多或者包读不动才整本重来。
  */
 object ComicDownloader {
 
@@ -80,7 +81,8 @@ object ComicDownloader {
     /**
      * 开始缓存一本。
      *
-     * 已经在下的不会重复开；已经打包好的什么都不做；之前失败的会从头走一遍（已下好的图直接跳过）。
+     * 已经在下的不会重复开；已经打包好的什么都不做（更新走 [sync]）；
+     * 之前失败的会从头走一遍（已下好的图直接跳过）。
      */
     fun start(comicId: String, titleHint: String? = null) {
         if (!supported || comicId.isBlank()) return
@@ -93,6 +95,23 @@ object ComicDownloader {
                     return@withLock
                 }
                 jobs[comicId] = scope.launch { runTask(comicId, titleHint) }
+            }
+        }
+    }
+
+    /**
+     * 检查已缓存的本子有没有更新：详情页拉完元数据后调一次。
+     *
+     * 每次进详情页都要拉一遍章节目录（服务端为准），和本地包里的元数据对一下：
+     * 一致就什么都不做；只有几话变了就补那几话；变太多、或者包读不动，整本重来。
+     */
+    fun sync(comicId: String) {
+        if (!supported || comicId.isBlank()) return
+        scope.launch {
+            lock.withLock {
+                if (jobs[comicId]?.isActive == true) return@withLock
+                if (!store.exists(zipPath(comicId))) return@withLock
+                jobs[comicId] = scope.launch { runSync(comicId) }
             }
         }
     }
@@ -132,17 +151,11 @@ object ComicDownloader {
         }
     }
 
+    // ---------------------------------------------------------------- 下载任务
+
     private suspend fun runTask(comicId: String, titleHint: String?) {
         try {
-            setStatus(comicId, DownloadStatus.Preparing)
-            val task = loadTask(comicId, titleHint)
-            val total = preparePlans(comicId, task)
-            setStatus(comicId, DownloadStatus.Running(0, total))
-            downloadPages(comicId, task, total)
-            pack(comicId, task)
-            val zip = zipPath(comicId)
-            store.deleteTree(workDir(comicId))
-            setStatus(comicId, DownloadStatus.Completed(store.size(zip)))
+            runTaskBody(comicId, titleHint)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -150,6 +163,154 @@ object ComicDownloader {
         } finally {
             lock.withLock { jobs.remove(comicId) }
         }
+    }
+
+    /** 从零（或断点）把整本下完、打包。 */
+    private suspend fun runTaskBody(comicId: String, titleHint: String?) {
+        setStatus(comicId, DownloadStatus.Preparing)
+        val task = loadTask(comicId, titleHint)
+        val total = prepareChapters(comicId, task.chapters)
+        setStatus(comicId, DownloadStatus.Running(0, total))
+        downloadPages(comicId, task.chapters, total)
+        pack(comicId, task)
+        val zip = zipPath(comicId)
+        store.deleteTree(workDir(comicId))
+        setStatus(comicId, DownloadStatus.Completed(store.size(zip)))
+    }
+
+    private suspend fun runSync(comicId: String) {
+        try {
+            val zip = zipPath(comicId)
+            if (!store.exists(zip)) return
+            val local = OfflineLibrary.meta(comicId)
+            val remote = fetchEpisodes(comicId)
+            if (remote.isEmpty()) return
+            if (local == null) {
+                // 没有元数据就没法对账（比如包是从别处拷来的），只能整本重来。
+                fullUpdate(comicId)
+                return
+            }
+            val localOrders = local.chapters.associateBy { it.order }
+            val changed = sortedSetOf<Int>()
+            for (ep in remote) {
+                val old = localOrders[ep.order]
+                if (old == null) {
+                    changed += ep.order
+                    continue
+                }
+                if (old.title != ep.title) {
+                    changed += ep.order
+                    continue
+                }
+                val touched = when {
+                    old.updatedAt == null && ep.updatedAt != null -> true
+                    old.updatedAt != null && ep.updatedAt != null && old.updatedAt != ep.updatedAt -> true
+                    else -> false
+                }
+                if (touched) changed += ep.order
+            }
+            val removed = localOrders.keys - remote.map { it.order }.toSet()
+            val touched = changed + removed
+            if (touched.isEmpty()) {
+                setStatus(comicId, DownloadStatus.Completed(store.size(zip)))
+                return
+            }
+            // 变了一小半以上就不折腾了：整本重下比一层层补更稳。
+            val tooMany = touched.size > (localOrders.size / 2).coerceAtLeast(2)
+            if (tooMany) {
+                fullUpdate(comicId)
+                return
+            }
+            incremental(comicId, local, remote, changed, removed)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            setStatus(comicId, DownloadStatus.Failed(e.message ?: "更新失败"))
+        } finally {
+            lock.withLock { jobs.remove(comicId) }
+        }
+    }
+
+    /** 整本重来：临时目录清掉，zip 原地重下（打包成功才覆盖旧包）。 */
+    private suspend fun fullUpdate(comicId: String) {
+        store.deleteTree(workDir(comicId))
+        store.delete(OfflineLibrary.metaPath(comicId))
+        OfflineLibrary.invalidate(comicId)
+        runTaskBody(comicId, null)
+    }
+
+    /**
+     * 增量更新：只下变过的话，没变的图从旧包原样搬过去。
+     *
+     * 整个过程不解压旧包：重写 zip 时把旧条目流式复制，再补上新图和新元数据，
+     * 最后 `.tmp` 改名覆盖 —— 中途失败旧包还是完整的。
+     */
+    private suspend fun incremental(
+        comicId: String,
+        local: DownloadMeta,
+        remote: List<Episode>,
+        changed: Set<Int>,
+        removed: Set<Int>,
+    ) {
+        setStatus(comicId, DownloadStatus.Preparing)
+        val dir = workDir(comicId)
+        // 上次中断留下的临时目录先清掉：增量只是补变化的话，重来一遍最省心。
+        store.deleteTree(dir)
+        store.mkdirs("$dir/plan")
+        store.mkdirs(imageDir(comicId))
+
+        val changedChapters = remote
+            .filter { it.order in changed }
+            .sortedBy { it.order }
+            .map { ChapterPlan(order = it.order, title = it.title, updatedAt = it.updatedAt) }
+        val total = prepareChapters(comicId, changedChapters)
+        setStatus(comicId, DownloadStatus.Running(0, total))
+        downloadPages(comicId, changedChapters, total)
+
+        // 新元数据：没变的话沿用旧页数，变了的用刚拉到的 plan。
+        val chapters = remote.sortedBy { it.order }.map { ep ->
+            DownloadedChapter(
+                order = ep.order,
+                title = ep.title,
+                pages = readPlan(comicId, ep.order)?.pages?.size
+                    ?: local.chapters.firstOrNull { it.order == ep.order }?.pages
+                    ?: 0,
+                updatedAt = ep.updatedAt,
+            )
+        }
+        val meta = DownloadMeta(
+            comicId = comicId,
+            title = local.title,
+            author = local.author,
+            cover = local.cover,
+            downloadedAt = pica.serverNowEpochSeconds() * 1000L,
+            chapters = chapters,
+            pages = chapters.sumOf { it.pages },
+        )
+        store.writeTextAtomic(metaPath(comicId), json.encodeToString(DownloadMeta.serializer(), meta))
+
+        val drop = changed + removed
+        val rewritten = store.rewriteZip(
+            srcZip = zipPath(comicId),
+            keep = { name -> keepEntry(name, drop) },
+            appendDir = dataDir(comicId),
+        )
+        if (!rewritten) {
+            // 旧包读不动（很少见）：整本重来，别留一个半新半旧的东西。
+            fullUpdate(comicId)
+            return
+        }
+        writeSidecar(comicId, meta)
+        store.deleteTree(workDir(comicId))
+        setStatus(comicId, DownloadStatus.Completed(store.size(zipPath(comicId))))
+    }
+
+    /** 旧包里哪些条目留着：`metadata.json` 换成新的，变过的话整话的图都换掉。 */
+    private fun keepEntry(name: String, drop: Set<Int>): Boolean {
+        if (name == "metadata.json") return false
+        if (!name.startsWith("image/")) return false
+        val order = name.removePrefix("image/").substringBefore('_').toIntOrNull() ?: return false
+        return order !in drop
     }
 
     // ---------------------------------------------------------------- 任务清单
@@ -166,18 +327,9 @@ object ComicDownloader {
         store.mkdirs(imageDir(comicId))
 
         val detail = withNetworkRetry { pica.comics.detail(comicId) }
-        val episodes = mutableListOf<com.picacompose.picaapi.model.Episode>()
-        var page = 1
-        while (true) {
-            val paged = withNetworkRetry { pica.comics.episodes(comicId, page) }
-            episodes += paged.docs.filter { it.order > 0 }
-            if (paged.docs.isEmpty() || (paged.pages > 0 && page >= paged.pages)) break
-            page++
+        val chapters = fetchEpisodes(comicId).map {
+            ChapterPlan(order = it.order, title = it.title, updatedAt = it.updatedAt)
         }
-        val chapters = episodes
-            .distinctBy { it.order }
-            .sortedBy { it.order }
-            .map { ChapterPlan(order = it.order, title = it.title) }
 
         val task = DownloadTask(
             comicId = comicId,
@@ -191,12 +343,24 @@ object ComicDownloader {
         return task
     }
 
+    private suspend fun fetchEpisodes(comicId: String): List<Episode> {
+        val all = mutableListOf<Episode>()
+        var page = 1
+        while (true) {
+            val paged = withNetworkRetry { pica.comics.episodes(comicId, page) }
+            all += paged.docs.filter { it.order > 0 }
+            if (paged.docs.isEmpty() || (paged.pages > 0 && page >= paged.pages)) break
+            page++
+        }
+        return all.distinctBy { it.order }.sortedBy { it.order }
+    }
+
     // ---------------------------------------------------------------- 图片列表
 
     /** 每话的图片列表拉一遍（有缓存就读），返回总页数。 */
-    private suspend fun preparePlans(comicId: String, task: DownloadTask): Int = coroutineScope {
+    private suspend fun prepareChapters(comicId: String, chapters: List<ChapterPlan>): Int = coroutineScope {
         var total = 0
-        task.chapters.chunked(PREPARE_CONCURRENCY).forEach { chunk ->
+        chapters.chunked(PREPARE_CONCURRENCY).forEach { chunk ->
             val counts = chunk.map { chapter ->
                 async { prepareChapter(comicId, chapter) }
             }.awaitAll()
@@ -228,10 +392,10 @@ object ComicDownloader {
     // ---------------------------------------------------------------- 下图片
 
     /** 把还缺的页下完，每成一张报一次进度，详情页的进度环跟着走。 */
-    private suspend fun downloadPages(comicId: String, task: DownloadTask, total: Int) {
+    private suspend fun downloadPages(comicId: String, chapters: List<ChapterPlan>, total: Int) {
         val done = MutableStateFlow(0)
         val items = mutableListOf<PlanItem>()
-        for (chapter in task.chapters.sortedBy { it.order }) {
+        for (chapter in chapters.sortedBy { it.order }) {
             val plan = readPlan(comicId, chapter.order) ?: continue
             plan.pages.forEachIndexed { index, page ->
                 items += PlanItem(chapter.order, index, page)
@@ -241,10 +405,9 @@ object ComicDownloader {
             items.chunked(CONCURRENCY).forEach { chunk ->
                 chunk.map { item ->
                     async {
-                        val file = imagePath(comicId, item.order, item.index, item.page.path)
                         // 上次已经下好的直接算数，不用再看网络。
-                        if (!store.exists(file) || store.size(file) <= 0) {
-                            downloadPage(item.page, file)
+                        if (findImageFile(comicId, item.order, item.index) == null) {
+                            downloadPage(comicId, item)
                         }
                         setStatus(comicId, DownloadStatus.Running(done.updateAndGet { it + 1 }, total))
                     }
@@ -261,8 +424,8 @@ object ComicDownloader {
      *
      * 4xx（429 除外）说明这张图本来就不在，换地址再试也没用，直接抛给任务层。
      */
-    private suspend fun downloadPage(page: PagePlan, target: String) {
-        val thumb = Thumbnail(fileServer = page.fileServer, path = page.path)
+    private suspend fun downloadPage(comicId: String, item: PlanItem) {
+        val thumb = Thumbnail(fileServer = item.page.fileServer, path = item.page.path)
         val url = pica.imageUrl(thumb) ?: throw IllegalStateException("图片地址拼不出来")
         val candidates = (listOf(url) + alternateImageUrls(url)).distinct()
         var attempt = 0
@@ -272,7 +435,9 @@ object ComicDownloader {
             for (candidate in candidates) {
                 try {
                     val bytes = pica.fetchImageBytes(candidate)
-                    store.writeBytesAtomic(target, bytes)
+                    val ext = imageKind(bytes).ext
+                    store.writeBytesAtomic(imagePath(comicId, item.order, item.index, ext), bytes)
+                    cleanOldVariants(comicId, item.order, item.index, ext)
                     return
                 } catch (e: CancellationException) {
                     throw e
@@ -291,16 +456,33 @@ object ComicDownloader {
         }
     }
 
+    /** 本地这页已经下好的文件（扩展名按内容定过，挨个试）。 */
+    private fun findImageFile(comicId: String, order: Int, index: Int): String? {
+        for (ext in IMAGE_EXTENSIONS) {
+            val path = imagePath(comicId, order, index, ext)
+            if (store.exists(path) && store.size(path) > 0) return path
+        }
+        return null
+    }
+
+    /** 之前按别的后缀存过同一页的话顺手删掉，免得 zip 里同名双份。 */
+    private fun cleanOldVariants(comicId: String, order: Int, index: Int, keepExt: String) {
+        for (ext in IMAGE_EXTENSIONS) {
+            if (ext == keepExt) continue
+            store.delete(imagePath(comicId, order, index, ext))
+        }
+    }
+
     // ---------------------------------------------------------------- 打包
 
     /** 写元数据、打 zip、把临时目录删掉。 */
     private suspend fun pack(comicId: String, task: DownloadTask) {
-        val chapters = task.chapters.map { chapter ->
-            val plan = readPlan(comicId, chapter.order)
+        val chapters = task.chapters.sortedBy { it.order }.map { chapter ->
             DownloadedChapter(
                 order = chapter.order,
                 title = chapter.title,
-                pages = plan?.pages?.size ?: 0,
+                pages = readPlan(comicId, chapter.order)?.pages?.size ?: 0,
+                updatedAt = chapter.updatedAt,
             )
         }
         val meta = DownloadMeta(
@@ -316,6 +498,18 @@ object ComicDownloader {
         if (!store.zipDir(dataDir(comicId), zipPath(comicId))) {
             throw IllegalStateException("打包失败，磁盘可能满了")
         }
+        writeSidecar(comicId, meta)
+    }
+
+    /** 往下载目录放一份元数据副本：阅读器/详情页查缓存不打开 zip。 */
+    private fun writeSidecar(comicId: String, meta: DownloadMeta) {
+        runCatching {
+            store.writeTextAtomic(
+                OfflineLibrary.metaPath(comicId),
+                json.encodeToString(DownloadMeta.serializer(), meta),
+            )
+        }
+        OfflineLibrary.invalidate(comicId)
     }
 
     // ---------------------------------------------------------------- 小工具
@@ -369,16 +563,6 @@ object ComicDownloader {
 
     private fun zipPath(comicId: String) = "${store.root}/$comicId.zip"
 
-    private fun imagePath(comicId: String, order: Int, index: Int, path: String?) =
-        "${imageDir(comicId)}/${order}_${index}.${extension(path)}"
-
-    /** 按 path 后缀猜扩展名；猜不出来按 jpg 算（zip 里只是文件后缀，看图的工具按内容识别也行）。 */
-    private fun extension(path: String?): String {
-        val tail = path
-            ?.substringBefore('?')
-            ?.substringAfterLast('.', "")
-            ?.lowercase()
-            ?.takeIf { it in setOf("png", "jpg", "jpeg", "webp", "gif", "avif", "bmp") }
-        return tail ?: "jpg"
-    }
+    private fun imagePath(comicId: String, order: Int, index: Int, ext: String) =
+        "${imageDir(comicId)}/${order}_$index.$ext"
 }

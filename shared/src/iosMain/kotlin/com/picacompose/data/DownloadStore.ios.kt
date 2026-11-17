@@ -19,4 +19,5 @@ actual fun platformDownloadStore(): DownloadStore = object : DownloadStore {
     override fun writeBytesAtomic(path: String, bytes: ByteArray) = Unit
     override fun size(path: String): Long = 0L
     override fun zipDir(dirPath: String, zipPath: String): Boolean = false
+    override fun rewriteZip(srcZip: String, keep: (String) -> Boolean, appendDir: String?): Boolean = false
 }

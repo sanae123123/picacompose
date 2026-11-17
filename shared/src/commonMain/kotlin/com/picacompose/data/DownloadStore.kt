@@ -43,6 +43,14 @@ interface DownloadStore {
      * 所以 `zipPath` 要么不存在、要么是一份完整的包。失败返回 false，`.tmp` 会清掉。
      */
     fun zipDir(dirPath: String, zipPath: String): Boolean
+
+    /**
+     * 原地重写 zip：旧包里 [keep] 为 true 的条目原样搬过去，再把 [appendDir] 里的文件补进去。
+     *
+     * 给「增量更新」用：不用解压整包，只把没变的话原样复制、变的话换成刚下的图。
+     * 先写 `{srcZip}.tmp`，写完再改名覆盖 —— 中途失败旧包还在，不会两空。
+     */
+    fun rewriteZip(srcZip: String, keep: (entryName: String) -> Boolean, appendDir: String?): Boolean
 }
 
 /** 平台默认实现；Android 宿主要先调 `initDownloadStorage(context)`。 */

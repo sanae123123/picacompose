@@ -158,6 +158,8 @@ class ComicDetailState(comicId: String) {
                 liked = it.isLiked
                 likedCount = it.likesCount
                 favourited = it.isFavourite
+                // 已经缓存过的话顺手对一下账：服务端有更新就补下来。
+                ComicDownloader.sync(comicId)
             }
             .onFailure { error = it.message ?: "详情拉不下来" }
         loading = false
