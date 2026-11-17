@@ -85,3 +85,15 @@ sealed interface DownloadStatus {
     /** 中途失败（网络彻底断了、或者有几页怎么都取不到），目录留着，再点一次会接着下。 */
     data class Failed(val message: String) : DownloadStatus
 }
+
+/** 下载管理列表里的一本：下好的包或者正在下的任务。 */
+data class DownloadedBook(
+    val comicId: String,
+    val title: String,
+    val cover: String? = null,
+    /** 总页数（进行中就是任务的总页数）。 */
+    val pages: Int = 0,
+    /** zip 大小；还没打包是 0。 */
+    val bytes: Long = 0L,
+    val status: DownloadStatus = DownloadStatus.Idle,
+)

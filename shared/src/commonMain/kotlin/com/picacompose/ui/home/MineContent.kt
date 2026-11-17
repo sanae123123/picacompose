@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.picacompose.data.ComicDownloader
 import com.picacompose.data.pica
 import com.picacompose.data.readingProgressStore
 import com.picacompose.picaapi.model.UserProfile
@@ -68,12 +69,14 @@ fun MineContent(
     onOpenFavourites: () -> Unit = {},
     onOpenComments: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
+    onOpenDownloads: () -> Unit = {},
     /** 右上角「编辑资料」，点开从这颗按钮长成整页。 */
     onOpenEditProfile: () -> Unit = {},
     /** 三张卡各挂一个变形源，点开时从小卡片长成整页（key 和整页那边配对）。 */
     favouritesModifier: Modifier = Modifier,
     commentsModifier: Modifier = Modifier,
     historyModifier: Modifier = Modifier,
+    downloadsModifier: Modifier = Modifier,
     editProfileModifier: Modifier = Modifier,
 ) {
     val colors = MiuixTheme.colorScheme
@@ -270,6 +273,16 @@ fun MineContent(
                     modifier = historyModifier,
                     onClick = onOpenHistory,
                 )
+                // 没有离线缓存的平台（iOS）不画这一行。
+                if (ComicDownloader.supported) {
+                    MineEntryRow(
+                        icon = PicaIcon.Download,
+                        title = "下载管理",
+                        summary = "缓存好的本子，不联网也能翻",
+                        modifier = downloadsModifier,
+                        onClick = onOpenDownloads,
+                    )
+                }
             }
             Spacer(Modifier.height(14.dp))
         }

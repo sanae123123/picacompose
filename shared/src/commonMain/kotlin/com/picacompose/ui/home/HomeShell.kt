@@ -69,7 +69,7 @@ import kotlin.math.abs
 /** 从按钮长出来的整屏页面。 */
 private enum class OverlayPage {
     None, Messages, Forum, Leaderboard, Web, Comics, TagComics, Detail, Random, Reader, Search,
-    Favorites, MyComments, ReadHistory, EditProfile,
+    Favorites, MyComments, ReadHistory, Downloads, EditProfile,
 }
 
 /** 变形动画要配对用的 key：源（按钮/卡片）和目标（整页）必须一致。 */
@@ -93,6 +93,7 @@ private val OverlayPage.sharedKey: String
         OverlayPage.Favorites -> "favoritesCard"
         OverlayPage.MyComments -> "myCommentsCard"
         OverlayPage.ReadHistory -> "readHistoryCard"
+        OverlayPage.Downloads -> "downloadsCard"
         // 从「我的」右上角那颗按钮长成整页。
         OverlayPage.EditProfile -> "editProfileButton"
         OverlayPage.None -> "mainShell"
@@ -366,7 +367,7 @@ fun HomeShell(
             OverlayPage.ReadHistory -> if (!fromDetail) historyListState.scrollToItem(0)
             OverlayPage.None, OverlayPage.Leaderboard, OverlayPage.Web,
             OverlayPage.Detail, OverlayPage.Random, OverlayPage.Reader,
-            OverlayPage.EditProfile -> Unit
+            OverlayPage.EditProfile, OverlayPage.Downloads -> Unit
         }
     }
 
@@ -574,6 +575,9 @@ fun HomeShell(
                                         onOpenHistory = {
                                             overlayOrdinal = OverlayPage.ReadHistory.ordinal
                                         },
+                                        onOpenDownloads = {
+                                            overlayOrdinal = OverlayPage.Downloads.ordinal
+                                        },
                                         onOpenEditProfile = {
                                             overlayOrdinal = OverlayPage.EditProfile.ordinal
                                         },
@@ -586,6 +590,9 @@ fun HomeShell(
                                         },
                                         historyModifier = with(shared) {
                                             overlayBounds(OverlayPage.ReadHistory.sharedKey, contentScope)
+                                        },
+                                        downloadsModifier = with(shared) {
+                                            overlayBounds(OverlayPage.Downloads.sharedKey, contentScope)
                                         },
                                         editProfileModifier = with(shared) {
                                             overlayBounds(OverlayPage.EditProfile.sharedKey, contentScope)
@@ -786,6 +793,10 @@ fun HomeShell(
                                         detailReturnOrdinal = OverlayPage.MyComments.ordinal
                                         overlayOrdinal = OverlayPage.Detail.ordinal
                                     },
+                                )
+
+                                OverlayPage.Downloads -> DownloadManagerContent(
+                                    onBack = { overlayOrdinal = OverlayPage.None.ordinal },
                                 )
 
                                 OverlayPage.ReadHistory -> ReadHistoryContent(

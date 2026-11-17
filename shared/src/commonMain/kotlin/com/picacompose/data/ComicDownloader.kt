@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
 /**
@@ -547,6 +548,111 @@ object ComicDownloader {
 
     private fun setStatus(comicId: String, value: DownloadStatus) {
         _status.update { it + (comicId to value) }
+        refreshNotice()
+    }
+
+    /** 通知栏跟着进度走：只在有活干的时候挂出来，全下完就撤掉。 */
+    private fun refreshNotice() {
+        if (!DownloadNotifier.supported) return
+        var books = 0
+        var done = 0
+        var total = 0
+        for (status in _status.value.values) {
+            when (status) {
+                is DownloadStatus.Preparing -> {
+                    books++
+                }
+                is DownloadStatus.Running -> {
+                    books++
+                    done += status.done
+                    total += status.total
+                }
+                else -> Unit
+            }
+        }
+        if (books == 0) {
+            DownloadNotifier.update(null)
+        } else {
+            DownloadNotifier.update(DownloadNotice(books = books, done = done, total = total))
+        }
+    }
+
+    /**
+     * 下载管理页要的列表：下好的包 + 还没打包的任务。
+     *
+     * 扫目录、读几份 sidecar，量很小；放后台线程跑，别在主线程碰文件。
+     */
+    suspend fun downloads(): List<DownloadedBook> = withContext(Dispatchers.Default) {
+        val root = store.root
+        if (root.isBlank()) return@withContext emptyList()
+        val entries = mutableListOf<DownloadedBook>()
+        val zips = runCatching { store.list(root).filter { it.endsWith(".zip") } }
+            .getOrDefault(emptyList())
+        for (name in zips) {
+            val id = name.removeSuffix(".zip")
+            if (id.isBlank()) continue
+            val meta = OfflineLibrary.meta(id)
+            val bytes = store.size("$root/$name")
+            val status = statusOf(id).let {
+                if (it is DownloadStatus.Idle) DownloadStatus.Completed(bytes) else it
+            }
+            entries += DownloadedBook(
+                comicId = id,
+                title = meta?.title?.ifBlank { id } ?: id,
+                cover = meta?.cover,
+                pages = meta?.pages ?: 0,
+                bytes = bytes,
+                status = status,
+            )
+        }
+        val workRoot = "$root/work"
+        runCatching { store.list(workRoot) }.getOrDefault(emptyList()).forEach { id ->
+            if (zips.any { it == "$id.zip" }) return@forEach
+            val status = statusOf(id)
+            if (status is DownloadStatus.Idle) return@forEach
+            val task = store.readText("$workRoot/$id/task.json")?.let { raw ->
+                runCatching { json.decodeFromString(DownloadTask.serializer(), raw) }.getOrNull()
+            }
+            entries += DownloadedBook(
+                comicId = id,
+                title = task?.title?.ifBlank { id } ?: id,
+                cover = task?.cover,
+                pages = (status as? DownloadStatus.Running)?.total ?: 0,
+                bytes = 0L,
+                status = status,
+            )
+        }
+        entries.sortedWith(
+            compareBy<DownloadedBook> { it.status is DownloadStatus.Completed }.thenBy { it.title },
+        )
+    }
+
+    /** 取消正在下的这一本：图留在 work 里，下次点缓存接着下。 */
+    fun cancel(comicId: String) {
+        if (!supported) return
+        scope.launch {
+            lock.withLock {
+                jobs.remove(comicId)?.cancel()
+                _status.update { it - comicId }
+                refreshNotice()
+            }
+        }
+    }
+
+    /** 删掉一本的整份缓存：进行中的先停，再把 zip / 元数据 / 临时文件都清掉。 */
+    fun delete(comicId: String) {
+        if (!supported) return
+        scope.launch {
+            lock.withLock {
+                jobs.remove(comicId)?.cancel()
+                store.delete(zipPath(comicId))
+                store.delete(OfflineLibrary.metaPath(comicId))
+                store.deleteTree(workDir(comicId))
+                OfflineLibrary.invalidate(comicId)
+                _status.update { it - comicId }
+                refreshNotice()
+            }
+        }
     }
 
     private fun workDir(comicId: String) = "${store.root}/work/$comicId"
