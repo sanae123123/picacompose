@@ -717,6 +717,12 @@ object ComicDownloader {
         }
     }
 
+    /** 导出用：缓存包的路径；还没打包好就 null。 */
+    internal fun cachedZipPath(comicId: String): String? {
+        val path = zipPath(comicId)
+        return if (runCatching { store.exists(path) }.getOrDefault(false)) path else null
+    }
+
     private fun workDir(comicId: String) = "${store.root}/work/$comicId"
 
     private fun dataDir(comicId: String) = "${workDir(comicId)}/data"

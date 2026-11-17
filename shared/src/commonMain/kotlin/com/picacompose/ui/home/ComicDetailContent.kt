@@ -44,6 +44,9 @@ import androidx.compose.ui.unit.dp
 import com.picacompose.data.ReadingProgress
 import com.picacompose.data.DownloadStatus
 import com.picacompose.data.ComicDownloader
+import com.picacompose.data.ExportFormat
+import com.picacompose.data.exportSupported
+import com.picacompose.data.rememberExportLauncher
 import com.picacompose.data.pica
 import com.picacompose.data.readingProgressStore
 import com.picacompose.picaapi.model.ComicDetail
@@ -201,6 +204,15 @@ fun ComicDetailContent(
     // 这本的缓存状态：没下过、正在拉清单、下图进度、还是已经打包好了。
     val downloadStates by ComicDownloader.status.collectAsState()
     val downloadStatus = downloadStates[state.comicId] ?: DownloadStatus.Idle
+    // 缓存好的本子可以导出：先拉系统保存对话框，选完位置再在后台写文件。
+    var showExport by remember { mutableStateOf(false) }
+    val exportLauncher = rememberExportLauncher { ok, message ->
+        when {
+            ok -> PicaToast.show("导出好了，文件在你选的地方")
+            message != null -> PicaToast.show(message)
+            else -> Unit
+        }
+    }
 
     LaunchedEffect(state) { state.ensureLoaded() }
     LaunchedEffect(state.reloadTick) { if (state.reloadTick > 0) state.load() }
@@ -250,6 +262,20 @@ fun ComicDetailContent(
         }
     }
 
+    if (showExport) {
+        ExportFormatDialog(
+            onDismiss = { showExport = false },
+            onPick = { format ->
+                showExport = false
+                exportLauncher.launch(
+                    format,
+                    state.comicId,
+                    state.detail?.title ?: seedTitle.orEmpty(),
+                )
+            },
+        )
+    }
+
     Column(modifier.fillMaxSize().imePadding()) {
         PageScaffold(
             state = listState,
@@ -286,6 +312,13 @@ fun ComicDetailContent(
                                     comicId = state.comicId,
                                     titleHint = state.detail?.title ?: seedTitle,
                                 )
+                            },
+                            onExport = {
+                                if (exportSupported) {
+                                    showExport = true
+                                } else {
+                                    PicaToast.show("这个平台还不支持导出")
+                                }
                             },
                         )
                     }
@@ -879,10 +912,11 @@ private fun EpisodeRow(
 /**
  * 详情页右上角的缓存按钮：[首屏] 一个下载图标，点一下开始把整本存到本机。
  *
- * 下载中显示进度环，缓存好了变成勾，失败变回下载图标（再点一次会接着下，已下好的图不会重下）。
+ * 下载中显示进度环，缓存好了变成导出图标（点开选格式导出），失败变回下载图标
+ * （再点一次会接着下，已下好的图不会重下）。
  */
 @Composable
-private fun DownloadAction(status: DownloadStatus, onStart: () -> Unit) {
+private fun DownloadAction(status: DownloadStatus, onStart: () -> Unit, onExport: () -> Unit) {
     val colors = MiuixTheme.colorScheme
     when (status) {
         DownloadStatus.Idle -> PicaIconButton(onClick = onStart, modifier = Modifier.size(40.dp)) {
@@ -918,11 +952,11 @@ private fun DownloadAction(status: DownloadStatus, onStart: () -> Unit) {
         }
 
         is DownloadStatus.Completed -> PicaIconButton(
-            onClick = { PicaToast.show("这本已经缓存好了") },
+            onClick = onExport,
             modifier = Modifier.size(40.dp),
         ) {
             PicaGlyph(
-                icon = PicaIcon.Check,
+                icon = PicaIcon.Export,
                 modifier = Modifier.size(20.dp),
                 tint = colors.primary,
             )
