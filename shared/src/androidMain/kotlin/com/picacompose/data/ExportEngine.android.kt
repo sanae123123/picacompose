@@ -46,6 +46,8 @@ internal object ExportEngine {
                 ExportFormat.Epub -> writeEpub(zipPath, title, stream, onProgress)
             }
         }
+        // 流关掉之后才算真的写完：pdf 的 writeTo、zip 的中央目录、SAF 的 flush 都在那之后。
+        onProgress(1f, "完成")
     }
 
     /** 导出 zip 就是把缓存包原样搬出去。 */
@@ -61,12 +63,11 @@ internal object ExportEngine {
                 output.write(buffer, 0, read)
                 copied += read
                 onProgress(
-                    (copied.toDouble() / total).toFloat().coerceIn(0f, 1f),
+                    (copied.toDouble() / total * 0.95).toFloat().coerceIn(0f, 0.95f),
                     "已写 ${formatSize(copied)} / ${formatSize(total)}",
                 )
             }
         }
-        onProgress(1f, "完成")
     }
 
     private fun writePdf(zipPath: String, output: OutputStream, onProgress: (Float, String) -> Unit) {
@@ -90,10 +91,11 @@ internal object ExportEngine {
                         bitmap.recycle()
                     }
                     onProgress(
-                        (index + 1).toFloat() / pages.size,
+                        (index + 1).toFloat() / pages.size * 0.9f,
                         "第 ${index + 1}/${pages.size} 页",
                     )
                 }
+                onProgress(0.92f, "正在写文件…")
                 document.writeTo(output)
             } finally {
                 document.close()
@@ -141,16 +143,18 @@ internal object ExportEngine {
                     out.closeEntry()
                     step++
                     onProgress(
-                        step.toFloat() / steps,
+                        step.toFloat() / steps * 0.9f,
                         "第 ${index + 1}/${pages.size} 页",
                     )
                     putText(out, "OEBPS/p_${pageId(entry.name)}.xhtml", pageXhtml(entry.name))
                     step++
                     onProgress(
-                        step.toFloat() / steps,
+                        step.toFloat() / steps * 0.9f,
                         "第 ${index + 1}/${pages.size} 页",
                     )
                 }
+                out.finish()
+                onProgress(0.95f, "正在收尾…")
             }
         }
     }
