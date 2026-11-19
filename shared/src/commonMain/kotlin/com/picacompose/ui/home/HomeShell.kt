@@ -7,8 +7,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
@@ -916,17 +914,9 @@ fun HomeShell(
                                         AnimatedContent(
                                             targetState = detailComicId,
                                             modifier = Modifier.fillMaxSize(),
-                                            transitionSpec = {
-                                                if (detailNavDirection > 0) {
-                                                    // 往前换本是「那一行长大」，变形自己会动，这里只补一层淡入淡出。
-                                                    fadeIn(tween(200, delayMillis = 60)) togetherWith
-                                                        fadeOut(tween(140))
-                                                } else {
-                                                    // 退回上一本是整页推回去，保持原来的横向滑动。
-                                                    (slideInHorizontally(tween(280)) { -it / 4 } + fadeIn(tween(200))) togetherWith
-                                                        (slideOutHorizontally(tween(280)) { it } + fadeOut(tween(160)))
-                                                }
-                                            },
+                                            // 两个方向都只压一层淡入淡出：前进是「那一行长大」，
+                                            // 返回是「缩回那一行」，位移全交给共享变形，别再加横滑去抢。
+                                            transitionSpec = { overlayPageFade() },
                                             label = "detailSwap",
                                         ) { id ->
                                             val pageScope = this
