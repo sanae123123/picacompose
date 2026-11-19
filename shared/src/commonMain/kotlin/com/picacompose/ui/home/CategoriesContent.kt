@@ -160,6 +160,8 @@ fun CategoriesContent(
     onOpenSplashAd: () -> Unit = {},
     /** 顶栏右上角的搜索：打开搜索页搜本子。 */
     onOpenSearch: () -> Unit = {},
+    /** 顶栏搜索按钮的变形源：点下去从这颗按钮长成整页搜索。 */
+    searchButtonModifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
     // 数据放在外层（[CategoriesState]），整页开开关关、栏与栏之间来回切都不重拉。
@@ -172,7 +174,10 @@ fun CategoriesContent(
         state = listState,
         header = {
             PageHeader(title = "分类") {
-                PicaIconButton(onClick = onOpenSearch, modifier = Modifier.size(40.dp)) {
+                PicaIconButton(
+                    onClick = onOpenSearch,
+                    modifier = Modifier.size(40.dp).then(searchButtonModifier),
+                ) {
                     PicaGlyph(
                         icon = PicaIcon.Search,
                         modifier = Modifier.size(22.dp),

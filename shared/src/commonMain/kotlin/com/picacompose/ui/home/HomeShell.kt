@@ -95,14 +95,14 @@ private val OverlayPage.sharedKey: String
         // 网页整页的 key 跟着具体磁贴走，这里只是兜底。
         OverlayPage.Web -> "webPage"
         OverlayPage.Comics -> "comicsPage"
-        // 标签结果页复用列表页的变形 key，纯淡入也行。
+        // 标签结果页的 key 跟着点的那块标签走，这里只是兜底。
         OverlayPage.TagComics -> "comicsPage"
         // 详情页的 key 跟着点的那一本走，这里只是兜底。
         OverlayPage.Detail -> "comicDetail"
         OverlayPage.Random -> "randomTile"
         // 阅读器的 key 跟着点的那一话走，这里只是兜底。
         OverlayPage.Reader -> "episode"
-        // 搜索是从分类页顶栏那颗按钮打开的，没有对应的源，纯淡入。
+        // 搜索从分类页顶栏那颗按钮长出来，源和目标都用这个 key。
         OverlayPage.Search -> "searchPage"
         OverlayPage.Favorites -> "favoritesCard"
         OverlayPage.MyComments -> "myCommentsCard"
@@ -597,6 +597,10 @@ fun HomeShell(
                                             overlayOrdinal = OverlayPage.Web.ordinal
                                         },
                                         onOpenSplashAd = { splashAdOpen = true },
+                                        // 搜索按钮自己也挂一个变形源：点下去从这颗按钮长成整页搜索。
+                                        searchButtonModifier = with(shared) {
+                                            overlayBounds(OverlayPage.Search.sharedKey, contentScope)
+                                        },
                                         onOpenSearch = {
                                             searchState.requestFocus()
                                             overlayOrdinal = OverlayPage.Search.ordinal
@@ -931,6 +935,19 @@ fun HomeShell(
                                         episodeRowModifier = { key ->
                                             with(shared) { overlayBounds(key, contentScope) }
                                         },
+                                        // 推荐行、标签小块、「继续阅读」卡也各挂一个，
+                                        // 点开就从那一块长成整页。
+                                        comicCardModifier = { key ->
+                                            with(shared) { overlayBounds(key, contentScope) }
+                                        },
+                                        tagModifier = { tag ->
+                                            with(shared) {
+                                                overlayBounds("tag-${tag.trim()}", contentScope)
+                                            }
+                                        },
+                                        resumeCardModifier = with(shared) {
+                                            overlayBounds("resumeCard", contentScope)
+                                        },
                                         onOpenComic = { comic, key ->
                                             detailStack.add(
                                                 DetailEntry(
@@ -968,17 +985,19 @@ fun HomeShell(
                                                 tagPageFinished = ComicFinished.All
                                                 tagPageOriginComicId = detailComicId
                                                 tagPageReturnOrdinal = detailReturnOrdinal
+                                                // 整页的变形 key 跟详情里点的那块标签对上。
+                                                comicKey = "tag-$clean"
                                                 overlayOrdinal = OverlayPage.TagComics.ordinal
                                             }
                                         },
-                                        // 「继续阅读」：没有对应的章节行，直接用兜底的 key，纯淡入。
+                                        // 「继续阅读」：从那张卡长成阅读器，key 跟卡上的变形源对上。
                                         onResume = { order, page ->
                                             // order 0 是「打开过还没读」的占位，不是真章节；
                                             // 真传进来也当没读过处理，0 拿去拉图会全失败。
                                             if (order > 0) {
                                                 readerOrder = order
                                                 readerPage = page
-                                                readerKey = "episode"
+                                                readerKey = "resumeCard"
                                                 overlayOrdinal = OverlayPage.Reader.ordinal
                                             }
                                         },

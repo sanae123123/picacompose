@@ -224,6 +224,10 @@ fun ComicDetailContent(
     episodeRowModifier: @Composable (String) -> Modifier = { Modifier },
     /** 推荐列表行的变形源 key，点开时从那一行长成另一本的详情。 */
     comicCardModifier: @Composable (String) -> Modifier = { Modifier },
+    /** 本子标签的变形源 key，点开时从那一小块标签长成标签列表页。 */
+    tagModifier: @Composable (String) -> Modifier = { Modifier },
+    /** 「继续阅读」那张卡的变形源，点开时从这张卡长成阅读器。 */
+    resumeCardModifier: Modifier = Modifier,
     onOpenEpisode: (Episode, String) -> Unit = { _, _ -> },
     /** 点相关推荐里的另一本：换成那一本的详情。 */
     onOpenComic: (ComicSummary, String) -> Unit = { _, _ -> },
@@ -424,6 +428,7 @@ fun ComicDetailContent(
                         onOpenCover = { coverViewer = it },
                         onOpenUploader = { showUploader = true },
                         onSearchTag = onSearchTag,
+                        tagModifier = tagModifier,
                         onLike = {
                             // 先翻成点过的样子，服务端回话再确认；再点一次就是取消。
                             val base = state.likedCount ?: loaded.likesCount
@@ -480,6 +485,7 @@ fun ComicDetailContent(
                     val savedProgress = state.progress?.takeIf { it.order > 0 }
                     ResumeCard(
                         progress = savedProgress,
+                        modifier = resumeCardModifier,
                         onResume = {
                             if (savedProgress != null) {
                                 onResume(savedProgress.order, savedProgress.page)
@@ -651,13 +657,14 @@ fun ComicDetailContent(
 private fun ResumeCard(
     progress: ReadingProgress?,
     onResume: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = MiuixTheme.colorScheme
     PicaSurface(
         shape = RoundedCornerShape(SkinTokens.rowRadius),
         color = colors.primary,
         contentColor = colors.onPrimary,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp).clickable(onClick = onResume),
+        modifier = modifier.fillMaxWidth().padding(bottom = 10.dp).clickable(onClick = onResume),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -708,6 +715,8 @@ private fun DetailHero(
     onOpenCover: (String) -> Unit,
     onOpenUploader: () -> Unit,
     onSearchTag: (String) -> Unit,
+    /** 标签小块的变形源，点开时从这块标签长成标签列表页。 */
+    tagModifier: @Composable (String) -> Modifier = { Modifier },
     onLike: () -> Unit,
     onFavourite: () -> Unit,
 ) {
@@ -782,6 +791,7 @@ private fun DetailHero(
                                 shape = RoundedCornerShape(6.dp),
                                 color = colors.primary.copy(alpha = 0.10f),
                                 modifier = Modifier
+                                    .then(tagModifier(tag))
                                     .clip(RoundedCornerShape(6.dp))
                                     .clickable { onSearchTag(tag) },
                             ) {
