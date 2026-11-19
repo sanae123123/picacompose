@@ -216,6 +216,8 @@ fun HomeShell(
     var tagPageTagsRaw by rememberSaveable { mutableStateOf("") }
     // 从详情点作者名进来时只按作者筛；点标签进来时这里清空，两种入口共用这一页。
     var tagPageAuthor by rememberSaveable { mutableStateOf("") }
+    // 点汉化组那行进来时按汉化组（接口 ct 参数）筛。
+    var tagPageTeam by rememberSaveable { mutableStateOf("") }
     var tagPageSort by rememberSaveable { mutableStateOf<String?>("dd") }
     var tagPageFinished by rememberSaveable { mutableStateOf(ComicFinished.All) }
     var tagPageExcludedTagsRaw by rememberSaveable { mutableStateOf("") }
@@ -228,6 +230,7 @@ fun HomeShell(
     val tagPagePager = remember(
         tagPageTagsRaw,
         tagPageAuthor,
+        tagPageTeam,
         tagPageSort,
         tagPageFinished,
         tagPageExcludedTagsRaw,
@@ -241,6 +244,8 @@ fun HomeShell(
                     page = page,
                     tag = tagPageTags.firstOrNull(),
                     author = tagPageAuthor.takeIf { it.isNotBlank() },
+                    // ct 就是汉化组，接口里叫 categoryType。
+                    categoryType = tagPageTeam.takeIf { it.isNotBlank() },
                     sort = tagPageSort,
                     finished = tagPageFinished.value,
                 )
@@ -765,10 +770,10 @@ fun HomeShell(
                                 )
 
                                 OverlayPage.TagComics -> ComicListContent(
-                                    title = if (tagPageAuthor.isNotBlank()) {
-                                        "作者：$tagPageAuthor"
-                                    } else {
-                                        "标签：${tagPageTags.firstOrNull().orEmpty()}"
+                                    title = when {
+                                        tagPageAuthor.isNotBlank() -> "作者：$tagPageAuthor"
+                                        tagPageTeam.isNotBlank() -> "汉化：$tagPageTeam"
+                                        else -> "标签：${tagPageTags.firstOrNull().orEmpty()}"
                                     },
                                     pager = tagPagePager,
                                     listState = tagPageListState,
@@ -961,6 +966,11 @@ fun HomeShell(
                                                             overlayBounds("author-${name.trim()}", contentScope)
                                                         }
                                                     },
+                                                    teamModifier = { name ->
+                                                        with(shared) {
+                                                            overlayBounds("team-${name.trim()}", contentScope)
+                                                        }
+                                                    },
                                                     resumeCardModifier = with(shared) {
                                                         overlayBounds("resumeCard", contentScope)
                                                     },
@@ -1001,6 +1011,7 @@ fun HomeShell(
                                                         if (clean.isNotBlank()) {
                                                             tagPageAuthor = clean
                                                             tagPageTagsRaw = ""
+                                                            tagPageTeam = ""
                                                             tagPageExcludedTagsRaw = ""
                                                             tagPageSort = "dd"
                                                             tagPageFinished = ComicFinished.All
@@ -1011,12 +1022,30 @@ fun HomeShell(
                                                             overlayOrdinal = OverlayPage.TagComics.ordinal
                                                         }
                                                     },
+                                                    // 点汉化组那行：开一个只看这个汉化组接的本子列表，返回回详情。
+                                                    onSearchTeam = { name ->
+                                                        val clean = name.trim()
+                                                        if (clean.isNotBlank()) {
+                                                            tagPageTeam = clean
+                                                            tagPageTagsRaw = ""
+                                                            tagPageAuthor = ""
+                                                            tagPageExcludedTagsRaw = ""
+                                                            tagPageSort = "dd"
+                                                            tagPageFinished = ComicFinished.All
+                                                            tagPageOriginComicId = detailComicId
+                                                            tagPageReturnOrdinal = detailReturnOrdinal
+                                                            // 整页的变形 key 跟详情里点的那行汉化组对上。
+                                                            comicKey = "team-$clean"
+                                                            overlayOrdinal = OverlayPage.TagComics.ordinal
+                                                        }
+                                                    },
                                                     // 点本子标签：开一个只筛这个标签的本子列表，返回回详情。
                                                     onSearchTag = { tag ->
                                                         val clean = tag.trim()
                                                         if (clean.isNotBlank()) {
                                                             tagPageTagsRaw = clean
                                                             tagPageAuthor = ""
+                                                            tagPageTeam = ""
                                                             tagPageExcludedTagsRaw = ""
                                                             tagPageSort = "dd"
                                                             tagPageFinished = ComicFinished.All

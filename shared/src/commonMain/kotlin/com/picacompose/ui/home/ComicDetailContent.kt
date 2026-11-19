@@ -228,6 +228,8 @@ fun ComicDetailContent(
     tagModifier: @Composable (String) -> Modifier = { Modifier },
     /** 作者名的变形源 key，点开时从这一行作者长成作者本子列表。 */
     authorModifier: @Composable (String) -> Modifier = { Modifier },
+    /** 汉化组那行的变形源 key，点开时从这一行长成汉化组本子列表。 */
+    teamModifier: @Composable (String) -> Modifier = { Modifier },
     /** 「继续阅读」那张卡的变形源，点开时从这张卡长成阅读器。 */
     resumeCardModifier: Modifier = Modifier,
     onOpenEpisode: (Episode, String) -> Unit = { _, _ -> },
@@ -239,6 +241,8 @@ fun ComicDetailContent(
     onSearchTag: (String) -> Unit = {},
     /** 点作者名：只看这个作者的本子。 */
     onSearchAuthor: (String) -> Unit = {},
+    /** 点汉化组那行：只看这个汉化组接的本子。 */
+    onSearchTeam: (String) -> Unit = {},
 ) {
     val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -435,6 +439,8 @@ fun ComicDetailContent(
                         tagModifier = tagModifier,
                         onSearchAuthor = onSearchAuthor,
                         authorModifier = authorModifier,
+                        onSearchTeam = onSearchTeam,
+                        teamModifier = teamModifier,
                         onLike = {
                             // 先翻成点过的样子，服务端回话再确认；再点一次就是取消。
                             val base = state.likedCount ?: loaded.likesCount
@@ -710,22 +716,7 @@ private fun ResumeCard(
     }
 }
 
-/**
- * 作者字段拆成一个人一条：接口把多作者拼成一个字符串，
- * 常见是「A，B」，个别用逗号/分号/顿号/斜杠隔开。
- */
-internal fun splitAuthors(raw: String?): List<String> {
-    val text = raw?.trim().orEmpty()
-    if (text.isEmpty()) return emptyList()
-    return text
-        .split('，', ',', '；', ';', '、')
-        .flatMap { it.split(" / ", "／") }
-        .map { it.trim() }
-        .filter { it.isNotBlank() }
-        .distinct()
-}
-
-/** 可点的作者名：点一下只看这个作者的本子。 */
+/** 可点的作者名 / 汉化组名：点一下只看这个作者、这个汉化组的本子。 */
 @Composable
 private fun AuthorLink(
     name: String,
@@ -761,6 +752,9 @@ private fun DetailHero(
     onSearchAuthor: (String) -> Unit = {},
     /** 作者名的变形源，点开时从这行作者长成作者本子列表。 */
     authorModifier: @Composable (String) -> Modifier = { Modifier },
+    onSearchTeam: (String) -> Unit = {},
+    /** 汉化组那行的变形源，点开时从这行长成汉化组本子列表。 */
+    teamModifier: @Composable (String) -> Modifier = { Modifier },
     onLike: () -> Unit,
     onFavourite: () -> Unit,
 ) {
@@ -785,24 +779,26 @@ private fun DetailHero(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                // 作者可能是两个人（「A，B」这种），一人一行，都能点开看各自的本子。
-                val authors = remember(detail.author) { splitAuthors(detail.author) }
-                authors.firstOrNull()?.let { first ->
+                // 作者照接口给的原样显示，不拆人名；下面那行是接口单独回的汉化组（翻译/出版那类），
+                // 有才显示，没有就不占位，两行都能点开各自的本子列表。
+                val author = detail.author?.takeIf { it.isNotBlank() }
+                if (author != null) {
                     Spacer(Modifier.height(6.dp))
                     AuthorLink(
-                        name = first,
+                        name = author,
                         style = MiuixTheme.textStyles.footnote1,
-                        modifier = authorModifier(first),
+                        modifier = authorModifier(author),
                         onClick = onSearchAuthor,
                     )
                 }
-                authors.getOrNull(1)?.let { second ->
+                val team = detail.chineseTeam?.takeIf { it.isNotBlank() }
+                if (team != null) {
                     Spacer(Modifier.height(2.dp))
                     AuthorLink(
-                        name = second,
+                        name = team,
                         style = MiuixTheme.textStyles.footnote2,
-                        modifier = authorModifier(second),
-                        onClick = onSearchAuthor,
+                        modifier = teamModifier(team),
+                        onClick = onSearchTeam,
                     )
                 }
                 Spacer(Modifier.height(8.dp))
