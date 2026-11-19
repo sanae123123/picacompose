@@ -475,6 +475,8 @@ fun LazyListScope.commentItems(
     /** 刚回复过哪条根评论（id + tick）：那一行自己刷新楼中楼，主列表不动。 */
     repliedRootId: String? = null,
     repliedTick: Int = 0,
+    /** 套在每一行外面的修饰（详情页切分区时让内容整体滑一下，布局不变）。 */
+    itemModifier: Modifier = Modifier,
 ) {
     // 置顶单独一份，普通列表里要是也出现同一个 id 就剔掉，免得 LazyColumn 撞 key。
     val pinned = topComments.distinctBy { it.id }
@@ -483,18 +485,21 @@ fun LazyListScope.commentItems(
 
     if (pinned.isNotEmpty()) {
         items(pinned, key = { "pinned-${it.id}" }) { comment ->
-            CommentRow(
-                comment = comment,
-                onReply = onReply,
-                pinned = true,
-                repliedRootId = repliedRootId,
-                repliedTick = repliedTick,
-            )
+            Box(itemModifier) {
+                CommentRow(
+                    comment = comment,
+                    onReply = onReply,
+                    pinned = true,
+                    repliedRootId = repliedRootId,
+                    repliedTick = repliedTick,
+                )
+            }
         }
         // 置顶和普通评论之间拉一条淡分隔线，视觉上分开。
         item(key = "comment-pinned-divider") {
             Box(
                 Modifier
+                    .then(itemModifier)
                     .fillMaxWidth()
                     .padding(top = 2.dp, bottom = 14.dp)
                     .height(1.dp)
@@ -505,29 +510,35 @@ fun LazyListScope.commentItems(
 
     if (rows.isEmpty() && pinned.isEmpty()) {
         item {
-            when {
-                pager.error != null -> FailedBlock(pager.error.orEmpty(), onRetry)
-                pager.loading -> LoadingBlock(loadingText)
-                else -> EmptyBlock(emptyText)
+            Box(itemModifier) {
+                when {
+                    pager.error != null -> FailedBlock(pager.error.orEmpty(), onRetry)
+                    pager.loading -> LoadingBlock(loadingText)
+                    else -> EmptyBlock(emptyText)
+                }
             }
         }
     }
     items(rows, key = { it.id }) { comment ->
-        CommentRow(
-            comment = comment,
-            onReply = onReply,
-            repliedRootId = repliedRootId,
-            repliedTick = repliedTick,
-        )
+        Box(itemModifier) {
+            CommentRow(
+                comment = comment,
+                onReply = onReply,
+                repliedRootId = repliedRootId,
+                repliedTick = repliedTick,
+            )
+        }
     }
     if (pager.items.isNotEmpty()) {
         item {
-            ListFooter(
-                loading = pager.loading,
-                error = pager.error,
-                hasMore = pager.hasMore,
-                onRetry = onRetry,
-            )
+            Box(itemModifier) {
+                ListFooter(
+                    loading = pager.loading,
+                    error = pager.error,
+                    hasMore = pager.hasMore,
+                    onRetry = onRetry,
+                )
+            }
         }
     }
 }

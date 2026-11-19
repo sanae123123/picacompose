@@ -239,6 +239,8 @@ fun ComicDetailContent(
     val tab = DetailTab.entries[state.tabOrdinal.coerceIn(0, DetailTab.entries.lastIndex)]
     // 切分区时内容从侧面滑进来，跟左右滑的手感对上；列表只有一份，不重建也不丢滚动位置。
     val tabSlide = remember { Animatable(0f) }
+    // 只让选项卡下面的内容跟着滑，封面资料和标签本身不动。
+    val contentSlide = Modifier.graphicsLayer { translationX = tabSlide.value * size.width }
     var lastTabOrdinal by remember { mutableIntStateOf(tab.ordinal) }
     var tabSlideReady by remember { mutableStateOf(false) }
     LaunchedEffect(tab) {
@@ -352,9 +354,7 @@ fun ComicDetailContent(
     Column(modifier.fillMaxSize().imePadding()) {
         PageScaffold(
             state = listState,
-            modifier = Modifier
-                .weight(1f)
-                .graphicsLayer { translationX = tabSlide.value * size.width },
+            modifier = Modifier.weight(1f),
             onRefresh = {
                 state.retry()
                 when (tab) {
@@ -516,14 +516,16 @@ fun ComicDetailContent(
                     val chapters = state.episodePager.items.filter { it.order > 0 }
                     if (chapters.isEmpty()) {
                         item(key = "chapter-state") {
-                            when {
-                                state.episodePager.error != null ->
-                                    FailedBlock(state.episodePager.error.orEmpty()) {
-                                        scope.launch { state.episodePager.retry() }
-                                    }
+                            Box(contentSlide) {
+                                when {
+                                    state.episodePager.error != null ->
+                                        FailedBlock(state.episodePager.error.orEmpty()) {
+                                            scope.launch { state.episodePager.retry() }
+                                        }
 
-                                state.episodePager.loading -> LoadingBlock("正在拉章节…")
-                                else -> EmptyBlock("这本还没有章节")
+                                    state.episodePager.loading -> LoadingBlock("正在拉章节…")
+                                    else -> EmptyBlock("这本还没有章节")
+                                }
                             }
                         }
                     }
@@ -534,18 +536,20 @@ fun ComicDetailContent(
                             episode = episode,
                             resumed = (state.progress?.order ?: 0) > 0 &&
                                 state.progress?.order == episode.order,
-                            modifier = episodeRowModifier(key),
+                            modifier = episodeRowModifier(key).then(contentSlide),
                             onClick = { onOpenEpisode(episode, key) },
                         )
                     }
                     if (chapters.isNotEmpty()) {
                         item(key = "chapter-footer") {
-                            ListFooter(
-                                loading = state.episodePager.loading,
-                                error = state.episodePager.error,
-                                hasMore = state.episodePager.hasMore,
-                                onRetry = { scope.launch { state.episodePager.retry() } },
-                            )
+                            Box(contentSlide) {
+                                ListFooter(
+                                    loading = state.episodePager.loading,
+                                    error = state.episodePager.error,
+                                    hasMore = state.episodePager.hasMore,
+                                    onRetry = { scope.launch { state.episodePager.retry() } },
+                                )
+                            }
                         }
                     }
                 }
@@ -557,31 +561,36 @@ fun ComicDetailContent(
                     topComments = state.commentFeed.topComments,
                     repliedRootId = state.commentFeed.repliedRootId,
                     repliedTick = state.commentFeed.repliedTick,
+                    itemModifier = contentSlide,
                 )
 
                 DetailTab.Recommend -> {
                     val comics = state.recommendations
                     when {
                         comics.isNotEmpty() -> item(key = "detail-recommend") {
-                            RecommendRow(
-                                comics = comics,
-                                cardModifier = comicCardModifier,
-                                onOpenComic = onOpenComic,
-                            )
+                            Box(contentSlide) {
+                                RecommendRow(
+                                    comics = comics,
+                                    cardModifier = comicCardModifier,
+                                    onOpenComic = onOpenComic,
+                                )
+                            }
                         }
 
                         state.recommendLoading -> item(key = "recommend-state") {
-                            LoadingBlock("正在找相关推荐…")
+                            Box(contentSlide) { LoadingBlock("正在找相关推荐…") }
                         }
 
                         state.recommendError != null -> item(key = "recommend-state") {
-                            FailedBlock(state.recommendError.orEmpty()) {
-                                scope.launch { state.loadRecommendations(force = true) }
+                            Box(contentSlide) {
+                                FailedBlock(state.recommendError.orEmpty()) {
+                                    scope.launch { state.loadRecommendations(force = true) }
+                                }
                             }
                         }
 
                         else -> item(key = "recommend-state") {
-                            EmptyBlock("这本还没有相关推荐")
+                            Box(contentSlide) { EmptyBlock("这本还没有相关推荐") }
                         }
                     }
                 }
