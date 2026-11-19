@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -213,7 +212,7 @@ fun rememberComicDetailState(comicId: String): ComicDetailState =
  * 本子详情页：上面是封面和资料，下面切「章节 / 评论 / 推荐」。
  *
  * 章节列表和评论区都是分页的，各自滚到底续页；评论区整套复用 [CommentBits]，
- * 置顶评论、回复、跳页都跟着一起有。相关推荐是横着滑的一行封面，点一张就换到那一本。
+ * 置顶评论、回复、跳页都跟着一起有。相关推荐是竖排的本子列表，点一条就换到那一本。
  */
 @Composable
 fun ComicDetailContent(
@@ -223,7 +222,7 @@ fun ComicDetailContent(
     seedTitle: String? = null,
     /** 章节行的变形源 key，点开时从那一行撑开成阅读器。 */
     episodeRowModifier: @Composable (String) -> Modifier = { Modifier },
-    /** 推荐卡片的变形源 key，点开时从那张封面长成另一本的详情。 */
+    /** 推荐列表行的变形源 key，点开时从那一行长成另一本的详情。 */
     comicCardModifier: @Composable (String) -> Modifier = { Modifier },
     onOpenEpisode: (Episode, String) -> Unit = { _, _ -> },
     /** 点相关推荐里的另一本：换成那一本的详情。 */
@@ -567,12 +566,14 @@ fun ComicDetailContent(
                 DetailTab.Recommend -> {
                     val comics = state.recommendations
                     when {
-                        comics.isNotEmpty() -> item(key = "detail-recommend") {
+                        // 竖排一本一行，跟搜索、收藏那些列表同一个 Row。
+                        comics.isNotEmpty() -> items(comics, key = { "recommend-${it.id}" }) { comic ->
+                            val key = "recommend-${comic.id}"
                             Box(contentSlide) {
-                                RecommendRow(
-                                    comics = comics,
-                                    cardModifier = comicCardModifier,
-                                    onOpenComic = onOpenComic,
+                                ComicListRow(
+                                    comic = comic,
+                                    modifier = comicCardModifier(key),
+                                    onClick = { onOpenComic(comic, key) },
                                 )
                             }
                         }
@@ -1084,29 +1085,3 @@ private fun DownloadAction(status: DownloadStatus, onStart: () -> Unit, onExport
     }
 }
 
-/**
- * 相关推荐：横着滑一行的本子封面，点一张就换成那一本的详情。
- *
- * 接口一次性返回十几本，没有分页，所以不用 Pager，直接铺完就行。
- */
-@Composable
-private fun RecommendRow(
-    comics: List<ComicSummary>,
-    cardModifier: @Composable (String) -> Modifier,
-    onOpenComic: (ComicSummary, String) -> Unit,
-) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        items(comics, key = { it.id }) { comic ->
-            // 变形 key 带个前缀：同一本可能在别的页面也有封面，别撞。
-            val key = "recommend-${comic.id}"
-            ComicCover(
-                comic = comic,
-                modifier = cardModifier(key),
-                onClick = { onOpenComic(comic, key) },
-            )
-        }
-    }
-}
