@@ -18,11 +18,10 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -44,6 +43,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.picacompose.data.ReadingProgress
@@ -71,7 +71,6 @@ import com.picacompose.ui.components.UserTitleBadge
 import com.picacompose.ui.components.levelStartExp
 import com.picacompose.ui.components.url
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -92,12 +91,7 @@ internal enum class DetailTab(val label: String) {
 @Stable
 class ComicDetailState(comicId: String) {
     val comicId: String = comicId
-    /** 章节页的滚动位置。 */
     val listState: LazyListState = LazyListState()
-    /** 评论页单独一份：三个分区各自滚，切回来还在原地。 */
-    val commentListState: LazyListState = LazyListState()
-    /** 推荐页单独一份。 */
-    val recommendListState: LazyListState = LazyListState()
 
     var detail by mutableStateOf<ComicDetail?>(null)
         private set
@@ -229,6 +223,8 @@ fun ComicDetailContent(
     seedTitle: String? = null,
     /** 章节行的变形源 key，点开时从那一行撑开成阅读器。 */
     episodeRowModifier: @Composable (String) -> Modifier = { Modifier },
+    /** 推荐卡片的变形源 key，点开时从那张封面长成另一本的详情。 */
+    comicCardModifier: @Composable (String) -> Modifier = { Modifier },
     onOpenEpisode: (Episode, String) -> Unit = { _, _ -> },
     /** 点相关推荐里的另一本：换成那一本的详情。 */
     onOpenComic: (ComicSummary, String) -> Unit = { _, _ -> },
@@ -239,12 +235,23 @@ fun ComicDetailContent(
 ) {
     val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
-    // 三个分区放进横向 pager：点标签和左右拖是同一份状态，切的时候跟着手滑。
-    val tabPager = rememberPagerState(
-        initialPage = state.tabOrdinal.coerceIn(0, DetailTab.entries.lastIndex),
-    ) { DetailTab.entries.size }
-    val tabOrdinal = tabPager.currentPage.coerceIn(0, DetailTab.entries.lastIndex)
-    val tab = DetailTab.entries[tabOrdinal]
+    val listState = state.listState
+    val tab = DetailTab.entries[state.tabOrdinal.coerceIn(0, DetailTab.entries.lastIndex)]
+    // 切分区时内容从侧面滑进来，跟左右滑的手感对上；列表只有一份，不重建也不丢滚动位置。
+    val tabSlide = remember { Animatable(0f) }
+    var lastTabOrdinal by remember { mutableIntStateOf(tab.ordinal) }
+    var tabSlideReady by remember { mutableStateOf(false) }
+    LaunchedEffect(tab) {
+        if (!tabSlideReady) {
+            // 第一次进来不动，别一打开就滑一下。
+            tabSlideReady = true
+            return@LaunchedEffect
+        }
+        val forward = tab.ordinal > lastTabOrdinal
+        lastTabOrdinal = tab.ordinal
+        tabSlide.snapTo(if (forward) 0.18f else -0.18f)
+        tabSlide.animateTo(0f, tween(240))
+    }
     // 这本的缓存状态：没下过、正在拉清单、下图进度、还是已经打包好了。
     val downloadStates by ComicDownloader.status.collectAsState()
     val downloadStatus = downloadStates[state.comicId] ?: DownloadStatus.Idle
@@ -266,9 +273,21 @@ fun ComicDetailContent(
 
     LaunchedEffect(state) { state.ensureLoaded() }
     LaunchedEffect(state.reloadTick) { if (state.reloadTick > 0) state.load() }
-    // 拖 / 点切换后把当前页记回 state，退出去再进来还是那一栏。
-    LaunchedEffect(tabPager) {
-        snapshotFlow { tabPager.currentPage }.collect { state.tabOrdinal = it }
+
+    // 章节第一次进来看第一页；切走再切回来不重拉。
+    LaunchedEffect(state.episodePager, tab) {
+        if (tab == DetailTab.Chapters && state.episodePager.items.isEmpty()) {
+            state.episodePager.loadNext()
+        }
+    }
+    // 评论跟留言板一样：进来重拉第一页，点赞数会变。
+    if (tab == DetailTab.Comments) {
+        CommentAutoRefresh(state.commentFeed.pager)
+        CommentLoadMore(listState, state.commentFeed.pager)
+    }
+    // 推荐也是进来才拉，接口一次性给完。
+    LaunchedEffect(state, tab) {
+        if (tab == DetailTab.Recommend) state.loadRecommendations()
     }
 
     var replyTarget by remember { mutableStateOf<CommentReplyTarget?>(null) }
@@ -276,6 +295,25 @@ fun ComicDetailContent(
     // 点封面开全屏看图；点上传骑士那一栏看用户简介（有 id 才拉得到资料）。
     var coverViewer by remember { mutableStateOf<String?>(null) }
     var showUploader by remember { mutableStateOf(false) }
+
+    // 章节滚到底续页。
+    LaunchedEffect(listState, state.episodePager, tab) {
+        if (tab != DetailTab.Chapters) return@LaunchedEffect
+        snapshotFlow {
+            val info = listState.layoutInfo
+            (info.visibleItemsInfo.lastOrNull()?.index ?: -1) to info.totalItemsCount
+        }
+            .distinctUntilChanged()
+            .collect { (lastVisible, total) ->
+                if (total > 0 && lastVisible >= total - 5 &&
+                    state.episodePager.hasMore &&
+                    state.episodePager.loading.not() &&
+                    state.episodePager.error == null
+                ) {
+                    state.episodePager.loadNext()
+                }
+            }
+    }
 
     // 点赞/收藏的失败提示，两秒后自己收起来。
     LaunchedEffect(state.actionError) {
@@ -312,15 +350,20 @@ fun ComicDetailContent(
     }
 
     Column(modifier.fillMaxSize().imePadding()) {
-        // 固定顶栏：返回、标题、缓存/导出；评论页多一个「跳页」。
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-            Box(
-                Modifier
-                    .widthIn(max = 460.dp)
-                    .fillMaxWidth()
-                    .padding(horizontal = 22.dp)
-                    .padding(top = 26.dp, bottom = 2.dp),
-            ) {
+        PageScaffold(
+            state = listState,
+            modifier = Modifier
+                .weight(1f)
+                .graphicsLayer { translationX = tabSlide.value * size.width },
+            onRefresh = {
+                state.retry()
+                when (tab) {
+                    DetailTab.Chapters -> state.episodePager.reloadFirstPage()
+                    DetailTab.Comments -> state.commentFeed.pager.reloadFirstPage()
+                    DetailTab.Recommend -> state.loadRecommendations(force = true)
+                }
+            },
+            header = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     PicaIconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                         PicaGlyph(
@@ -368,46 +411,180 @@ fun ComicDetailContent(
                         Spacer(Modifier.width(6.dp))
                     }
                 }
-            }
-        }
+            },
+        ) {
+            val loaded = state.detail
+            when {
+                loaded != null -> item(key = "detail-hero") {
+                    DetailHero(
+                        detail = loaded,
+                        liked = state.liked,
+                        likesCount = state.likedCount ?: loaded.likesCount,
+                        favourited = state.favourited,
+                        actionError = state.actionError,
+                        onOpenCover = { coverViewer = it },
+                        onOpenUploader = { showUploader = true },
+                        onSearchTag = onSearchTag,
+                        onLike = {
+                            // 先翻成点过的样子，服务端回话再确认；再点一次就是取消。
+                            val base = state.likedCount ?: loaded.likesCount
+                            val next = !state.liked
+                            state.liked = next
+                            state.likedCount = base + if (next) 1 else -1
+                            scope.launch {
+                                postWithRetry { pica.comics.like(state.comicId) }
+                                    .onSuccess { action ->
+                                        val server = !action.isCancelAction()
+                                        if (server != next) {
+                                            state.liked = server
+                                            state.likedCount = base + if (server) 1 else -1
+                                        }
+                                    }
+                                    .onFailure {
+                                        state.liked = !next
+                                        state.likedCount = base
+                                        state.actionError = "赞没点上，等一下再点一次"
+                                    }
+                            }
+                        },
+                        onFavourite = {
+                            val next = !state.favourited
+                            state.favourited = next
+                            scope.launch {
+                                postWithRetry { pica.comics.favourite(state.comicId) }
+                                    .onSuccess { action ->
+                                        val server = !action.isCancelAction()
+                                        if (server != next) state.favourited = server
+                                    }
+                                    .onFailure {
+                                        state.favourited = !next
+                                        state.actionError = "收藏没成功，等一下再点一次"
+                                    }
+                            }
+                        },
+                    )
+                }
 
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-            Box(Modifier.widthIn(max = 460.dp).fillMaxWidth()) {
+                state.error != null -> item(key = "detail-error") {
+                    FailedBlock(state.error.orEmpty()) { state.retry() }
+                }
+
+                state.loading -> item(key = "detail-loading") {
+                    LoadingBlock("正在拉详情…")
+                }
+            }
+
+            if (loaded != null) {
+                item(key = "detail-resume") {
+                    // order 0 是「打开过、还没读」的占位，不算真进度：当作没读过处理，
+                    // 不然会显示「上次读到 第 0 话」，点下去拿 0 去拉图，一本图全失败。
+                    val savedProgress = state.progress?.takeIf { it.order > 0 }
+                    ResumeCard(
+                        progress = savedProgress,
+                        onResume = {
+                            if (savedProgress != null) {
+                                onResume(savedProgress.order, savedProgress.page)
+                            } else {
+                                // 还没读过：从第一话开始。章节没拉下来就先拉一页再开，
+                                // 免得猜个序号结果是空的。
+                                scope.launch {
+                                    val pager = state.episodePager
+                                    if (pager.items.isEmpty()) pager.loadNext()
+                                    // 章节是倒序给的，第一话在最后一页里。
+                                    if (pager.lastPage > 1) pager.jumpTo(pager.lastPage)
+                                    // 序号 0 的章节是坏的，找第一话时跳过。
+                                    pager.items.filter { it.order > 0 }.minOfOrNull { it.order }
+                                        ?.let { onResume(it, 0) }
+                                }
+                            }
+                        },
+                    )
+                }
+            }
+
+            item(key = "detail-tabs") {
                 PillTabs(
                     labels = DetailTab.entries.map { it.label },
-                    selected = tabOrdinal,
-                    onSelect = { scope.launch { tabPager.animateScrollToPage(it) } },
+                    selected = state.tabOrdinal,
+                    onSelect = { state.tabOrdinal = it },
                 )
             }
-        }
 
-        HorizontalPager(
-            state = tabPager,
-            modifier = Modifier.weight(1f),
-            key = { DetailTab.entries[it].name },
-        ) { index ->
-            when (DetailTab.entries[index]) {
-                DetailTab.Chapters -> ChapterTab(
-                    state = state,
-                    scope = scope,
-                    onResume = onResume,
-                    onOpenEpisode = onOpenEpisode,
-                    episodeRowModifier = episodeRowModifier,
-                    onSearchTag = onSearchTag,
-                    onOpenCover = { coverViewer = it },
-                    onOpenUploader = { showUploader = true },
-                )
+            when (tab) {
+                DetailTab.Chapters -> {
+                    // 序号 0 的章节是坏的（拿它拉图会全失败），不显示、也不让人点进去。
+                    val chapters = state.episodePager.items.filter { it.order > 0 }
+                    if (chapters.isEmpty()) {
+                        item(key = "chapter-state") {
+                            when {
+                                state.episodePager.error != null ->
+                                    FailedBlock(state.episodePager.error.orEmpty()) {
+                                        scope.launch { state.episodePager.retry() }
+                                    }
 
-                DetailTab.Comments -> CommentTab(
-                    state = state,
-                    scope = scope,
+                                state.episodePager.loading -> LoadingBlock("正在拉章节…")
+                                else -> EmptyBlock("这本还没有章节")
+                            }
+                        }
+                    }
+                    items(count = chapters.size, key = { chapters[it].id }) { index ->
+                        val episode = chapters[index]
+                        val key = "episode-${episode.order}"
+                        EpisodeRow(
+                            episode = episode,
+                            resumed = (state.progress?.order ?: 0) > 0 &&
+                                state.progress?.order == episode.order,
+                            modifier = episodeRowModifier(key),
+                            onClick = { onOpenEpisode(episode, key) },
+                        )
+                    }
+                    if (chapters.isNotEmpty()) {
+                        item(key = "chapter-footer") {
+                            ListFooter(
+                                loading = state.episodePager.loading,
+                                error = state.episodePager.error,
+                                hasMore = state.episodePager.hasMore,
+                                onRetry = { scope.launch { state.episodePager.retry() } },
+                            )
+                        }
+                    }
+                }
+
+                DetailTab.Comments -> commentItems(
+                    pager = state.commentFeed.pager,
+                    onRetry = { scope.launch { state.commentFeed.pager.retry() } },
                     onReply = { replyTarget = it },
+                    topComments = state.commentFeed.topComments,
+                    repliedRootId = state.commentFeed.repliedRootId,
+                    repliedTick = state.commentFeed.repliedTick,
                 )
 
-                DetailTab.Recommend -> RecommendTab(
-                    state = state,
-                    onOpenComic = onOpenComic,
-                )
+                DetailTab.Recommend -> {
+                    val comics = state.recommendations
+                    when {
+                        comics.isNotEmpty() -> item(key = "detail-recommend") {
+                            RecommendRow(
+                                comics = comics,
+                                cardModifier = comicCardModifier,
+                                onOpenComic = onOpenComic,
+                            )
+                        }
+
+                        state.recommendLoading -> item(key = "recommend-state") {
+                            LoadingBlock("正在找相关推荐…")
+                        }
+
+                        state.recommendError != null -> item(key = "recommend-state") {
+                            FailedBlock(state.recommendError.orEmpty()) {
+                                scope.launch { state.loadRecommendations(force = true) }
+                            }
+                        }
+
+                        else -> item(key = "recommend-state") {
+                            EmptyBlock("这本还没有相关推荐")
+                        }
+                    }
+                }
             }
         }
 
@@ -427,7 +604,7 @@ fun ComicDetailContent(
         PagerJumpDialog(
             pager = state.commentFeed.pager,
             onDismiss = { showJump = false },
-            onJumped = { scope.launch { state.commentListState.scrollToItem(0) } },
+            onJumped = { scope.launch { listState.scrollToItem(0) } },
         )
     }
 
@@ -456,241 +633,6 @@ fun ComicDetailContent(
             // 只让被回复的那一行刷新楼中楼：重拉整个列表会缩回第一页，滚动位置就乱了。
             onReplied = { state.commentFeed.notifyReplied(target.root.id) },
         )
-    }
-}
-
-/**
- * 章节页：本子资料 + 继续阅读 + 章节列表。
- *
- * 封面、作者、点赞收藏这些算这一页的页头，跟章节列表一起滚；评论页和推荐页不重复放它，
- * 切过去就直接看内容。
- */
-@Composable
-private fun ChapterTab(
-    state: ComicDetailState,
-    scope: CoroutineScope,
-    onResume: (order: Int, page: Int) -> Unit,
-    onOpenEpisode: (Episode, String) -> Unit,
-    episodeRowModifier: @Composable (String) -> Modifier,
-    onSearchTag: (String) -> Unit,
-    onOpenCover: (String) -> Unit,
-    onOpenUploader: () -> Unit,
-) {
-    // 章节第一次进来看第一页；切走再切回来不重拉。
-    LaunchedEffect(state.episodePager) {
-        if (state.episodePager.items.isEmpty()) state.episodePager.loadNext()
-    }
-    // 章节滚到底续页。
-    LaunchedEffect(state.listState, state.episodePager) {
-        snapshotFlow {
-            val info = state.listState.layoutInfo
-            (info.visibleItemsInfo.lastOrNull()?.index ?: -1) to info.totalItemsCount
-        }
-            .distinctUntilChanged()
-            .collect { (lastVisible, total) ->
-                if (total > 0 && lastVisible >= total - 5 &&
-                    state.episodePager.hasMore &&
-                    state.episodePager.loading.not() &&
-                    state.episodePager.error == null
-                ) {
-                    state.episodePager.loadNext()
-                }
-            }
-    }
-
-    PageScaffold(
-        state = state.listState,
-        onRefresh = {
-            state.retry()
-            state.episodePager.reloadFirstPage()
-        },
-    ) {
-        val loaded = state.detail
-        when {
-            loaded != null -> item(key = "detail-hero") {
-                DetailHero(
-                    detail = loaded,
-                    liked = state.liked,
-                    likesCount = state.likedCount ?: loaded.likesCount,
-                    favourited = state.favourited,
-                    actionError = state.actionError,
-                    onOpenCover = onOpenCover,
-                    onOpenUploader = onOpenUploader,
-                    onSearchTag = onSearchTag,
-                    onLike = {
-                        // 先翻成点过的样子，服务端回话再确认；再点一次就是取消。
-                        val base = state.likedCount ?: loaded.likesCount
-                        val next = !state.liked
-                        state.liked = next
-                        state.likedCount = base + if (next) 1 else -1
-                        scope.launch {
-                            postWithRetry { pica.comics.like(state.comicId) }
-                                .onSuccess { action ->
-                                    val server = !action.isCancelAction()
-                                    if (server != next) {
-                                        state.liked = server
-                                        state.likedCount = base + if (server) 1 else -1
-                                    }
-                                }
-                                .onFailure {
-                                    state.liked = !next
-                                    state.likedCount = base
-                                    state.actionError = "赞没点上，等一下再点一次"
-                                }
-                        }
-                    },
-                    onFavourite = {
-                        val next = !state.favourited
-                        state.favourited = next
-                        scope.launch {
-                            postWithRetry { pica.comics.favourite(state.comicId) }
-                                .onSuccess { action ->
-                                    val server = !action.isCancelAction()
-                                    if (server != next) state.favourited = server
-                                }
-                                .onFailure {
-                                    state.favourited = !next
-                                    state.actionError = "收藏没成功，等一下再点一次"
-                                }
-                        }
-                    },
-                )
-            }
-
-            state.error != null -> item(key = "detail-error") {
-                FailedBlock(state.error.orEmpty()) { state.retry() }
-            }
-
-            state.loading -> item(key = "detail-loading") {
-                LoadingBlock("正在拉详情…")
-            }
-        }
-
-        if (loaded != null) {
-            item(key = "detail-resume") {
-                // order 0 是「打开过、还没读」的占位，不算真进度：当作没读过处理，
-                // 不然会显示「上次读到 第 0 话」，点下去拿 0 去拉图，一本图全失败。
-                val savedProgress = state.progress?.takeIf { it.order > 0 }
-                ResumeCard(
-                    progress = savedProgress,
-                    onResume = {
-                        if (savedProgress != null) {
-                            onResume(savedProgress.order, savedProgress.page)
-                        } else {
-                            // 还没读过：从第一话开始。章节没拉下来就先拉一页再开，
-                            // 免得猜个序号结果是空的。
-                            scope.launch {
-                                val pager = state.episodePager
-                                if (pager.items.isEmpty()) pager.loadNext()
-                                // 章节是倒序给的，第一话在最后一页里。
-                                if (pager.lastPage > 1) pager.jumpTo(pager.lastPage)
-                                // 序号 0 的章节是坏的，找第一话时跳过。
-                                pager.items.filter { it.order > 0 }.minOfOrNull { it.order }
-                                    ?.let { onResume(it, 0) }
-                            }
-                        }
-                    },
-                )
-            }
-        }
-
-        // 序号 0 的章节是坏的（拿它拉图会全失败），不显示、也不让人点进去。
-        val chapters = state.episodePager.items.filter { it.order > 0 }
-        if (chapters.isEmpty()) {
-            item(key = "chapter-state") {
-                when {
-                    state.episodePager.error != null ->
-                        FailedBlock(state.episodePager.error.orEmpty()) {
-                            scope.launch { state.episodePager.retry() }
-                        }
-
-                    state.episodePager.loading -> LoadingBlock("正在拉章节…")
-                    else -> EmptyBlock("这本还没有章节")
-                }
-            }
-        }
-        items(count = chapters.size, key = { chapters[it].id }) { index ->
-            val episode = chapters[index]
-            val key = "episode-${episode.order}"
-            EpisodeRow(
-                episode = episode,
-                resumed = (state.progress?.order ?: 0) > 0 &&
-                    state.progress?.order == episode.order,
-                modifier = episodeRowModifier(key),
-                onClick = { onOpenEpisode(episode, key) },
-            )
-        }
-        if (chapters.isNotEmpty()) {
-            item(key = "chapter-footer") {
-                ListFooter(
-                    loading = state.episodePager.loading,
-                    error = state.episodePager.error,
-                    hasMore = state.episodePager.hasMore,
-                    onRetry = { scope.launch { state.episodePager.retry() } },
-                )
-            }
-        }
-    }
-}
-
-/** 评论页：整套复用留言板的评论列表，进来重拉第一页（点赞数和回复会变）。 */
-@Composable
-private fun CommentTab(
-    state: ComicDetailState,
-    scope: CoroutineScope,
-    onReply: (CommentReplyTarget) -> Unit,
-) {
-    CommentAutoRefresh(state.commentFeed.pager)
-    CommentLoadMore(state.commentListState, state.commentFeed.pager)
-
-    PageScaffold(
-        state = state.commentListState,
-        onRefresh = { state.commentFeed.pager.reloadFirstPage() },
-    ) {
-        commentItems(
-            pager = state.commentFeed.pager,
-            onRetry = { scope.launch { state.commentFeed.pager.retry() } },
-            onReply = onReply,
-            topComments = state.commentFeed.topComments,
-            repliedRootId = state.commentFeed.repliedRootId,
-            repliedTick = state.commentFeed.repliedTick,
-        )
-    }
-}
-
-/** 推荐页：横着滑的一行相关本子，进来才拉，接口一次性给完。 */
-@Composable
-private fun RecommendTab(
-    state: ComicDetailState,
-    onOpenComic: (ComicSummary, String) -> Unit,
-) {
-    val scope = rememberCoroutineScope()
-    LaunchedEffect(state) { state.loadRecommendations() }
-
-    PageScaffold(
-        state = state.recommendListState,
-        onRefresh = { state.loadRecommendations(force = true) },
-    ) {
-        val comics = state.recommendations
-        when {
-            comics.isNotEmpty() -> item(key = "detail-recommend") {
-                RecommendRow(comics = comics, onOpenComic = onOpenComic)
-            }
-
-            state.recommendLoading -> item(key = "recommend-state") {
-                LoadingBlock("正在找相关推荐…")
-            }
-
-            state.recommendError != null -> item(key = "recommend-state") {
-                FailedBlock(state.recommendError.orEmpty()) {
-                    scope.launch { state.loadRecommendations(force = true) }
-                }
-            }
-
-            else -> item(key = "recommend-state") {
-                EmptyBlock("这本还没有相关推荐")
-            }
-        }
     }
 }
 
@@ -1141,6 +1083,7 @@ private fun DownloadAction(status: DownloadStatus, onStart: () -> Unit, onExport
 @Composable
 private fun RecommendRow(
     comics: List<ComicSummary>,
+    cardModifier: @Composable (String) -> Modifier,
     onOpenComic: (ComicSummary, String) -> Unit,
 ) {
     LazyRow(
@@ -1148,9 +1091,13 @@ private fun RecommendRow(
         modifier = Modifier.fillMaxWidth(),
     ) {
         items(comics, key = { it.id }) { comic ->
-            // 页面切换的 key 带个前缀：同一本可能在别的页面也有封面，别撞。
+            // 变形 key 带个前缀：同一本可能在别的页面也有封面，别撞。
             val key = "recommend-${comic.id}"
-            ComicCover(comic = comic, onClick = { onOpenComic(comic, key) })
+            ComicCover(
+                comic = comic,
+                modifier = cardModifier(key),
+                onClick = { onOpenComic(comic, key) },
+            )
         }
     }
 }
