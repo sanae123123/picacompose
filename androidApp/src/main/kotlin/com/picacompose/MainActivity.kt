@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -11,6 +12,7 @@ import com.picacompose.data.initDownloadNotifier
 import com.picacompose.data.initExportNotifier
 import com.picacompose.data.initDownloadStorage
 import com.picacompose.data.initPicaStorage
+import com.picacompose.data.ReaderVolumeKeys
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,5 +36,21 @@ class MainActivity : ComponentActivity() {
         setContent {
             App()
         }
+    }
+
+    /**
+     * 音量键翻页：阅读器在前台且设置里开着时，音量键拿来翻页，不再交给系统调音量。
+     * 别的时候（不在阅读器、开关关着）原样放行，音量键还是音量键。
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (ReaderVolumeKeys.onVolumeKey(
+                action = event.action,
+                keyCode = event.keyCode,
+                repeatCount = event.repeatCount,
+            )
+        ) {
+            return true
+        }
+        return super.dispatchKeyEvent(event)
     }
 }

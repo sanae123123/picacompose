@@ -57,6 +57,7 @@ import kotlinx.coroutines.launch
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaTextButton
+import com.picacompose.data.ReaderPreferences
 import com.picacompose.ui.components.UpdatePrompt
 import com.picacompose.ui.components.PicaToast
 import com.picacompose.ui.components.rememberBrowserOpener
@@ -113,6 +114,9 @@ fun SettingsContent(
     val preferences = remember { LinePreferences() }
     var qualityIndex by remember { mutableStateOf(preferences.imageQuality) }
     var qualityMenuOpen by remember { mutableStateOf(false) }
+    val readerPrefs = remember { ReaderPreferences() }
+    // 音量键翻页：默认开，改完立刻落盘，阅读器里按键时现读。
+    var volumeKeysTurnPage by remember { mutableStateOf(readerPrefs.volumeKeysTurnPage) }
     val downloadPrefs = remember { DownloadPreferences() }
     var concurrencyIndex by remember {
         mutableStateOf(
@@ -378,6 +382,22 @@ fun SettingsContent(
                     icon = PicaIcon.Speed,
                     title = "上次完成",
                     value = imageIpsAgoText(imageIpsAgo),
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+        }
+        item {
+            PicaCard {
+                SwitchRow(
+                    icon = PicaIcon.Bolt,
+                    title = "音量键翻页",
+                    summary = "阅读器里音量加翻上一页、音量减翻下一页，不调音量，单手看的时候省得去够屏幕。" +
+                        "关掉就恢复成调音量。默认开，改完立即生效。",
+                    checked = volumeKeysTurnPage,
+                    onCheckedChange = { on ->
+                        volumeKeysTurnPage = on
+                        readerPrefs.volumeKeysTurnPage = on
+                    },
                 )
             }
             Spacer(Modifier.height(14.dp))

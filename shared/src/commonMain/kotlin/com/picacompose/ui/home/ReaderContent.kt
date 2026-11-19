@@ -79,6 +79,7 @@ import coil3.compose.AsyncImagePainter
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.size.Size
+import com.picacompose.data.ReaderVolumeKeys
 import com.picacompose.data.pica
 import com.picacompose.data.OfflineImageKey
 import com.picacompose.data.OfflineLibrary
@@ -262,6 +263,22 @@ fun ReaderContent(
     val totalPages = pager.total
     // 总页数：服务端给了就用它，还没拉到就用已经有的条数。
     val pageCount = pager.total.takeIf { it > 0 } ?: pager.items.size
+
+    // 音量键翻页：开关在设置里，Android 那边把音量键扔进来，这里挪一页。
+    DisposableEffect(Unit) {
+        ReaderVolumeKeys.active = true
+        onDispose { ReaderVolumeKeys.active = false }
+    }
+    LaunchedEffect(Unit) {
+        ReaderVolumeKeys.events.collect { direction ->
+            val current = listState.firstVisibleItemIndex
+            // 到底了还有下一页就先续一页再挪，别在最后一张上卡住。
+            if (direction > 0 && current >= pager.items.size - 1 && pager.hasMore) pager.loadNext()
+            val target = (current + direction)
+                .coerceIn(0, (pager.items.size - 1).coerceAtLeast(0))
+            if (target != current) listState.animateScrollToItem(target)
+        }
+    }
 
     Box(modifier.fillMaxSize().background(Color.Black)) {
             // 放大后的拖动位移：平移画面，顶到边上就转成滚列表。
