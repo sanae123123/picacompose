@@ -278,9 +278,9 @@ private fun CollectionSection(
     }
 }
 
-/** 推荐位的一张封面：图 + 标题 + 作者。 */
+/** 推荐位的一张封面：图 + 标题 + 作者。详情页的相关推荐也用它，尺寸才对得上。 */
 @Composable
-private fun ComicCover(
+internal fun ComicCover(
     comic: ComicSummary,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

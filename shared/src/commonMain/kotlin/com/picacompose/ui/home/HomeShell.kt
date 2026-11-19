@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -71,6 +72,14 @@ private enum class OverlayPage {
     None, Messages, Forum, Leaderboard, Web, Comics, TagComics, Detail, Random, Reader, Search,
     Favorites, MyComments, ReadHistory, Downloads, EditProfile,
 }
+
+/** 详情页栈里的一层：从哪一本、以什么 key 点进来的、退出去要回哪儿。 */
+private data class DetailEntry(
+    val comicId: String,
+    val title: String,
+    val key: String,
+    val returnOrdinal: Int,
+)
 
 /** 变形动画要配对用的 key：源（按钮/卡片）和目标（整页）必须一致。 */
 private val OverlayPage.sharedKey: String
@@ -255,6 +264,23 @@ fun HomeShell(
     val detailState = remember(detailComicId) {
         if (detailComicId.isBlank()) null else ComicDetailState(detailComicId)
     }
+    // 详情页里点「相关推荐」会再开一本：把上一本压栈，返回时退回那一本。
+    // 从列表 / 首页进详情时清空，所以栈里最多几层，不会串到别的来路。
+    val detailStack = remember { mutableStateListOf<DetailEntry>() }
+
+    /** 详情页返回：有上一本就退回去，没有就回它被点开的那个页面。 */
+    val backFromDetail: () -> Unit = {
+        val previous = detailStack.removeLastOrNull()
+        if (previous != null) {
+            detailComicId = previous.comicId
+            detailTitle = previous.title
+            detailKey = previous.key
+            detailReturnOrdinal = previous.returnOrdinal
+            overlayOrdinal = OverlayPage.Detail.ordinal
+        } else {
+            overlayOrdinal = detailReturnOrdinal
+        }
+    }
     // 阅读器：从章节那一行撑开成整屏，读的是哪一话也记下来。
     var readerOrder by rememberSaveable { mutableIntStateOf(0) }
     var readerKey by rememberSaveable { mutableStateOf("episode") }
@@ -391,7 +417,7 @@ fun HomeShell(
         // 阅读器退回详情页；详情页退回它被点开的地方（列表页 / 排行榜）；
         // 搜索退回分类页（顺手清空搜索页）；别的整页直接回主界面。
         when (overlay) {
-            OverlayPage.Detail -> overlayOrdinal = detailReturnOrdinal
+            OverlayPage.Detail -> backFromDetail()
             OverlayPage.TagComics -> overlayOrdinal = if (detailComicId == tagPageOriginComicId) {
                 OverlayPage.Detail.ordinal
             } else {
@@ -474,6 +500,8 @@ fun HomeShell(
                                             with(shared) { overlayBounds(key, contentScope) }
                                         },
                                         onOpenComic = { comic, key ->
+                                            // 从外面点进新的一本：详情栈清掉，返回时回它被点开的页面。
+                                            detailStack.clear()
                                             detailComicId = comic.id
                                             detailTitle = comic.title
                                             detailKey = key
@@ -664,6 +692,8 @@ fun HomeShell(
                                         with(shared) { overlayBounds(key, contentScope) }
                                     },
                                     onOpenComic = { comic, key ->
+                                        // 从外面点进新的一本：详情栈清掉，返回时回它被点开的页面。
+                                        detailStack.clear()
                                         detailComicId = comic.id
                                         detailTitle = comic.title
                                         detailKey = key
@@ -696,6 +726,8 @@ fun HomeShell(
                                         with(shared) { overlayBounds(key, contentScope) }
                                     },
                                     onOpenComic = { comic, key ->
+                                        // 从外面点进新的一本：详情栈清掉，返回时回它被点开的页面。
+                                        detailStack.clear()
                                         detailComicId = comic.id
                                         detailTitle = comic.title
                                         detailKey = key
@@ -721,6 +753,8 @@ fun HomeShell(
                                         with(shared) { overlayBounds(key, contentScope) }
                                     },
                                     onOpenComic = { comic, key ->
+                                        // 从外面点进新的一本：详情栈清掉，返回时回它被点开的页面。
+                                        detailStack.clear()
                                         detailComicId = comic.id
                                         detailTitle = comic.title
                                         detailKey = key
@@ -745,6 +779,8 @@ fun HomeShell(
                                         with(shared) { overlayBounds(key, contentScope) }
                                     },
                                     onOpenComic = { comic, key ->
+                                        // 从外面点进新的一本：详情栈清掉，返回时回它被点开的页面。
+                                        detailStack.clear()
                                         detailComicId = comic.id
                                         detailTitle = comic.title
                                         detailKey = key
@@ -761,6 +797,8 @@ fun HomeShell(
                                         with(shared) { overlayBounds(key, contentScope) }
                                     },
                                     onOpenComic = { comic, key ->
+                                        // 从外面点进新的一本：详情栈清掉，返回时回它被点开的页面。
+                                        detailStack.clear()
                                         detailComicId = comic.id
                                         detailTitle = comic.title
                                         detailKey = key
@@ -787,6 +825,8 @@ fun HomeShell(
                                         with(shared) { overlayBounds(key, contentScope) }
                                     },
                                     onOpenComic = { comicId, title, key ->
+                                        // 从外面点进新的一本：详情栈清掉，返回时回它被点开的页面。
+                                        detailStack.clear()
                                         detailComicId = comicId
                                         detailTitle = title
                                         detailKey = key
@@ -801,6 +841,8 @@ fun HomeShell(
                                         with(shared) { overlayBounds(key, contentScope) }
                                     },
                                     onOpenComic = { comicId, title, key ->
+                                        // 从外面点进新的一本：详情栈清掉，返回时回它被点开的页面。
+                                        detailStack.clear()
                                         detailComicId = comicId
                                         detailTitle = title
                                         detailKey = key
@@ -816,6 +858,8 @@ fun HomeShell(
                                         with(shared) { overlayBounds(key, contentScope) }
                                     },
                                     onOpenComic = { comicId, title, key ->
+                                        // 从外面点进新的一本：详情栈清掉，返回时回它被点开的页面。
+                                        detailStack.clear()
                                         detailComicId = comicId
                                         detailTitle = title
                                         detailKey = key
@@ -830,6 +874,8 @@ fun HomeShell(
                                         with(shared) { overlayBounds(key, contentScope) }
                                     },
                                     onOpenComic = { comic, key ->
+                                        // 从外面点进新的一本：详情栈清掉，返回时回它被点开的页面。
+                                        detailStack.clear()
                                         detailComicId = comic.id
                                         detailTitle = comic.title
                                         detailKey = key
@@ -842,10 +888,29 @@ fun HomeShell(
                                     ComicDetailContent(
                                         state = state,
                                         seedTitle = detailTitle,
-                                        onBack = { overlayOrdinal = detailReturnOrdinal },
+                                        // 推荐里点开的另一本会压栈，返回先退回上一本。
+                                        onBack = backFromDetail,
                                         // 章节行也挂变形源：点开从那一行撑成整屏阅读器。
                                         episodeRowModifier = { key ->
                                             with(shared) { overlayBounds(key, contentScope) }
+                                        },
+                                        // 推荐卡片也挂变形源：点开从那张封面长成另一本的详情。
+                                        comicCardModifier = { key ->
+                                            with(shared) { overlayBounds(key, contentScope) }
+                                        },
+                                        onOpenComic = { comic, key ->
+                                            detailStack.add(
+                                                DetailEntry(
+                                                    comicId = detailComicId,
+                                                    title = detailTitle,
+                                                    key = detailKey,
+                                                    returnOrdinal = detailReturnOrdinal,
+                                                ),
+                                            )
+                                            detailComicId = comic.id
+                                            detailTitle = comic.title
+                                            detailKey = key
+                                            overlayOrdinal = OverlayPage.Detail.ordinal
                                         },
                                         onOpenEpisode = { episode, key ->
                                             readerOrder = episode.order

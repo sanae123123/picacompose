@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
@@ -51,6 +53,7 @@ import com.picacompose.data.rememberExportLauncher
 import com.picacompose.data.pica
 import com.picacompose.data.readingProgressStore
 import com.picacompose.picaapi.model.ComicDetail
+import com.picacompose.picaapi.model.ComicSummary
 import com.picacompose.picaapi.model.Creator
 import com.picacompose.picaapi.model.Episode
 import com.picacompose.ui.components.PicaGlyph
@@ -69,10 +72,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
-/** 详情页的分区：章节列表和评论区各占一半的用处。 */
+/** 详情页的分区：章节列表、评论区、相关推荐。 */
 internal enum class DetailTab(val label: String) {
     Chapters("章节"),
     Comments("评论"),
+    Recommend("推荐"),
 }
 
 /**
@@ -109,6 +113,30 @@ class ComicDetailState(comicId: String) {
         itemKey = { it.id },
     )
     val commentFeed: CommentFeed = CommentFeed(comicId)
+
+    // 相关推荐：接口一次性给完，点进「推荐」那一栏才拉，拉过就不再重复请求。
+    var recommendations by mutableStateOf<List<ComicSummary>>(emptyList())
+        private set
+    var recommendLoading by mutableStateOf(false)
+        private set
+    var recommendError by mutableStateOf<String?>(null)
+        private set
+    private var recommendLoaded = false
+
+    suspend fun loadRecommendations(force: Boolean = false) {
+        if (recommendLoading) return
+        if (!force && recommendLoaded) return
+        recommendLoading = true
+        recommendError = null
+        catchingLoad { pica.comics.recommendation(comicId) }
+            .onSuccess { list ->
+                // 推荐里偶尔会把自己带进来，没意义。
+                recommendations = list.filter { it.id != comicId }
+                recommendLoaded = true
+            }
+            .onFailure { recommendError = it.message ?: "相关推荐拉不下来" }
+        recommendLoading = false
+    }
 
     // 读到哪儿了：从本机存储里捞出来，读完一章实时更新。
     private val progressStore = readingProgressStore
@@ -179,10 +207,10 @@ fun rememberComicDetailState(comicId: String): ComicDetailState =
     remember(comicId) { ComicDetailState(comicId) }
 
 /**
- * 本子详情页：上面是封面和资料，下面切「章节 / 评论」。
+ * 本子详情页：上面是封面和资料，下面切「章节 / 评论 / 推荐」。
  *
  * 章节列表和评论区都是分页的，各自滚到底续页；评论区整套复用 [CommentBits]，
- * 置顶评论、回复、跳页都跟着一起有。
+ * 置顶评论、回复、跳页都跟着一起有。相关推荐是横着滑的一行封面，点一张就换到那一本。
  */
 @Composable
 fun ComicDetailContent(
@@ -192,7 +220,11 @@ fun ComicDetailContent(
     seedTitle: String? = null,
     /** 章节行的变形源 key，点开时从那一行撑开成阅读器。 */
     episodeRowModifier: @Composable (String) -> Modifier = { Modifier },
+    /** 推荐卡片的变形源 key，点开时从那张封面长成另一本的详情。 */
+    comicCardModifier: @Composable (String) -> Modifier = { Modifier },
     onOpenEpisode: (Episode, String) -> Unit = { _, _ -> },
+    /** 点相关推荐里的另一本：换成那一本的详情。 */
+    onOpenComic: (ComicSummary, String) -> Unit = { _, _ -> },
     /** 「继续阅读」：上次读到第几话、第几页。 */
     onResume: (order: Int, page: Int) -> Unit = { _, _ -> },
     /** 点本子标签：按这个标签看同类本子。 */
@@ -234,6 +266,10 @@ fun ComicDetailContent(
     if (tab == DetailTab.Comments) {
         CommentAutoRefresh(state.commentFeed.pager)
         CommentLoadMore(listState, state.commentFeed.pager)
+    }
+    // 推荐也是进来才拉，接口一次性给完。
+    LaunchedEffect(state, tab) {
+        if (tab == DetailTab.Recommend) state.loadRecommendations()
     }
 
     var replyTarget by remember { mutableStateOf<CommentReplyTarget?>(null) }
@@ -304,6 +340,7 @@ fun ComicDetailContent(
                 when (tab) {
                     DetailTab.Chapters -> state.episodePager.reloadFirstPage()
                     DetailTab.Comments -> state.commentFeed.pager.reloadFirstPage()
+                    DetailTab.Recommend -> state.loadRecommendations(force = true)
                 }
             },
             header = {
@@ -501,6 +538,33 @@ fun ComicDetailContent(
                     repliedRootId = state.commentFeed.repliedRootId,
                     repliedTick = state.commentFeed.repliedTick,
                 )
+
+                DetailTab.Recommend -> {
+                    val comics = state.recommendations
+                    when {
+                        comics.isNotEmpty() -> item(key = "detail-recommend") {
+                            RecommendRow(
+                                comics = comics,
+                                cardModifier = comicCardModifier,
+                                onOpenComic = onOpenComic,
+                            )
+                        }
+
+                        state.recommendLoading -> item(key = "recommend-state") {
+                            LoadingBlock("正在找相关推荐…")
+                        }
+
+                        state.recommendError != null -> item(key = "recommend-state") {
+                            FailedBlock(state.recommendError.orEmpty()) {
+                                scope.launch { state.loadRecommendations(force = true) }
+                            }
+                        }
+
+                        else -> item(key = "recommend-state") {
+                            EmptyBlock("这本还没有相关推荐")
+                        }
+                    }
+                }
             }
         }
 
@@ -986,6 +1050,33 @@ private fun DownloadAction(status: DownloadStatus, onStart: () -> Unit, onExport
                 icon = PicaIcon.Download,
                 modifier = Modifier.size(20.dp),
                 tint = colors.error,
+            )
+        }
+    }
+}
+
+/**
+ * 相关推荐：横着滑一行的本子封面，点一张就换成那一本的详情。
+ *
+ * 接口一次性返回十几本，没有分页，所以不用 Pager，直接铺完就行。
+ */
+@Composable
+private fun RecommendRow(
+    comics: List<ComicSummary>,
+    cardModifier: @Composable (String) -> Modifier,
+    onOpenComic: (ComicSummary, String) -> Unit,
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        items(comics, key = { it.id }) { comic ->
+            // 变形 key 带个前缀：同一本可能在别的页面也有封面，别撞。
+            val key = "recommend-${comic.id}"
+            ComicCover(
+                comic = comic,
+                modifier = cardModifier(key),
+                onClick = { onOpenComic(comic, key) },
             )
         }
     }
