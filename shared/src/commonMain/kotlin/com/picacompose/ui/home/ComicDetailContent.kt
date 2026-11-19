@@ -710,6 +710,41 @@ private fun ResumeCard(
     }
 }
 
+/**
+ * 作者字段拆成一个人一条：接口把多作者拼成一个字符串，
+ * 常见是「A，B」，个别用逗号/分号/顿号/斜杠隔开。
+ */
+internal fun splitAuthors(raw: String?): List<String> {
+    val text = raw?.trim().orEmpty()
+    if (text.isEmpty()) return emptyList()
+    return text
+        .split('，', ',', '；', ';', '、')
+        .flatMap { it.split(" / ", "／") }
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .distinct()
+}
+
+/** 可点的作者名：点一下只看这个作者的本子。 */
+@Composable
+private fun AuthorLink(
+    name: String,
+    style: androidx.compose.ui.text.TextStyle,
+    modifier: Modifier,
+    onClick: (String) -> Unit,
+) {
+    Text(
+        text = name,
+        style = style,
+        color = MiuixTheme.colorScheme.primary,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .clickable { onClick(name) },
+    )
+}
+
 /** 详情页头：封面 + 标题 / 作者 / 数据 / 分类 + 点赞收藏。 */
 @Composable
 private fun DetailHero(
@@ -750,20 +785,24 @@ private fun DetailHero(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val author = detail.author?.takeIf { it.isNotBlank() }
-                if (author != null) {
+                // 作者可能是两个人（「A，B」这种），一人一行，都能点开看各自的本子。
+                val authors = remember(detail.author) { splitAuthors(detail.author) }
+                authors.firstOrNull()?.let { first ->
                     Spacer(Modifier.height(6.dp))
-                    // 作者名当链接用：点一下只看这个作者的本子，颜色跟着标签一起用主色。
-                    Text(
-                        text = author,
+                    AuthorLink(
+                        name = first,
                         style = MiuixTheme.textStyles.footnote1,
-                        color = colors.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .then(authorModifier(author))
-                            .clip(RoundedCornerShape(6.dp))
-                            .clickable { onSearchAuthor(author) },
+                        modifier = authorModifier(first),
+                        onClick = onSearchAuthor,
+                    )
+                }
+                authors.getOrNull(1)?.let { second ->
+                    Spacer(Modifier.height(2.dp))
+                    AuthorLink(
+                        name = second,
+                        style = MiuixTheme.textStyles.footnote2,
+                        modifier = authorModifier(second),
+                        onClick = onSearchAuthor,
                     )
                 }
                 Spacer(Modifier.height(8.dp))
