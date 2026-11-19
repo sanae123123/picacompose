@@ -909,99 +909,117 @@ fun HomeShell(
                                 )
 
                                 OverlayPage.Detail -> detailState?.let { current ->
-                                    // 从推荐点进另一本时 overlay 还是 Detail，外层那层不会重放动画；
-                                    // 这里按 comicId 再做一层横向滑动，两本之间的过渡才在。
-                                    AnimatedContent(
-                                        targetState = detailComicId,
-                                        modifier = Modifier.fillMaxSize(),
-                                        transitionSpec = {
-                                            if (detailNavDirection > 0) {
-                                                (slideInHorizontally(tween(280)) { it } + fadeIn(tween(200))) togetherWith
-                                                    (slideOutHorizontally(tween(280)) { -it / 4 } + fadeOut(tween(160)))
+                                    // 详情里点推荐再进另一本时 overlay 还是 Detail，外层那层不会变形；
+                                    // 所以这一层自己再套一个共享布局：点哪一行，就从那一行撑成新的一本详情。
+                                    SharedTransitionLayout(Modifier.fillMaxSize()) {
+                                        val detailShared = this
+                                        AnimatedContent(
+                                            targetState = detailComicId,
+                                            modifier = Modifier.fillMaxSize(),
+                                            transitionSpec = {
+                                                if (detailNavDirection > 0) {
+                                                    // 往前换本是「那一行长大」，变形自己会动，这里只补一层淡入淡出。
+                                                    fadeIn(tween(200, delayMillis = 60)) togetherWith
+                                                        fadeOut(tween(140))
+                                                } else {
+                                                    // 退回上一本是整页推回去，保持原来的横向滑动。
+                                                    (slideInHorizontally(tween(280)) { -it / 4 } + fadeIn(tween(200))) togetherWith
+                                                        (slideOutHorizontally(tween(280)) { it } + fadeOut(tween(160)))
+                                                }
+                                            },
+                                            label = "detailSwap",
+                                        ) { id ->
+                                            val pageScope = this
+                                            val state = detailStates[id] ?: current
+                                            // 这一本当初是从哪一行点进来的：源和目标用同一个 key 才连得上。
+                                            val sourceKey = if (id == detailComicId) {
+                                                detailKey
                                             } else {
-                                                (slideInHorizontally(tween(280)) { -it / 4 } + fadeIn(tween(200))) togetherWith
-                                                    (slideOutHorizontally(tween(280)) { it } + fadeOut(tween(160)))
+                                                detailStack.lastOrNull { it.comicId == id }?.key
+                                                    ?: "detail-$id"
                                             }
-                                        },
-                                        label = "detailSwap",
-                                    ) { id ->
-                                    val state = detailStates[id] ?: current
-                                    ComicDetailContent(
-                                        state = state,
-                                        seedTitle = detailTitle,
-                                        // 推荐里点开的另一本会压栈，返回先退回上一本。
-                                        onBack = backFromDetail,
-                                        // 章节行也挂变形源：点开从那一行撑成整屏阅读器。
-                                        episodeRowModifier = { key ->
-                                            with(shared) { overlayBounds(key, contentScope) }
-                                        },
-                                        // 推荐行、标签小块、「继续阅读」卡也各挂一个，
-                                        // 点开就从那一块长成整页。
-                                        comicCardModifier = { key ->
-                                            with(shared) { overlayBounds(key, contentScope) }
-                                        },
-                                        tagModifier = { tag ->
-                                            with(shared) {
-                                                overlayBounds("tag-${tag.trim()}", contentScope)
+                                            Box(
+                                                modifier = with(detailShared) {
+                                                    overlayBounds(sourceKey, pageScope)
+                                                }.fillMaxSize(),
+                                            ) {
+                                                ComicDetailContent(
+                                                    state = state,
+                                                    seedTitle = detailTitle,
+                                                    // 推荐里点开的另一本会压栈，返回先退回上一本。
+                                                    onBack = backFromDetail,
+                                                    // 章节行、标签、「继续阅读」去的是外层整页，变形源仍挂在外层共享布局上。
+                                                    episodeRowModifier = { key ->
+                                                        with(shared) { overlayBounds(key, contentScope) }
+                                                    },
+                                                    tagModifier = { tag ->
+                                                        with(shared) {
+                                                            overlayBounds("tag-${tag.trim()}", contentScope)
+                                                        }
+                                                    },
+                                                    resumeCardModifier = with(shared) {
+                                                        overlayBounds("resumeCard", contentScope)
+                                                    },
+                                                    // 推荐行去的是这一层里的另一本详情，变形源挂内层。
+                                                    comicCardModifier = { key ->
+                                                        with(detailShared) { overlayBounds(key, pageScope) }
+                                                    },
+                                                    onOpenComic = { comic, key ->
+                                                        detailStack.add(
+                                                            DetailEntry(
+                                                                comicId = detailComicId,
+                                                                title = detailTitle,
+                                                                key = detailKey,
+                                                                returnOrdinal = detailReturnOrdinal,
+                                                            ),
+                                                        )
+                                                        detailNavDirection = 1
+                                                        detailComicId = comic.id
+                                                        detailTitle = comic.title
+                                                        detailKey = key
+                                                        overlayOrdinal = OverlayPage.Detail.ordinal
+                                                    },
+                                                    onOpenEpisode = { episode, key ->
+                                                        readerOrder = episode.order
+                                                        // 点的正是上次读的那一话就接着看，别从头再来。
+                                                        val saved = state.progress
+                                                        readerPage = if (saved != null && saved.order == episode.order) {
+                                                            saved.page
+                                                        } else {
+                                                            0
+                                                        }
+                                                        readerKey = key
+                                                        overlayOrdinal = OverlayPage.Reader.ordinal
+                                                    },
+                                                    // 点本子标签：开一个只筛这个标签的本子列表，返回回详情。
+                                                    onSearchTag = { tag ->
+                                                        val clean = tag.trim()
+                                                        if (clean.isNotBlank()) {
+                                                            tagPageTagsRaw = clean
+                                                            tagPageExcludedTagsRaw = ""
+                                                            tagPageSort = "dd"
+                                                            tagPageFinished = ComicFinished.All
+                                                            tagPageOriginComicId = detailComicId
+                                                            tagPageReturnOrdinal = detailReturnOrdinal
+                                                            // 整页的变形 key 跟详情里点的那块标签对上。
+                                                            comicKey = "tag-$clean"
+                                                            overlayOrdinal = OverlayPage.TagComics.ordinal
+                                                        }
+                                                    },
+                                                    // 「继续阅读」：从那张卡长成阅读器，key 跟卡上的变形源对上。
+                                                    onResume = { order, page ->
+                                                        // order 0 是「打开过还没读」的占位，不是真章节；
+                                                        // 真传进来也当没读过处理，0 拿去拉图会全失败。
+                                                        if (order > 0) {
+                                                            readerOrder = order
+                                                            readerPage = page
+                                                            readerKey = "resumeCard"
+                                                            overlayOrdinal = OverlayPage.Reader.ordinal
+                                                        }
+                                                    },
+                                                )
                                             }
-                                        },
-                                        resumeCardModifier = with(shared) {
-                                            overlayBounds("resumeCard", contentScope)
-                                        },
-                                        onOpenComic = { comic, key ->
-                                            detailStack.add(
-                                                DetailEntry(
-                                                    comicId = detailComicId,
-                                                    title = detailTitle,
-                                                    key = detailKey,
-                                                    returnOrdinal = detailReturnOrdinal,
-                                                ),
-                                            )
-                                            detailNavDirection = 1
-                                            detailComicId = comic.id
-                                            detailTitle = comic.title
-                                            detailKey = key
-                                            overlayOrdinal = OverlayPage.Detail.ordinal
-                                        },
-                                        onOpenEpisode = { episode, key ->
-                                            readerOrder = episode.order
-                                            // 点的正是上次读的那一话就接着看，别从头再来。
-                                            val saved = state.progress
-                                            readerPage = if (saved != null && saved.order == episode.order) {
-                                                saved.page
-                                            } else {
-                                                0
-                                            }
-                                            readerKey = key
-                                            overlayOrdinal = OverlayPage.Reader.ordinal
-                                        },
-                                        // 点本子标签：开一个只筛这个标签的本子列表，返回回详情。
-                                        onSearchTag = { tag ->
-                                            val clean = tag.trim()
-                                            if (clean.isNotBlank()) {
-                                                tagPageTagsRaw = clean
-                                                tagPageExcludedTagsRaw = ""
-                                                tagPageSort = "dd"
-                                                tagPageFinished = ComicFinished.All
-                                                tagPageOriginComicId = detailComicId
-                                                tagPageReturnOrdinal = detailReturnOrdinal
-                                                // 整页的变形 key 跟详情里点的那块标签对上。
-                                                comicKey = "tag-$clean"
-                                                overlayOrdinal = OverlayPage.TagComics.ordinal
-                                            }
-                                        },
-                                        // 「继续阅读」：从那张卡长成阅读器，key 跟卡上的变形源对上。
-                                        onResume = { order, page ->
-                                            // order 0 是「打开过还没读」的占位，不是真章节；
-                                            // 真传进来也当没读过处理，0 拿去拉图会全失败。
-                                            if (order > 0) {
-                                                readerOrder = order
-                                                readerPage = page
-                                                readerKey = "resumeCard"
-                                                overlayOrdinal = OverlayPage.Reader.ordinal
-                                            }
-                                        },
-                                    )
+                                        }
                                     }
                                 }
 
