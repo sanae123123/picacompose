@@ -226,6 +226,8 @@ fun ComicDetailContent(
     comicCardModifier: @Composable (String) -> Modifier = { Modifier },
     /** 本子标签的变形源 key，点开时从那一小块标签长成标签列表页。 */
     tagModifier: @Composable (String) -> Modifier = { Modifier },
+    /** 作者名的变形源 key，点开时从这一行作者长成作者本子列表。 */
+    authorModifier: @Composable (String) -> Modifier = { Modifier },
     /** 「继续阅读」那张卡的变形源，点开时从这张卡长成阅读器。 */
     resumeCardModifier: Modifier = Modifier,
     onOpenEpisode: (Episode, String) -> Unit = { _, _ -> },
@@ -235,6 +237,8 @@ fun ComicDetailContent(
     onResume: (order: Int, page: Int) -> Unit = { _, _ -> },
     /** 点本子标签：按这个标签看同类本子。 */
     onSearchTag: (String) -> Unit = {},
+    /** 点作者名：只看这个作者的本子。 */
+    onSearchAuthor: (String) -> Unit = {},
 ) {
     val colors = MiuixTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -429,6 +433,8 @@ fun ComicDetailContent(
                         onOpenUploader = { showUploader = true },
                         onSearchTag = onSearchTag,
                         tagModifier = tagModifier,
+                        onSearchAuthor = onSearchAuthor,
+                        authorModifier = authorModifier,
                         onLike = {
                             // 先翻成点过的样子，服务端回话再确认；再点一次就是取消。
                             val base = state.likedCount ?: loaded.likesCount
@@ -717,6 +723,9 @@ private fun DetailHero(
     onSearchTag: (String) -> Unit,
     /** 标签小块的变形源，点开时从这块标签长成标签列表页。 */
     tagModifier: @Composable (String) -> Modifier = { Modifier },
+    onSearchAuthor: (String) -> Unit = {},
+    /** 作者名的变形源，点开时从这行作者长成作者本子列表。 */
+    authorModifier: @Composable (String) -> Modifier = { Modifier },
     onLike: () -> Unit,
     onFavourite: () -> Unit,
 ) {
@@ -744,12 +753,17 @@ private fun DetailHero(
                 val author = detail.author?.takeIf { it.isNotBlank() }
                 if (author != null) {
                     Spacer(Modifier.height(6.dp))
+                    // 作者名当链接用：点一下只看这个作者的本子，颜色跟着标签一起用主色。
                     Text(
                         text = author,
                         style = MiuixTheme.textStyles.footnote1,
-                        color = colors.onSurfaceSecondary,
+                        color = colors.primary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .then(authorModifier(author))
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { onSearchAuthor(author) },
                     )
                 }
                 Spacer(Modifier.height(8.dp))

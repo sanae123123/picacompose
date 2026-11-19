@@ -214,6 +214,8 @@ fun HomeShell(
     val comicListState = rememberLazyListState()
     // 详情页里点标签打开的「同类本子」页：自己一套筛选条件，不和分类列表互相覆盖。
     var tagPageTagsRaw by rememberSaveable { mutableStateOf("") }
+    // 从详情点作者名进来时只按作者筛；点标签进来时这里清空，两种入口共用这一页。
+    var tagPageAuthor by rememberSaveable { mutableStateOf("") }
     var tagPageSort by rememberSaveable { mutableStateOf<String?>("dd") }
     var tagPageFinished by rememberSaveable { mutableStateOf(ComicFinished.All) }
     var tagPageExcludedTagsRaw by rememberSaveable { mutableStateOf("") }
@@ -225,6 +227,7 @@ fun HomeShell(
     }
     val tagPagePager = remember(
         tagPageTagsRaw,
+        tagPageAuthor,
         tagPageSort,
         tagPageFinished,
         tagPageExcludedTagsRaw,
@@ -237,6 +240,7 @@ fun HomeShell(
                 pica.comics.list(
                     page = page,
                     tag = tagPageTags.firstOrNull(),
+                    author = tagPageAuthor.takeIf { it.isNotBlank() },
                     sort = tagPageSort,
                     finished = tagPageFinished.value,
                 )
@@ -660,7 +664,8 @@ fun HomeShell(
                     // 整页本体：从按钮那一块变形到整屏，所以它自带底色、盖住底部栏。
                     val pageKey = when (page) {
                         OverlayPage.Web -> webKey
-                        OverlayPage.Comics -> comicKey
+                        // 分类列表、标签列表、作者列表都是整列表页，各自带一个 key 好接变形。
+                        OverlayPage.Comics, OverlayPage.TagComics -> comicKey
                         OverlayPage.Detail -> detailKey
                         OverlayPage.Reader -> readerKey
                         else -> page.sharedKey
@@ -760,7 +765,11 @@ fun HomeShell(
                                 )
 
                                 OverlayPage.TagComics -> ComicListContent(
-                                    title = "标签：${tagPageTags.firstOrNull().orEmpty()}",
+                                    title = if (tagPageAuthor.isNotBlank()) {
+                                        "作者：$tagPageAuthor"
+                                    } else {
+                                        "标签：${tagPageTags.firstOrNull().orEmpty()}"
+                                    },
                                     pager = tagPagePager,
                                     listState = tagPageListState,
                                     sort = tagPageSort,
@@ -947,6 +956,11 @@ fun HomeShell(
                                                             overlayBounds("tag-${tag.trim()}", contentScope)
                                                         }
                                                     },
+                                                    authorModifier = { name ->
+                                                        with(shared) {
+                                                            overlayBounds("author-${name.trim()}", contentScope)
+                                                        }
+                                                    },
                                                     resumeCardModifier = with(shared) {
                                                         overlayBounds("resumeCard", contentScope)
                                                     },
@@ -981,11 +995,28 @@ fun HomeShell(
                                                         readerKey = key
                                                         overlayOrdinal = OverlayPage.Reader.ordinal
                                                     },
+                                                    // 点作者名：开一个只看这个作者的本子列表，返回回详情。
+                                                    onSearchAuthor = { name ->
+                                                        val clean = name.trim()
+                                                        if (clean.isNotBlank()) {
+                                                            tagPageAuthor = clean
+                                                            tagPageTagsRaw = ""
+                                                            tagPageExcludedTagsRaw = ""
+                                                            tagPageSort = "dd"
+                                                            tagPageFinished = ComicFinished.All
+                                                            tagPageOriginComicId = detailComicId
+                                                            tagPageReturnOrdinal = detailReturnOrdinal
+                                                            // 整页的变形 key 跟详情里点的那行作者对上。
+                                                            comicKey = "author-$clean"
+                                                            overlayOrdinal = OverlayPage.TagComics.ordinal
+                                                        }
+                                                    },
                                                     // 点本子标签：开一个只筛这个标签的本子列表，返回回详情。
                                                     onSearchTag = { tag ->
                                                         val clean = tag.trim()
                                                         if (clean.isNotBlank()) {
                                                             tagPageTagsRaw = clean
+                                                            tagPageAuthor = ""
                                                             tagPageExcludedTagsRaw = ""
                                                             tagPageSort = "dd"
                                                             tagPageFinished = ComicFinished.All
