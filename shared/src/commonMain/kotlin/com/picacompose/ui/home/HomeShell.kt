@@ -5,6 +5,11 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -259,11 +264,24 @@ fun HomeShell(
     // 详情页的 key 由开它的那个入口决定（列表行 / 首页封面 / 排行榜行各不相同），
     // 所以这里存下来，不按 id 硬拼。
     var detailKey by rememberSaveable { mutableStateOf("comicDetail") }
-    // 详情页的状态提到这里：进阅读器再退回详情时页面会被重建，
-    // 数据和滚动位置留在外面，退回来还是刚才那一屏。
+    // 详情页的状态提到这里，而且按本子缓存：从推荐进下一本、再返回上一本时，
+    // 上一本的详情、章节、评论和滚动位置都还在，不用整页重来一遍。
+    val detailStates = remember { mutableMapOf<String, ComicDetailState>() }
     val detailState = remember(detailComicId) {
-        if (detailComicId.isBlank()) null else ComicDetailState(detailComicId)
+        if (detailComicId.isBlank()) {
+            null
+        } else {
+            detailStates.getOrPut(detailComicId) {
+                // 最多留八本，再多就把最早那本丢掉。
+                if (detailStates.size >= 8) {
+                    detailStates.keys.firstOrNull()?.let(detailStates::remove)
+                }
+                ComicDetailState(detailComicId)
+            }
+        }
     }
+    // 详情之间换本子的方向：1 = 往下一本走，-1 = 退回上一本，决定滑入滑出往哪边。
+    var detailNavDirection by remember { mutableIntStateOf(1) }
     // 详情页里点「相关推荐」会再开一本：把上一本压栈，返回时退回那一本。
     // 从列表 / 首页进详情时清空，所以栈里最多几层，不会串到别的来路。
     val detailStack = remember { mutableStateListOf<DetailEntry>() }
@@ -272,6 +290,8 @@ fun HomeShell(
     val backFromDetail: () -> Unit = {
         val previous = detailStack.removeLastOrNull()
         if (previous != null) {
+            // 返回到上一本：从左边滑回来。
+            detailNavDirection = -1
             detailComicId = previous.comicId
             detailTitle = previous.title
             detailKey = previous.key
@@ -884,7 +904,24 @@ fun HomeShell(
                                     },
                                 )
 
-                                OverlayPage.Detail -> detailState?.let { state ->
+                                OverlayPage.Detail -> detailState?.let { current ->
+                                    // 从推荐点进另一本时 overlay 还是 Detail，外层那层不会重放动画；
+                                    // 这里按 comicId 再做一层横向滑动，两本之间的过渡才在。
+                                    AnimatedContent(
+                                        targetState = detailComicId,
+                                        modifier = Modifier.fillMaxSize(),
+                                        transitionSpec = {
+                                            if (detailNavDirection > 0) {
+                                                (slideInHorizontally(tween(280)) { it } + fadeIn(tween(200))) togetherWith
+                                                    (slideOutHorizontally(tween(280)) { -it / 4 } + fadeOut(tween(160)))
+                                            } else {
+                                                (slideInHorizontally(tween(280)) { -it / 4 } + fadeIn(tween(200))) togetherWith
+                                                    (slideOutHorizontally(tween(280)) { it } + fadeOut(tween(160)))
+                                            }
+                                        },
+                                        label = "detailSwap",
+                                    ) { id ->
+                                    val state = detailStates[id] ?: current
                                     ComicDetailContent(
                                         state = state,
                                         seedTitle = detailTitle,
@@ -892,10 +929,6 @@ fun HomeShell(
                                         onBack = backFromDetail,
                                         // 章节行也挂变形源：点开从那一行撑成整屏阅读器。
                                         episodeRowModifier = { key ->
-                                            with(shared) { overlayBounds(key, contentScope) }
-                                        },
-                                        // 推荐卡片也挂变形源：点开从那张封面长成另一本的详情。
-                                        comicCardModifier = { key ->
                                             with(shared) { overlayBounds(key, contentScope) }
                                         },
                                         onOpenComic = { comic, key ->
@@ -907,6 +940,7 @@ fun HomeShell(
                                                     returnOrdinal = detailReturnOrdinal,
                                                 ),
                                             )
+                                            detailNavDirection = 1
                                             detailComicId = comic.id
                                             detailTitle = comic.title
                                             detailKey = key
@@ -949,6 +983,7 @@ fun HomeShell(
                                             }
                                         },
                                     )
+                                    }
                                 }
 
                                 OverlayPage.Reader -> detailState?.let { state ->
