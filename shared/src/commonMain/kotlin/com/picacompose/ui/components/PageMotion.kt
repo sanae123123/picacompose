@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,6 +27,8 @@ fun SharedTransitionScope.overlayBounds(
 ): Modifier = Modifier.sharedBounds(
     sharedContentState = rememberSharedContentState(key = key),
     animatedVisibilityScope = animatedVisibilityScope,
+    // 进出都用同一条时长固定的曲线：关闭时页面才能一路缩回原处，而不在中途被掐断。
+    boundsTransform = { _, _ -> tween(durationMillis = 320, easing = FastOutSlowInEasing) },
 )
 
 /**
@@ -34,4 +37,5 @@ fun SharedTransitionScope.overlayBounds(
  */
 fun overlayPageFade(): ContentTransform =
     fadeIn(tween(durationMillis = 260, delayMillis = 80)) togetherWith
-        fadeOut(tween(durationMillis = 90))
+        // 退出这一侧要活到变形跑完（320ms）：原来 90ms 就撤掉，页面还没缩回去就没了。
+        fadeOut(tween(durationMillis = 320))
