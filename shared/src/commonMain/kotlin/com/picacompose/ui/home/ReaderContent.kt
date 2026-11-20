@@ -1,8 +1,13 @@
 package com.picacompose.ui.home
 
 import com.picacompose.ui.components.PicaSurface
-import com.picacompose.ui.components.PicaCircularProgress
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
@@ -58,7 +63,9 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size as GeometrySize
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -376,7 +383,11 @@ fun ReaderContent(
                             itemsIndexed(pager.items, key = { _, page -> page.id }) { index, page ->
                                 val model = offlineAwareModel(comicId, order, index, page.media.url())
                                 if (model != null) {
-                                    ReaderPage(model = model, platformContext = platformContext)
+                                    ReaderPage(
+                                        model = model,
+                                        platformContext = platformContext,
+                                        pageNumber = index + 1,
+                                    )
                                 }
                             }
                             if (pager.items.isEmpty()) {
@@ -622,6 +633,7 @@ private fun offlineAwareModel(comicId: String, order: Int, index: Int, url: Stri
 private fun ReaderPage(
     model: Any,
     platformContext: PlatformContext,
+    pageNumber: Int,
 ) {
     var state by remember(model) {
         mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty)
@@ -673,10 +685,8 @@ private fun ReaderPage(
                         }
                     }
                 } else {
-                    PicaCircularProgress(
-                        color = Color.White.copy(alpha = 0.85f),
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(32.dp),
+                    ReaderLoadingBar(
+                        text = if (pageNumber > 0) "正在拉第 $pageNumber 页的图" else "正在拉图片",
                     )
                 }
             }
@@ -733,6 +743,58 @@ private fun EpisodeButton(
     }
 }
 
+/**
+ * 拉图时的占位：一条来回跑的细进度条 + 一行小字。
+ *
+ * 阅读器是黑底自绘的，这里不跟皮肤走，轨道和滑块都用白色系；
+ * 单张图没有可读的百分比，所以用循环滑动表示「在拉」。
+ */
+@Composable
+private fun ReaderLoadingBar(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        val transition = rememberInfiniteTransition(label = "readerLoading")
+        val phase by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1100, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "phase",
+        )
+        Canvas(Modifier.width(132.dp).height(4.dp)) {
+            val radius = size.height / 2f
+            // 底槽
+            drawRoundRect(
+                color = Color.White.copy(alpha = 0.16f),
+                size = size,
+                cornerRadius = CornerRadius(radius),
+            )
+            // 一小段白条从左跑到右，跑到头再从头出来
+            val barWidth = size.width * 0.38f
+            val travel = size.width - barWidth
+            drawRoundRect(
+                color = Color.White.copy(alpha = 0.78f),
+                topLeft = Offset(travel * phase, 0f),
+                size = GeometrySize(barWidth, size.height),
+                cornerRadius = CornerRadius(radius),
+            )
+        }
+        Text(
+            text = text,
+            style = MiuixTheme.textStyles.footnote2,
+            color = Color.White.copy(alpha = 0.7f),
+        )
+    }
+}
+
 /** 图片还没来时：黑底上的加载 / 失败提示。 */
 @Composable
 private fun ReaderState(
@@ -766,11 +828,7 @@ private fun ReaderState(
                 }
             }
 
-            loading -> Text(
-                text = "正在拉图片…",
-                style = MiuixTheme.textStyles.body1,
-                color = Color.White.copy(alpha = 0.8f),
-            )
+            loading -> ReaderLoadingBar(text = "正在拉图片…")
 
             else -> Text(
                 text = "这话没有图片",
