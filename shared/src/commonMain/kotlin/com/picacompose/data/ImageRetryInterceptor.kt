@@ -6,6 +6,11 @@ import coil3.request.ErrorResult
 import coil3.request.ImageResult
 import coil3.request.SuccessResult
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
 /**
@@ -21,15 +26,39 @@ import kotlin.time.TimeSource
  * 顺带做图床兜底：官方拼图地址有两套等价写法（`utils.g.b`），`/init` 下发的 imageServer
  * 一套、`fileServer + /static/` 一套。我们平时走后者，所以同一张图还能从 imageServer
  * 那台图床上取一次，主图床挂了不至于整页灰。
+ *
+ * 更麻烦的一种失败是「不报错也不返回」：连接建起来了、图床那头一直不回，界面就永远停在
+ * Loading。网络栈自己的超时是几十秒起步，等它等于让用户干瞪眼，所以先给 6 秒的判断窗口，
+ * 超了就当成这条路不通 —— 换图床地址（必要时连线路一起换）再拉一次。
  */
 internal class ImageRetryInterceptor : Interceptor {
 
     override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
         // 开一条「开始」的日志：请求卡住时后面不会再有收尾日志，一对日志就能看出卡在哪张图、
         // 卡在哪个域名上 —— 光看界面只有转圈，分不清是解析、连接还是图床不返回。
-        (chain.request.data as? String)?.let { log("start ${chain.size} $it") }
+        val url = chain.request.data as? String
+        url?.let { log("start ${chain.size} $it") }
         val start = TimeSource.Monotonic.markNow()
-        val result = chain.proceed()
+
+        // 网络图才谈得上「卡住」；离线包里取图是本机读 zip，慢了也不是线路的问题。
+        if (url != null && url.startsWith("http")) {
+            val first = withTimeoutOrNull(STALL_WINDOW_MS) { chain.proceed() }
+            if (first != null) return settle(chain, first, start)
+            log("stall ${STALL_WINDOW_MS}ms $url")
+            StallSwitch.recover()
+            // 换完路不再限时：真慢的图该等它下完，一直掐断就永远看不到。
+            // 超时那一刻这条请求的 call 已经取消了，重拉会重新解析地址，新的顺序才真的生效。
+            attempt(chain) { chain.request }?.let { return settle(chain, it, start) }
+        }
+        return settle(chain, chain.proceed(), start)
+    }
+
+    /** 请求有结果之后的处理：成功的记慢图日志，失败了再打一枪、再兜底另一台图床。 */
+    private suspend fun settle(
+        chain: Interceptor.Chain,
+        result: ImageResult,
+        start: TimeMark,
+    ): ImageResult {
         val elapsed = start.elapsedNow().inWholeMilliseconds
         if (result is SuccessResult) {
             // 慢图不报错，但慢到十几秒基本就等着用户看转圈了，留一行日志好对照。
@@ -68,6 +97,39 @@ internal class ImageRetryInterceptor : Interceptor {
 
         /** 超过这个耗时就算慢图，只记日志不重试。 */
         const val SLOW_MS = 5_000L
+
+        /** 一个请求挂多久算「卡住」：超了就换路重拉。 */
+        const val STALL_WINDOW_MS = 6_000L
+    }
+}
+
+/**
+ * 卡住之后换路，一次卡顿只换一次。
+ *
+ * 一屏图会同时卡住好几张，如果每张都去换线路，换线路要重建客户端、重测速，几趟下来
+ * 反而把本来能用的线路折腾没了。所以这里加一道 6 秒的闸：窗口内只换一次，其余几张
+ * 跟着一起重新拉 —— 地址池的顺序已经变了，它们重拉时自然就走新地址。
+ */
+private object StallSwitch {
+
+    /** 两道卡顿之间至少隔这么久，才允许再换一次。 */
+    private val COOLDOWN = 6.seconds
+
+    private val lock = Mutex()
+
+    /** 上一次换成功的时间；第一次卡住时是 null。 */
+    private var lastSwitch: TimeMark? = null
+
+    suspend fun recover() {
+        lock.withLock {
+            val last = lastSwitch
+            if (last != null && last.elapsedNow() < COOLDOWN) return
+            val switched = runCatching { LineRouter.recover() }.getOrDefault(false)
+            if (switched) {
+                lastSwitch = TimeSource.Monotonic.markNow()
+                log("routed away after stall")
+            }
+        }
     }
 }
 
