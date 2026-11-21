@@ -67,7 +67,10 @@ import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.vector
 import com.picacompose.ui.components.overlayBounds
+import com.picacompose.ui.components.PicaAlertDialog
+import com.picacompose.ui.components.PicaTextButton
 import com.picacompose.ui.components.WebPageContent
+import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.WebViewController
 import com.picacompose.ui.components.rememberWebViewController
 import com.picacompose.ui.components.overlayPageFade
@@ -350,6 +353,30 @@ fun HomeShell(
                 if (t is CancellationException) throw t
                 PicaToast.show("帮助页没打开：${t.message ?: "本机服务没起来"}")
             }
+        }
+    }
+    // 第一次登录的问候：先问要不要看帮助，等帮助页关掉（或者用户直接跳过）再问只看无 H。
+    // 两个弹窗不叠着出 —— 上面那个还开着的时候弹下一个，没人看得清先后。
+    var askHelpFirst by remember { mutableStateOf(false) }
+    var askNoHFilter by remember { mutableStateOf(false) }
+    var promptNoHAfterHelp by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        // 「问过一次无 H」就说明这轮问候已经走完了，不再问帮助。
+        if (!ContentFilter.prompted) askHelpFirst = true
+    }
+    LaunchedEffect(overlay) {
+        if (promptNoHAfterHelp && overlay != OverlayPage.Web) {
+            promptNoHAfterHelp = false
+            askNoHFilter = true
+        }
+    }
+    // 点了「看看」却没进得去（本机服务起不来之类）：别把下一个问题卡死在这儿。
+    LaunchedEffect(promptNoHAfterHelp) {
+        if (!promptNoHAfterHelp) return@LaunchedEffect
+        delay(1500)
+        if (overlay != OverlayPage.Web) {
+            promptNoHAfterHelp = false
+            askNoHFilter = true
         }
     }
     // 这个壳拆掉（退出登录、换账号）时把服务一起收掉，别留个端口在那儿。
@@ -1136,6 +1163,70 @@ fun HomeShell(
                     }
                 }
             }
+        }
+        if (askHelpFirst) {
+            val helpPop = rememberDialogPop(onDismiss = {
+                // 点外面/按返回等于「直接开始」：接着问无 H，别把流程卡住。
+                askHelpFirst = false
+                askNoHFilter = true
+            })
+            PicaAlertDialog(
+                onDismissRequest = helpPop::dismiss,
+                modifier = helpPop.modifier,
+                title = { Text("第一次用，先看看帮助？", style = MiuixTheme.textStyles.title4) },
+                text = {
+                    Text(
+                        text = "里面有线路怎么选、标签怎么筛、下载和导出怎么用，设置里每一项也都写了。" +
+                            "看完或者跳过都行，之后在 设置 → 使用帮助 里还能再打开。",
+                        style = MiuixTheme.textStyles.body1,
+                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                    )
+                },
+                confirmButton = {
+                    PicaTextButton(onClick = {
+                        askHelpFirst = false
+                        promptNoHAfterHelp = true
+                        helpPop.dismiss()
+                        openHelp()
+                    }) { Text("看看") }
+                },
+                dismissButton = {
+                    PicaTextButton(onClick = {
+                        askHelpFirst = false
+                        askNoHFilter = true
+                        helpPop.dismiss()
+                    }) { Text("直接开始") }
+                },
+            )
+        }
+        if (askNoHFilter) {
+            // 这个询问只算「问过一次」不算「开过」：选先不用，开关保持关。
+            val noHPop = rememberDialogPop(onDismiss = {
+                ContentFilter.prompted = true
+                askNoHFilter = false
+            })
+            PicaAlertDialog(
+                onDismissRequest = noHPop::dismiss,
+                modifier = noHPop.modifier,
+                title = { Text("要不要只看无 H 的作品？", style = MiuixTheme.textStyles.title4) },
+                text = {
+                    Text(
+                        text = "打开后列表里只留下带「無H內容」这类标签、或简介里写了无 H 的作品，" +
+                            "适合在公共场合翻。随时能在设置里改。",
+                        style = MiuixTheme.textStyles.body1,
+                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                    )
+                },
+                confirmButton = {
+                    PicaTextButton(onClick = {
+                        ContentFilter.enabled = true
+                        noHPop.dismiss()
+                    }) { Text("只看无 H") }
+                },
+                dismissButton = {
+                    PicaTextButton(onClick = noHPop::dismiss) { Text("先不用") }
+                },
+            )
         }
         if (splashAdOpen) {
             SplashAdDialog(
