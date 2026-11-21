@@ -16,12 +16,15 @@ import com.picacompose.picaapi.model.ComicSummary
  *
  * 过滤放在列表这一层（Pager 的 filter 或者拿回来之后 filter）：服务端没有「只要无 H」
  * 这种查询参数，只能本地筛。
+ *
+ * 另外还有一道「不看 AI」：打开后把标签里带 AI 作画、或标题里写着 AI 的作品剔掉。
  */
 object ContentFilter {
 
     private val kv by lazy { platformKeyValueStore() }
 
-    /** 开关变动时加一；列表页读它当 remember 的 key，切完开关能把旧列表重拉一遍。 */
+    /** 开关变动时加一；列表页读它当 remember 的 key，切完开关能把旧列表重拉一遍。
+     *  两个开关共用这一个版本号：改了哪个都得让列表重筛一遍。 */
     private val versionState = mutableIntStateOf(0)
 
     /** 只显示无 H 的作品。默认关。 */
@@ -29,6 +32,14 @@ object ContentFilter {
         get() = kv.get(KEY_ENABLED) == "1"
         set(value) {
             kv.put(KEY_ENABLED, if (value) "1" else "0")
+            versionState.intValue++
+        }
+
+    /** 不看 AI 作画的作品。默认关。 */
+    var hideAi: Boolean
+        get() = kv.get(KEY_HIDE_AI) == "1"
+        set(value) {
+            kv.put(KEY_HIDE_AI, if (value) "1" else "0")
             versionState.intValue++
         }
 
@@ -42,16 +53,42 @@ object ContentFilter {
             kv.put(KEY_PROMPTED, if (value) "1" else "0")
         }
 
-    /** 这一本能不能出现在列表里：开关关着全放行，开着就要求带无 H 标记。 */
-    fun allows(comic: ComicSummary): Boolean = !enabled || comic.isMarkedNoH()
+    /** 这一本能不能出现在列表里：开关关着全放行，开着就要求带无 H 标记、且不是 AI 作画。 */
+    fun allows(comic: ComicSummary): Boolean =
+        (!enabled || comic.isMarkedNoH()) && (!hideAi || !comic.isAiMade())
 
     private const val KEY_ENABLED = "filter.noHOnly"
+    private const val KEY_HIDE_AI = "filter.hideAi"
     private const val KEY_PROMPTED = "filter.noHPrompted"
 }
 
 /** 标签或简介里带了「无 H / 無 H」。 */
 fun ComicSummary.isMarkedNoH(): Boolean =
     hasNoHMark(description) || tags.any { tag -> hasNoHMark(tag) }
+
+/** 标题里写着 AI，或者标签里带着 AI（`AI作畫`、`AI生成` 这类都算）。 */
+fun ComicSummary.isAiMade(): Boolean = hasAiMark(title) || tags.any { hasAiMark(it) }
+
+/**
+ * 一段文字里有没有单独的「AI」。
+ *
+ * 不区分大小写，但要求 AI 前后都不是英文字母：`#AI作畫`、`（AI）`、`AI生成` 都算，
+ * `MAID`、`FAIRY` 这种单词里的 ai 不算 —— 否则一半英文标题会被误杀。
+ */
+private fun hasAiMark(text: String?): Boolean {
+    if (text.isNullOrBlank()) return false
+    val lower = text.lowercase()
+    var at = lower.indexOf("ai")
+    while (at >= 0) {
+        val before = lower.getOrNull(at - 1)
+        val after = lower.getOrNull(at + 2)
+        val gluedBefore = before != null && before in 'a'..'z'
+        val gluedAfter = after != null && after in 'a'..'z'
+        if (!gluedBefore && !gluedAfter) return true
+        at = lower.indexOf("ai", at + 1)
+    }
+    return false
+}
 
 /**
  * 判断一段文字里有没有「无 H」的意思。

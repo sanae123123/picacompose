@@ -134,6 +134,7 @@ fun SettingsContent(
     var doh by remember { mutableStateOf(preferences.doh) }
     var useImageIps by remember { mutableStateOf(preferences.imageIps) }
     var noHOnly by remember { mutableStateOf(ContentFilter.enabled) }
+    var hideAi by remember { mutableStateOf(ContentFilter.hideAi) }
     // 「几分钟前」要自己走：没有系统时钟依赖，用单调时间算相对时长。
     val imageIpsAgo by produceState(-1L) {
         while (true) {
@@ -173,6 +174,18 @@ fun SettingsContent(
                         noHOnly = on
                         ContentFilter.enabled = on
                     },
+                )
+                SwitchRow(
+                    icon = PicaIcon.EyeOff,
+                    title = "不看 AI",
+                    summary = "打开后列表里去掉标签带 AI（像「AI作畫」）或标题里写着 AI 的作品。" +
+                        "只按标题和标签判断，简介里提到 AI 的不算。默认关。",
+                    checked = hideAi,
+                    onCheckedChange = { on ->
+                        hideAi = on
+                        ContentFilter.hideAi = on
+                    },
+                    indent = true,
                 )
             }
             Spacer(Modifier.height(14.dp))
