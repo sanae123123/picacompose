@@ -107,6 +107,16 @@ p:last-child{margin-bottom:0}
 }
 .card + .card{margin-top:9px}
 
+/* 截图：真机截屏裁过的，圆角细边，宽度跟着内容走，窄屏也不会撑破 */
+figure.shot{margin:13px 0 0}
+figure.shot img{
+  display:block; width:100%; height:auto; border-radius:13px;
+  border:1px solid var(--line); background:var(--card);
+}
+figure.shot figcaption{
+  margin-top:8px; color:var(--muted); font-size:12.5px; line-height:1.65;
+}
+
 ul.plain{margin:10px 0 0; padding-left:0; list-style:none}
 ul.plain li{position:relative; padding-left:17px; margin:8px 0}
 ul.plain li:last-child{margin-bottom:0}
@@ -233,11 +243,22 @@ details .answer{margin:9px 0 0; padding-left:25px; color:var(--muted); font-size
   <li><b>我的</b>：签到、我的收藏、历史评论、浏览历史、下载管理；右上角那支铅笔是编辑资料（头像、昵称、签名）。</li>
   <li><b>设置</b>：后面有一整段逐项说明。</li>
 </ul>
+
+<figure class="shot">
+<img src="${HelpShots.mine}" alt="我的页面往下滑，是收藏、历史评论、浏览历史、下载管理四行" loading="lazy">
+<figcaption>「我的」往下滑：我的收藏、历史评论、浏览历史、下载管理，最下面是退出登录。</figcaption>
+</figure>
+
 <p class="tip">切标签可以点底部栏，也可以左右滑。</p>
 </section>
 
 <section id="find">
 <h2><span class="n">3</span>找本子</h2>
+
+<figure class="shot">
+<img src="${HelpShots.category}" alt="分类页，上面是热门分类磁贴，下面是全部分类" loading="lazy">
+<figcaption>分类页：上面那排磁贴是热门分类，往下滑才是全部分类；右上角那颗放大镜是搜索。</figcaption>
+</figure>
 
 <div class="card">
 <h3>列表里筛</h3>
@@ -317,6 +338,11 @@ details .answer{margin:9px 0 0; padding-left:25px; color:var(--muted); font-size
 <p><b>线路 / 测速</b>：这两行是给你看的，不能点。想换线路只能重新打开应用 —— 自动测速开着的话，后台测完会自己换到能用的那条。</p>
 </div>
 
+<figure class="shot">
+<img src="${HelpShots.settingsMid}" alt="设置里的快速进入、线路延迟、DoH、图片 IP 优选、图片质量" loading="lazy">
+<figcaption>设置里跟线路和图片有关的几项；中间那几行延迟只用来挑线路，点不动。</figcaption>
+</figure>
+
 <div class="card">
 <h3>DoH 解析</h3>
 <p>域名改走加密 DNS 解析，某些网络下能绕开污染。一个解析端点不通会自动换下一个；全都不行会自己关掉，退回系统 DNS，设置里的开关也跟着变回关。</p>
@@ -338,8 +364,13 @@ details .answer{margin:9px 0 0; padding-left:25px; color:var(--muted); font-size
 <h2><span class="n">7</span>设置逐项</h2>
 <p>这里只写要你动手的项；纯展示的那几行（当前线路、优选状态、地址池、主题）在上面两节说过，不重复。</p>
 
+<figure class="shot">
+<img src="${HelpShots.settingsTop}" alt="设置最上面的皮肤、只看无 H、不看 AI、记住账号" loading="lazy">
+<figcaption>设置最上面：皮肤、只看无 H、不看 AI、记住账号。</figcaption>
+</figure>
+
 <dl class="dl">
-<div><dt>皮肤</dt><dd>MIUI 风格、Material You、鸿蒙风格、iOS 风格，换完立刻变，不用重启。</dd></div>
+<div><dt>皮肤</dt><dd>MIUI 风格、Material You、iOS 风格，换完立刻变，不用重启。</dd></div>
 <div><dt>只看无 H</dt><dd>列表里只留标签或简介写了无 H 的作品，公共场合翻着放心。默认关。</dd></div>
 <div><dt>不看 AI</dt><dd>列表里去掉标签带 AI（像「AI作畫」）或者标题里写着 AI 的作品。只看标题和标签，简介里提到 AI 的不算。默认关。</dd></div>
 <div><dt>记住账号</dt><dd>开着下次打开直接恢复登录；关掉会清掉已存的令牌。</dd></div>
@@ -357,6 +388,11 @@ details .answer{margin:9px 0 0; padding-left:25px; color:var(--muted); font-size
 <div><dt>关于 / GitHub</dt><dd>「关于」弹版本信息；「GitHub」用浏览器打开项目仓库。</dd></div>
 <div><dt>退出登录</dt><dd>清掉令牌，账号名留着，下次登录还能点上。</dd></div>
 </dl>
+
+<figure class="shot">
+<img src="${HelpShots.settingsLow}" alt="设置靠下那部分：主题、检查更新、使用帮助、关于、GitHub、接口" loading="lazy">
+<figcaption>再往下：主题、检查更新、使用帮助（就是这一页）、关于、GitHub、接口、退出登录。</figcaption>
+</figure>
 </section>
 
 <section id="faq">

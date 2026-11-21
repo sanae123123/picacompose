@@ -91,13 +91,16 @@ fun WebPageContent(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = pageUrl,
-                    style = MiuixTheme.textStyles.footnote2,
-                    color = colors.onSurfaceSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                // 帮助页是本机端口上喂的，把 127.0.0.1 那串地址晾在标题下面只会让人犯嘀咕，不显示。
+                if (!pageUrl.startsWith("http://127.0.0.1")) {
+                    Text(
+                        text = pageUrl,
+                        style = MiuixTheme.textStyles.footnote2,
+                        color = colors.onSurfaceSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             Box {
                 PicaIconButton(onClick = { menuOpen = true }, modifier = Modifier.size(40.dp)) {
