@@ -54,6 +54,8 @@ kotlin {
             implementation(libs.cupertino)
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
+            // 应用内小服务：本机监听一个随机端口给 WebView 用（见 LocalHttpServer）。
+            implementation(libs.ktor3.network)
         }
 
         androidMain.dependencies {
@@ -68,3 +70,4 @@ kotlin {
         jvmMain.get().dependsOn(jvmCommonMain)
     }
 }
+
