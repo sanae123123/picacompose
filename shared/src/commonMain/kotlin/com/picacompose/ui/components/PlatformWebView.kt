@@ -40,6 +40,19 @@ class WebViewController {
     fun goBack() {
         backTick++
     }
+
+    /**
+     * 换一个页面时把状态清干净。
+     *
+     * 不复位的话，上一页留下的「能后退」会让返回键先去做一次空的后退 ——
+     * 用户按第一下没反应，得按第二下才退出。
+     */
+    internal fun reset() {
+        canGoBack = false
+        progress = 0f
+        reloadTick = 0
+        backTick = 0
+    }
 }
 
 @Composable

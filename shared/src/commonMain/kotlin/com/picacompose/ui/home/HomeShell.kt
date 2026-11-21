@@ -68,6 +68,8 @@ import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.vector
 import com.picacompose.ui.components.overlayBounds
 import com.picacompose.ui.components.WebPageContent
+import com.picacompose.ui.components.WebViewController
+import com.picacompose.ui.components.rememberWebViewController
 import com.picacompose.ui.components.overlayPageFade
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -321,8 +323,12 @@ fun HomeShell(
     val overlay = OverlayPage.entries.getOrElse(overlayOrdinal) { OverlayPage.None }
     // 网页视图等整页变形放完再挂（平台视图不参与容器变形）。挂上之后由页面自己淡进来。
     var webMounted by remember { mutableStateOf(false) }
+    // 网页的控制器放在这一层：返回键要能先退网页，而不是一按就把整页关掉。
+    val webController = rememberWebViewController()
     LaunchedEffect(overlay) {
         if (overlay == OverlayPage.Web) {
+            // 每次进来先清一遍上一页留下的「能后退」，否则第一下返回会白按一次。
+            webController.reset()
             delay(360)
             webMounted = true
         } else {
@@ -477,6 +483,12 @@ fun HomeShell(
             }
             OverlayPage.Reader -> overlayOrdinal = OverlayPage.Detail.ordinal
             OverlayPage.Search -> exitSearch()
+            // 网页里还能往回退就先退网页，退到头了才关掉整页。
+            OverlayPage.Web -> if (webController.canGoBack) {
+                webController.goBack()
+            } else {
+                overlayOrdinal = OverlayPage.None.ordinal
+            }
             else -> overlayOrdinal = OverlayPage.None.ordinal
         }
     }
@@ -764,6 +776,7 @@ fun HomeShell(
                                     title = webTitle,
                                     url = webUrl,
                                     showWebView = webMounted,
+                                    controller = webController,
                                     onBack = { overlayOrdinal = OverlayPage.None.ordinal },
                                 )
 

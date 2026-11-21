@@ -52,9 +52,10 @@ fun WebPageContent(
     /** 变形动画放完再挂网页视图：Android 的 WebView 是独立渲染的平台视图，不跟着容器变形走，
      *  挂早了会直接以整屏尺寸弹出来，看着就不是从磁贴长出来的。 */
     showWebView: Boolean = true,
+    /** 外面要拿它做「返回键先退网页」的时候传进来，平常让页面自己记就行。 */
+    controller: WebViewController = rememberWebViewController(),
 ) {
     val colors = MiuixTheme.colorScheme
-    val controller = rememberWebViewController()
     val openInBrowser = rememberBrowserOpener()
     var menuOpen by remember { mutableStateOf(false) }
     var pageUrl by remember(url) { mutableStateOf(url) }
