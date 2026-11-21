@@ -36,6 +36,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -56,15 +57,19 @@ import com.picacompose.picaapi.model.ComicSummary
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.BackHandlerCompat
 import com.picacompose.data.ContentFilter
+import com.picacompose.data.HelpPages
+import com.picacompose.data.LocalHttpServer
 import com.picacompose.data.NoticeUnread
 import com.picacompose.data.keepImageIpsFresh
 import com.picacompose.data.refreshImageHost
+import com.picacompose.ui.components.PicaToast
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.vector
 import com.picacompose.ui.components.overlayBounds
 import com.picacompose.ui.components.WebPageContent
 import com.picacompose.ui.components.overlayPageFade
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -324,6 +329,26 @@ fun HomeShell(
             // 返回时先卸掉，缩回磁贴的那段也交给页面本身。
             webMounted = false
         }
+    }
+    // 帮助页走「本机小服务 + 内置浏览器」：第一次点开时把服务拉起来，端口由系统分，
+    // 之后一直复用（start 幂等）。页面内容全在应用里，不联网也能看。
+    val openHelp: () -> Unit = {
+        scope.launch {
+            try {
+                val port = LocalHttpServer.start(HelpPages.handler)
+                webKey = "webPage"
+                webTitle = "使用帮助"
+                webUrl = "http://127.0.0.1:$port/"
+                overlayOrdinal = OverlayPage.Web.ordinal
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                PicaToast.show("帮助页没打开：${t.message ?: "本机服务没起来"}")
+            }
+        }
+    }
+    // 这个壳拆掉（退出登录、换账号）时把服务一起收掉，别留个端口在那儿。
+    DisposableEffect(Unit) {
+        onDispose { LocalHttpServer.stopAsync() }
     }
     // 消息是主页里的一层，没有独立的底部入口；退出去回到首页。
     val messagePager = remember {
@@ -660,6 +685,7 @@ fun HomeShell(
                                     HomeTab.Settings -> SettingsContent(
                                         onSignOut = onSignOut,
                                         onSwitchAccount = onSwitchAccount,
+                                        onOpenHelp = openHelp,
                                     )
                                 }
                             }

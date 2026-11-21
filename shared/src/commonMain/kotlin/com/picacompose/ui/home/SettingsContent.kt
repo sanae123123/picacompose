@@ -94,6 +94,8 @@ import com.picacompose.ui.components.rememberDialogPop
 fun SettingsContent(
     onSignOut: () -> Unit,
     onSwitchAccount: suspend (SavedAccount) -> Boolean = { false },
+    /** 打开内置的使用帮助（本地页面，不联网）。 */
+    onOpenHelp: () -> Unit = {},
 ) {
     val session = remember { SessionStore() }
     var savedAccount by remember { mutableStateOf(session.savedAccount) }
@@ -433,6 +435,12 @@ fun SettingsContent(
                             checkingUpdate = false
                         }
                     },
+                )
+                PickerRow(
+                    icon = PicaIcon.Help,
+                    title = "使用帮助",
+                    value = "离线",
+                    onClick = onOpenHelp,
                 )
                 PickerRow(
                     icon = PicaIcon.Notice,

@@ -111,6 +111,16 @@ object LocalHttpServer {
         }
     }
 
+    /**
+     * 给界面用的收摊入口：不开协程、不等结果，后台自己关掉。
+     *
+     * Compose 的 `onDispose` 里不能直接调 suspend 的 [stop]，而那时候页面已经没了，
+     * 关得慢一点也无所谓。
+     */
+    fun stopAsync() {
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch { stop() }
+    }
+
     /** 拼一个本机地址：`http://127.0.0.1:端口` + path。没起来时是 null。 */
     fun url(path: String = "/"): String? {
         val at = _port.value ?: return null
