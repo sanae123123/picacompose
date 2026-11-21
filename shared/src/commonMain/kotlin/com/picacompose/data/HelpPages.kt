@@ -6,7 +6,10 @@ package com.picacompose.data
  * 为什么不直接拼 Compose 界面：帮助内容会长、会改、要有锚点跳转和折叠，写成网页最省事，
  * 而且这一页不依赖网络 —— 断网、图床挂了也照样能翻。
  *
- * 只有一个入口：点设置里的「使用帮助」。页面内部的跳转全走 `#锚点`，不需要别的路由。
+ * 没有引文档站框架（docsify / VitePress 之类）：那些东西的产物要几百 KB 到几 MB 的
+ * JS 和字体，还得先有 Node 构建环境；对「一张跟着 APK 走的离线页面」不划算。
+ * 这里只借了它们的样子：顶部阅读进度、章节标题吸顶、窄屏友好的定义式列表、
+ * 回到顶部，外加二十来行原生 JS，浏览器不给跑 JS 也不影响阅读。
  */
 object HelpPages {
 
@@ -28,108 +31,163 @@ object HelpPages {
 <title>使用帮助</title>
 <style>
 :root{
-  --bg:#0d0f12; --fg:#e9eaee; --muted:#9aa1ab; --card:#16191e;
-  --line:#252a32; --accent:#8ab4f8; --accent-weak:rgba(138,180,248,.12);
+  --bg:#0c0e11; --fg:#e8eaee; --muted:#98a0ab; --card:#15181d;
+  --line:#242932; --accent:#8ab4f8; --accent-weak:rgba(138,180,248,.12);
+  --measure:680px;
 }
 @media (prefers-color-scheme: light){
   :root{
-    --bg:#f6f7f9; --fg:#1a1c20; --muted:#5d6470; --card:#ffffff;
-    --line:#e4e7ec; --accent:#2f6fdb; --accent-weak:rgba(47,111,219,.08);
+    --bg:#f7f8fa; --fg:#191b1f; --muted:#5c636e; --card:#ffffff;
+    --line:#e5e8ed; --accent:#2f6edb; --accent-weak:rgba(47,110,219,.08);
   }
 }
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{
+  -webkit-text-size-adjust:100%;
+  scroll-behavior:smooth;
+  scroll-padding-top:58px;
+}
 body{
   margin:0; background:var(--bg); color:var(--fg);
-  font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",system-ui,sans-serif;
-  padding:0 0 calc(40px + env(safe-area-inset-bottom));
+  font:16px/1.78 -apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",system-ui,sans-serif;
+  padding:0 0 calc(48px + env(safe-area-inset-bottom));
   -webkit-font-smoothing:antialiased;
+  overflow-wrap:break-word;
 }
-.wrap{max-width:720px; margin:0 auto; padding:26px 18px 0}
+::selection{background:var(--accent-weak)}
+
+/* 顶部阅读进度：一条细线，滚多少走多少 */
+#bar{
+  position:fixed; top:0; left:0; right:0; height:2px; z-index:9;
+  background:var(--accent); transform:scaleX(0); transform-origin:0 50%;
+  opacity:.85; pointer-events:none;
+}
+
+.wrap{max-width:var(--measure); margin:0 auto; padding:30px 18px 0}
+
 .head .kicker{
-  margin:0 0 6px; font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+  margin:0 0 8px; font-size:12px; letter-spacing:.16em; text-transform:uppercase;
   color:var(--accent); font-weight:600;
 }
-h1{margin:0; font-size:27px; line-height:1.3; letter-spacing:-.01em}
-.lede{margin:12px 0 0; color:var(--muted); font-size:15px}
-.meta{margin:10px 0 0; color:var(--muted); font-size:13px}
-.toc{display:flex; flex-wrap:wrap; gap:8px; margin:22px 0 6px}
+h1{margin:0; font-size:28px; line-height:1.28; letter-spacing:-.015em}
+.lede{margin:12px 0 0; color:var(--muted); font-size:15px; line-height:1.7}
+.meta{margin:12px 0 0; color:var(--muted); font-size:12.5px; letter-spacing:.01em}
+
+/* 目录：横排的小块，手机上两行以内滑完 */
+.toc{display:flex; flex-wrap:wrap; gap:7px; margin:24px 0 0}
 .toc a{
   display:inline-block; padding:7px 13px; border-radius:999px;
   background:var(--card); border:1px solid var(--line); color:var(--fg);
-  text-decoration:none; font-size:14px;
+  text-decoration:none; font-size:13.5px; line-height:1.4;
 }
-.toc a:active{background:var(--accent-weak)}
-section{margin-top:34px; scroll-margin-top:14px}
+.toc a:active{background:var(--accent-weak); border-color:var(--accent)}
+
+section{margin-top:38px}
 h2{
-  margin:0 0 4px; font-size:20px; line-height:1.4; letter-spacing:-.01em;
+  /* 章节标题吸顶：滑下去以后，当前在讲哪一节一直挂在顶上 */
+  position:sticky; top:2px; z-index:3;
+  margin:0 0 6px; padding:9px 0 11px;
+  background:var(--bg);
+  font-size:19.5px; line-height:1.4; letter-spacing:-.012em; font-weight:600;
   display:flex; align-items:center; gap:10px;
 }
 h2 .n{
-  flex:none; width:26px; height:26px; border-radius:8px; background:var(--accent-weak);
-  color:var(--accent); font-size:14px; font-weight:600;
+  flex:none; width:25px; height:25px; border-radius:8px; background:var(--accent-weak);
+  color:var(--accent); font-size:13.5px; font-weight:600;
   display:inline-flex; align-items:center; justify-content:center;
 }
-h3{margin:0 0 8px; font-size:16px; line-height:1.5}
-p{margin:10px 0}
+h3{margin:0 0 7px; font-size:15.5px; line-height:1.5; font-weight:600; color:var(--fg)}
+p{margin:9px 0}
 p:first-child, h3 + p{margin-top:0}
 p:last-child{margin-bottom:0}
+
 .card{
-  background:var(--card); border:1px solid var(--line); border-radius:14px;
-  padding:15px 16px; margin:12px 0;
+  background:var(--card); border:1px solid var(--line); border-radius:16px;
+  padding:16px 16px 15px; margin:11px 0;
 }
-.card + .card{margin-top:10px}
-ul.plain{margin:12px 0 0; padding-left:0; list-style:none}
-ul.plain li{
-  position:relative; padding-left:18px; margin:9px 0; color:var(--fg);
-}
+.card + .card{margin-top:9px}
+
+ul.plain{margin:10px 0 0; padding-left:0; list-style:none}
+ul.plain li{position:relative; padding-left:17px; margin:8px 0}
+ul.plain li:last-child{margin-bottom:0}
 ul.plain li::before{
-  content:""; position:absolute; left:2px; top:.72em;
-  width:6px; height:6px; border-radius:50%; background:var(--accent); opacity:.65;
+  content:""; position:absolute; left:2px; top:.74em;
+  width:5px; height:5px; border-radius:50%; background:var(--accent); opacity:.6;
 }
 ul.plain li b{font-weight:600}
-ol.steps{margin:10px 0 0; padding-left:22px}
-ol.steps li{margin:8px 0}
+
 .tip{
-  margin:12px 0 0; padding:2px 0 2px 12px; border-left:3px solid var(--accent);
-  color:var(--muted); font-size:14.5px;
+  margin:12px 0 0; padding:10px 12px; border-radius:10px;
+  background:var(--accent-weak); color:var(--fg);
+  font-size:14px; line-height:1.7;
 }
+.tip::before{content:"提示　"; color:var(--accent); font-weight:600; font-size:13px}
+
 .kbd{
   display:inline-block; padding:1px 7px; border-radius:6px; border:1px solid var(--line);
-  background:var(--bg); font-size:13.5px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  vertical-align:1px;
+  background:var(--bg); font-size:13.5px; vertical-align:1px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
 }
-table{width:100%; border-collapse:collapse; margin:10px 0 0}
-th,td{
-  text-align:left; vertical-align:top; padding:10px 6px;
-  border-bottom:1px solid var(--line); font-size:14.5px; line-height:1.65;
+code{
+  padding:1px 5px; border-radius:5px; background:var(--accent-weak);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13.5px;
 }
-th{color:var(--muted); font-weight:500; white-space:nowrap; width:34%}
-tr:last-child th, tr:last-child td{border-bottom:0}
-details{
-  border-bottom:1px solid var(--line); padding:12px 0;
+
+/* 设置项：窄屏上两列表格会挤成一团，改成「名称 + 说明」上下排 */
+.dl{margin:6px 0 0}
+.dl > div{
+  padding:13px 0; border-bottom:1px solid var(--line);
 }
+.dl > div:last-child{border-bottom:0; padding-bottom:0}
+.dl dt{font-size:15px; font-weight:600; line-height:1.5}
+.dl dd{margin:3px 0 0; font-size:14.5px; line-height:1.72; color:var(--muted)}
+
+details{border-bottom:1px solid var(--line); padding:13px 0}
 details:last-of-type{border-bottom:0}
-summary{cursor:pointer; font-weight:500; list-style:none; display:flex; gap:10px; align-items:flex-start}
+summary{
+  cursor:pointer; font-weight:500; font-size:15px; line-height:1.6;
+  list-style:none; display:flex; gap:9px; align-items:flex-start;
+}
 summary::-webkit-details-marker{display:none}
-summary::before{content:"＋"; color:var(--accent); flex:none; width:18px}
+summary::before{content:"＋"; color:var(--accent); flex:none; width:16px; font-weight:400}
 details[open] summary::before{content:"－"}
-details .answer{margin:8px 0 0; padding-left:28px; color:var(--muted); font-size:14.5px}
+details .answer{margin:9px 0 0; padding-left:25px; color:var(--muted); font-size:14.5px; line-height:1.75}
+
 .foot{
-  margin-top:40px; padding-top:18px; border-top:1px solid var(--line);
-  color:var(--muted); font-size:13px; line-height:1.9;
+  margin-top:44px; padding-top:18px; border-top:1px solid var(--line);
+  color:var(--muted); font-size:13px; line-height:1.95;
 }
 .foot a{color:var(--accent); text-decoration:none}
+
+/* 回到顶部：滚过一屏才出现 */
+#top{
+  position:fixed; right:16px; bottom:calc(18px + env(safe-area-inset-bottom));
+  width:40px; height:40px; border-radius:50%; z-index:8;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--card); border:1px solid var(--line); color:var(--muted);
+  font-size:16px; line-height:1; cursor:pointer;
+  opacity:0; transform:translateY(8px); pointer-events:none;
+  transition:opacity .18s ease, transform .18s ease;
+}
+#top.show{opacity:1; transform:none; pointer-events:auto}
+
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  #top{transition:none}
+}
 </style>
 </head>
 <body>
+
+<div id="bar"></div>
+
 <main class="wrap">
 
 <header class="head">
   <p class="kicker">PicaCompose</p>
   <h1>使用帮助</h1>
-  <p class="lede">这一页跟着安装包走，不联网也能看。下面的目录可以点，跳到你关心的那一段。</p>
-  <p class="meta">版本 ${APP_VERSION}</p>
+  <p class="lede">这一页跟着安装包走，不联网也能看。想找哪一段，点下面的目录。</p>
+  <p class="meta">版本 ${APP_VERSION} · 八个小节</p>
 </header>
 
 <nav class="toc">
@@ -150,7 +208,7 @@ details .answer{margin:8px 0 0; padding-left:28px; color:var(--muted); font-size
 <h3>先挑一条线路</h3>
 <p>数据都要从服务器拿，而这些域名在有些网络里会被解析到错的地方。所以第一次打开会先停在线路页，把候选线路挨个连一遍，能连上的按快慢排好。</p>
 <p>点延迟低的那条进去就行。选过的线路会记住，以后启动不再让你选。</p>
-<p class="tip">一条都连不上，多半是这个网络到那边不通，换个网再进来；进来了也一直是白页的话，去 设置 → 测速 重新挑一条。</p>
+<p class="tip">一条都连不上，多半是这个网络到那边不通，换个网再进来。</p>
 </div>
 
 <div class="card">
@@ -238,7 +296,7 @@ details .answer{margin:8px 0 0; padding-left:28px; color:var(--muted); font-size
 
 <div class="card">
 <h3>导出成文件</h3>
-<p>同一个下载按钮里能选导出，三种格式：</p>
+<p>整本下完之后，同一个按钮会变成导出，三种格式：</p>
 <ul class="plain">
   <li><b>压缩包</b>：原样打包，换台设备还能导回来。</li>
   <li><b>PDF</b>：每页一张图，什么阅读器都能开。</li>
@@ -253,19 +311,19 @@ details .answer{margin:8px 0 0; padding-left:28px; color:var(--muted); font-size
 
 <div class="card">
 <h3>线路相关的几个开关</h3>
-<p><b>自动测速</b>：启动时在后台把线路测一遍，慢的自动换掉。关掉就不再自动换，网络变了得自己去 设置 → 线路 重新选。</p>
+<p><b>自动测速</b>：启动时在后台把线路测一遍，慢的自动换掉。关掉就不再自动换。</p>
 <p><b>快速进入并后台测速</b>：先按上次的线路进界面，测速丢到后台跑；关掉就老老实实停在线路页等测速完。</p>
 <p><b>线路 / 测速</b>：这两行是给你看的，不能点。想换线路只能重新打开应用 —— 自动测速开着的话，后台测完会自己换到能用的那条。</p>
 </div>
 
 <div class="card">
 <h3>DoH 解析</h3>
-<p>接口域名改走加密 DNS 解析，某些网络下能绕开污染。一个解析端点不通会自动换下一个；全都不行会自己关掉，退回系统 DNS，设置里的开关也跟着变回关。</p>
+<p>域名改走加密 DNS 解析，某些网络下能绕开污染。一个解析端点不通会自动换下一个；全都不行会自己关掉，退回系统 DNS，设置里的开关也跟着变回关。</p>
 </div>
 
 <div class="card">
 <h3>图片 IP 优选</h3>
-<p>图床域名经常被解析到别的公司的 IP 上，所以图片请求单独钉了一组 Cloudflare 地址，启动后在后台挨个测，挑最快的几台用，之后每 30 分钟重测一次。</p>
+<p>图床域名经常被解析到别的公司的 IP 上，所以图片请求单独钉了一组 Cloudflare 地址，启动后在后台挨个测，挑最快的几台用，之后定时重测。</p>
 <p>关掉就不再后台测速，只用服务器下发的地址加内置的备用地址。图片老是转圈的时候，先确认这个开关是开的。</p>
 </div>
 
@@ -279,27 +337,28 @@ details .answer{margin:8px 0 0; padding-left:28px; color:var(--muted); font-size
 <h2><span class="n">7</span>设置逐项</h2>
 <p>按设置页从上到下的顺序。</p>
 
-<table>
-<tr><th>皮肤</th><td>MIUI 风格、Material You、鸿蒙风格、iOS 风格，换完立刻变，不用重启。</td></tr>
-<tr><th>只看无 H</th><td>列表里只留标签或简介写了无 H 的作品，公共场合翻着放心。默认关。</td></tr>
-<tr><th>不看 AI</th><td>列表里去掉标签带 AI（像「AI作畫」）或者标题里写着 AI 的作品。只看标题和标签，简介里提到 AI 的不算。默认关。</td></tr>
-<tr><th>记住账号</th><td>开着下次打开直接恢复登录；关掉会清掉已存的令牌。</td></tr>
-<tr><th>保存的账号 / 切换账号</th><td>登过的号都记在这里，点一下直接切过去，不用重新输密码。</td></tr>
-<tr><th>自动测速</th><td>启动时后台测线路，慢了自动换。改完立即生效。</td></tr>
-<tr><th>快速进入并后台测速</th><td>先按上次的线路进界面，测速放后台。</td></tr>
-<tr><th>线路 / 测速 / 各线路延迟</th><td>这几行都只看不改：当前走哪条、哪个通道、延迟多少，以及每条线路通不通。</td></tr>
-<tr><th>DoH 解析</th><td>接口走加密 DNS；全挂了会自动退回系统 DNS。</td></tr>
-<tr><th>图片 IP 优选</th><td>后台测 Cloudflare 地址、挑最快的给图片用。</td></tr>
-<tr><th>图片质量</th><td>原图 / 高 / 中 / 低。</td></tr>
-<tr><th>缓存并发</th><td>一本同时下几页，同时也当全局网络上限用。可选 4 / 8 / 16 / 32 / 64，默认 32。</td></tr>
-<tr><th>清除图片缓存</th><td>只清图片，不动登录、线路和阅读进度。</td></tr>
-<tr><th>优选状态 / 地址池 / 上次完成</th><td>后台测速现在到哪一步、手上有多少可用地址、上一次什么时候测完。</td></tr>
-<tr><th>音量键翻页</th><td>阅读器里音量加翻上一页、音量减翻下一页。关掉恢复成调音量。默认开。</td></tr>
-<tr><th>检查更新</th><td>去 GitHub 看有没有新版本，有就问你装不装。</td></tr>
-<tr><th>使用帮助</th><td>就是这一页。</td></tr>
-<tr><th>关于 / GitHub / 接口</th><td>版本和项目地址；「接口」这一行说的是数据来自哪个模块。</td></tr>
-<tr><th>退出登录</th><td>清掉令牌，账号名留着，下次登录还能点上。</td></tr>
-</table>
+<dl class="dl">
+<div><dt>皮肤</dt><dd>MIUI 风格、Material You、鸿蒙风格、iOS 风格，换完立刻变，不用重启。</dd></div>
+<div><dt>只看无 H</dt><dd>列表里只留标签或简介写了无 H 的作品，公共场合翻着放心。默认关。</dd></div>
+<div><dt>不看 AI</dt><dd>列表里去掉标签带 AI（像「AI作畫」）或者标题里写着 AI 的作品。只看标题和标签，简介里提到 AI 的不算。默认关。</dd></div>
+<div><dt>记住账号</dt><dd>开着下次打开直接恢复登录；关掉会清掉已存的令牌。</dd></div>
+<div><dt>保存的账号 / 切换账号</dt><dd>登过的号都记在这里，点一下直接切过去，不用重新输密码。上面那行只显示、不能改。</dd></div>
+<div><dt>自动测速</dt><dd>启动时后台测线路，慢了自动换。改完立即生效。</dd></div>
+<div><dt>快速进入并后台测速</dt><dd>先按上次的线路进界面，测速放后台。自动测速关着时这一项会置灰。</dd></div>
+<div><dt>线路 / 测速 / 各线路延迟</dt><dd>这几行都只看不改：当前走哪条、哪个通道、延迟多少，以及每条线路通不通。</dd></div>
+<div><dt>DoH 解析</dt><dd>域名走加密 DNS；全挂了会自动退回系统 DNS。</dd></div>
+<div><dt>图片 IP 优选</dt><dd>后台测 Cloudflare 地址段、挑最快的给图片用，开关立即生效。</dd></div>
+<div><dt>图片质量</dt><dd>原图 / 高 / 中 / 低，默认中。</dd></div>
+<div><dt>缓存并发</dt><dd>一本同时下几页，同时也当全局网络上限用。可选 4 / 8 / 16 / 32 / 64，默认 32。</dd></div>
+<div><dt>清除图片缓存</dt><dd>只清图片，不动登录、线路和阅读进度。</dd></div>
+<div><dt>优选状态 / 地址池 / 上次完成</dt><dd>后台测速现在到哪一步、手上有多少可用地址、上一次什么时候测完。</dd></div>
+<div><dt>音量键翻页</dt><dd>阅读器里音量加翻上一页、音量减翻下一页。关掉恢复成调音量。默认开。</dd></div>
+<div><dt>主题</dt><dd>只显示当前的基线配色，不能在这里改；换颜色走上面的「皮肤」。</dd></div>
+<div><dt>检查更新</dt><dd>去 GitHub 看有没有新版本，有就问你装不装。</dd></div>
+<div><dt>使用帮助</dt><dd>就是这一页。</dd></div>
+<div><dt>关于 / GitHub / 接口</dt><dd>版本和项目地址；「接口」这一行说的是数据来自哪个模块（picaapi）。</dd></div>
+<div><dt>退出登录</dt><dd>清掉令牌，账号名留着，下次登录还能点上。</dd></div>
+</dl>
 </section>
 
 <section id="faq">
@@ -317,7 +376,7 @@ details .answer{margin:8px 0 0; padding-left:28px; color:var(--muted); font-size
 
 <details>
 <summary>首页推荐或者封面是空白的</summary>
-<div class="answer">多半是图片那边没连上。去 设置 看看「图片 IP 优选」和「图片质量」，再滑到底看「优选状态」是不是「这轮没测出可用地址」；是的话过一会儿再进来看，或者手动去 设置 → 测速 换条线。</div>
+<div class="answer">多半是图片那边没连上。去 设置 看看「图片 IP 优选」和「图片质量」，再滑到底看「优选状态」是不是「这轮没测出可用地址」；是的话过一会儿再进来看，或者重启一次让线路和优选都重测。</div>
 </details>
 
 <details>
@@ -337,7 +396,7 @@ details .answer{margin:8px 0 0; padding-left:28px; color:var(--muted); font-size
 
 <details>
 <summary>这一页怎么是网页</summary>
-<div class="answer">帮助内容写成网页，好处是断网也能看、内容长了也排得开、还能跳锚点。它由应用自己在本机开的一个小端口提供，不出手机，也不占流量。</div>
+<div class="answer">帮助内容写成网页，好处是断网也能看、内容长了也排得开、还能跳锚点。它由应用自己在本机开的一个小端口提供，不出手机，也不占流量。网页里的链接照样留在这个内置浏览器里，按返回键能一页页退回去。</div>
 </details>
 </section>
 
@@ -347,6 +406,33 @@ details .answer{margin:8px 0 0; padding-left:28px; color:var(--muted); font-size
 </p>
 
 </main>
+
+<button id="top" type="button" aria-label="回到顶部">↑</button>
+
+<script>
+(function () {
+  var bar = document.getElementById('bar');
+  var top = document.getElementById('top');
+  function update() {
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var ratio = h > 0 ? Math.min(1, Math.max(0, y / h)) : 0;
+    if (bar) { bar.style.transform = 'scaleX(' + ratio + ')'; }
+    if (top) {
+      if (y > 600) { top.className = 'show'; } else { top.className = ''; }
+    }
+  }
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+  if (top) {
+    top.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+  update();
+})();
+</script>
+
 </body>
 </html>
     """.trimIndent()
