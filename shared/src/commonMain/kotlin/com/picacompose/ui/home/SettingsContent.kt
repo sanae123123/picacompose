@@ -185,7 +185,6 @@ fun SettingsContent(
                         hideAi = on
                         ContentFilter.hideAi = on
                     },
-                    indent = true,
                 )
             }
             Spacer(Modifier.height(14.dp))
