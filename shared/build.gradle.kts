@@ -31,16 +31,6 @@ kotlin {
 
     jvm()
 
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "Shared"
-            isStatic = true
-        }
-    }
-
     sourceSets {
         commonMain.dependencies {
             api(projects.picaapi)
@@ -61,6 +51,13 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
         }
+
+        // 帮助页：resources/help/ 下的 index.html 和配图，构建时原样拷进包。
+        // 以 resources/ 为资源根，所以代码里按 help/xxx 取；Android 和桌面读的是同一份。
+        // 不写成 Kotlin 字符串：那得往源码里塞几十 K 字符，编辑器难受，编译器也要多存一份常量。
+        val resDir = rootProject.layout.projectDirectory.dir("resources")
+        jvmMain.get().resources.srcDir(resDir)
+        androidMain.get().resources.srcDir(resDir)
 
         // Desktop 和 Android 都是 JVM：下载用的文件操作只写一份，两边共用。
         val jvmCommonMain by creating {

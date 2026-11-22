@@ -24,7 +24,6 @@ ktor3-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" 
 ktor3-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
-ktor3-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor3-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }

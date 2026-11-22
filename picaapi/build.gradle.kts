@@ -19,16 +19,6 @@ kotlin {
 
     jvm()
 
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "PicaApi"
-            isStatic = true
-        }
-    }
-
     sourceSets {
         commonMain.dependencies {
             api(libs.ktor3.client.core)
@@ -42,10 +32,6 @@ kotlin {
 
         jvmMain.dependencies {
             implementation(libs.ktor3.client.cio)
-        }
-
-        iosMain.dependencies {
-            implementation(libs.ktor3.client.darwin)
         }
 
         commonTest.dependencies {
