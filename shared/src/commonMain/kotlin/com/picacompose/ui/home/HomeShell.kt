@@ -57,7 +57,10 @@ import com.picacompose.picaapi.model.ComicSummary
 import com.picacompose.picaapi.model.UserProfile
 import com.picacompose.ui.components.BackHandlerCompat
 import com.picacompose.data.ContentFilter
+import com.picacompose.data.AiCover
+import com.picacompose.data.AiCoverHttp
 import com.picacompose.data.HelpPages
+import com.picacompose.data.LocalHttpHandler
 import com.picacompose.data.LocalHttpServer
 import com.picacompose.data.NoticeUnread
 import com.picacompose.data.keepImageIpsFresh
@@ -341,10 +344,23 @@ fun HomeShell(
     }
     // 帮助页走「本机小服务 + 内置浏览器」：第一次点开时把服务拉起来，端口由系统分，
     // 之后一直复用（start 幂等）。页面内容全在应用里，不联网也能看。
+    //
+    // 分类磁贴的封面也从这台小服务走（/aicover/<art>），所以进页面就先起，别等点帮助；
+    // 两个处理器串成一条链，前一个不认识就交给后一个。
+    val localHandler: LocalHttpHandler = remember {
+        { path -> AiCoverHttp.handle(path) ?: HelpPages.handler(path) }
+    }
+    LaunchedEffect(Unit) {
+        runCatching { LocalHttpServer.start(localHandler) }
+    }
+    // 开着「只看无 H」就把分类磁贴的封面先在后台一张张画好，切到分类页时图已经在了。
+    LaunchedEffect(ContentFilter.enabled) {
+        if (ContentFilter.enabled) AiCover.prefetch()
+    }
     val openHelp: () -> Unit = {
         scope.launch {
             try {
-                val port = LocalHttpServer.start(HelpPages.handler)
+                val port = LocalHttpServer.start(localHandler)
                 webKey = "webPage"
                 webTitle = "使用帮助"
                 webUrl = "http://127.0.0.1:$port/"

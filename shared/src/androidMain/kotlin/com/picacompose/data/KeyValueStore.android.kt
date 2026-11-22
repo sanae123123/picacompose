@@ -10,6 +10,9 @@ fun initPicaStorage(context: Context) {
     appContext = context.applicationContext
 }
 
+/** 要缓存目录之类的地方用（比如 [AiCover] 存画好的封面）。 */
+internal fun picaAppContext(): Context = appContext ?: error("initPicaStorage(context) 还没调用")
+
 actual fun platformKeyValueStore(): KeyValueStore {
     val ctx: Context = appContext ?: error("initPicaStorage(context) 还没调用")
     val prefs: SharedPreferences = ctx.getSharedPreferences("pica_session", Context.MODE_PRIVATE)
