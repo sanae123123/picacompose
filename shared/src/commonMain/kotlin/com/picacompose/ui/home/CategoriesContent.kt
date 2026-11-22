@@ -35,8 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.picacompose.data.AiCoverHttp
-import com.picacompose.data.ContentFilter
 import com.picacompose.data.pica
 import com.picacompose.picaapi.model.Category
 import com.picacompose.ui.components.PicaGlyph
@@ -207,7 +205,7 @@ fun CategoriesContent(
                     onClick = onOpenLeaderboard,
                 ),
                 HotTile("游戏推荐", art = "game", onClick = onOpenGames),
-                HotTile("点击救哔咔", art = "splash", url = state.adCover, onClick = onOpenSplashAd),
+                HotTile("点击救哔咔", url = state.adCover, onClick = onOpenSplashAd),
                 HotTile("哔咔小程序", art = "love_pica", onClick = onOpenSplashAd),
                 HotTile("哔咔留言板", art = "forum", modifier = forumTileModifier, onClick = onOpenForum),
                 HotTile(
@@ -306,27 +304,16 @@ private fun HotTileCard(
         modifier = modifier.then(tile.modifier),
     ) {
         Column(modifier = Modifier.clickable(onClick = tile.onClick)) {
-            // 开了「只看无 H」：包里那张官方图就不放了（有的挺露），
-            // 换成按磁贴名现画的封面 —— 图上还是这块磁贴的意思，但不是原来那张。
-            val aiUrl = if (ContentFilter.enabled && tile.art != null) {
-                AiCoverHttp.url(tile.art)
-            } else {
-                null
-            }
-            val art = if (aiUrl == null) tile.art?.let { hotTileArt(it) } else null
-            when {
-                aiUrl != null -> PicaImage(
-                    url = aiUrl,
-                    contentDescription = tile.label,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-                )
-                art != null -> Image(
+            val art = tile.art?.let { hotTileArt(it) }
+            if (art != null) {
+                Image(
                     painter = art,
                     contentDescription = tile.label,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f),
                 )
-                else -> PicaImage(
+            } else {
+                PicaImage(
                     url = tile.url,
                     contentDescription = tile.label,
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f),
