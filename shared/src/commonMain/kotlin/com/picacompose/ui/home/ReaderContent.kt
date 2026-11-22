@@ -95,6 +95,7 @@ import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.url
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -109,6 +110,14 @@ private const val PRELOAD_BEHIND = 2
 
 /** 最多放到几倍。再大就糊了，也没谁真看那么细。 */
 private const val MAX_ZOOM = 5f
+
+/**
+ * 一页图等多久就算「卡住」。
+ *
+ * 和图片加载那边开竞速的窗口对齐（见 `ImageRetryInterceptor` 的 `READER_STALL_MS`），
+ * 倒计时数到 0 时那边正好开始换条路，界面上的话也就跟着改成「在换路」。
+ */
+private const val READER_WAIT_SECONDS = 5
 
 /**
  * 阅读器：整屏黑底，图片一张挨一张竖着排，滚到底自动续页。
@@ -276,7 +285,9 @@ fun ReaderContent(
         ReaderVolumeKeys.active = true
         onDispose { ReaderVolumeKeys.active = false }
     }
-    LaunchedEffect(Unit) {
+    // key 跟着 listState / pager 走：换上下话时这两个都会重建，collect 用 Unit 的话
+    // 会一直抓着上一话那套已经废掉的列表，按键被吃掉却翻不动 —— 表现就是切完话音量键失灵。
+    LaunchedEffect(listState, pager) {
         ReaderVolumeKeys.events.collect { direction ->
             val current = listState.firstVisibleItemIndex
             // 到底了还有下一页就先续一页再挪，别在最后一张上卡住。
@@ -639,12 +650,22 @@ private fun ReaderPage(
         mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty)
     }
     var retryTick by remember(model) { mutableIntStateOf(0) }
+    // 加载时数秒：干等一个转圈最熬人，给个「还剩几秒」心里有底。
+    var left by remember(model) { mutableIntStateOf(READER_WAIT_SECONDS) }
     // 和预抓用同一套请求参数，缓存才对得上。
     val request = remember(model) {
         ImageRequest.Builder(platformContext)
             .data(model)
             .size(Size.ORIGINAL)
             .build()
+    }
+    LaunchedEffect(model, state, retryTick) {
+        if (state !is AsyncImagePainter.State.Loading && state !is AsyncImagePainter.State.Empty) return@LaunchedEffect
+        left = READER_WAIT_SECONDS
+        while (left > 0) {
+            delay(1_000)
+            left--
+        }
     }
     val failed = state is AsyncImagePainter.State.Error
 
@@ -686,7 +707,13 @@ private fun ReaderPage(
                     }
                 } else {
                     ReaderLoadingBar(
-                        text = if (pageNumber > 0) "正在拉第 $pageNumber 页的图" else "正在拉图片",
+                        text = when {
+                            left > 0 && pageNumber > 0 -> "第 $pageNumber 页最多再等 $left 秒"
+                            left > 0 -> "最多再等 $left 秒"
+                            pageNumber > 0 -> "第 $pageNumber 页换条路再试，稍等一下"
+                            else -> "换条路再试，稍等一下"
+                        },
+                        countdown = left.takeIf { it > 0 },
                     )
                 }
             }
@@ -752,6 +779,7 @@ private fun EpisodeButton(
 @Composable
 private fun ReaderLoadingBar(
     text: String,
+    countdown: Int? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -778,14 +806,24 @@ private fun ReaderLoadingBar(
                 cornerRadius = CornerRadius(radius),
             )
             // 一小段白条从左跑到右，跑到头再从头出来
-            val barWidth = size.width * 0.38f
-            val travel = size.width - barWidth
-            drawRoundRect(
-                color = Color.White.copy(alpha = 0.78f),
-                topLeft = Offset(travel * phase, 0f),
-                size = GeometrySize(barWidth, size.height),
-                cornerRadius = CornerRadius(radius),
-            )
+            if (countdown != null) {
+                // 倒计时：白条按剩余秒数往回缩，看得见还剩多少。
+                val frac = (countdown.toFloat() / READER_WAIT_SECONDS).coerceIn(0f, 1f)
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.78f),
+                    size = GeometrySize(size.width * frac, size.height),
+                    cornerRadius = CornerRadius(radius),
+                )
+            } else {
+                val barWidth = size.width * 0.38f
+                val travel = size.width - barWidth
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.78f),
+                    topLeft = Offset(travel * phase, 0f),
+                    size = GeometrySize(barWidth, size.height),
+                    cornerRadius = CornerRadius(radius),
+                )
+            }
         }
         Text(
             text = text,
@@ -828,7 +866,7 @@ private fun ReaderState(
                 }
             }
 
-            loading -> ReaderLoadingBar(text = "正在拉图片…")
+            loading -> ReaderLoadingBar(text = "这一话的图还在下，稍等一下")
 
             else -> Text(
                 text = "这话没有图片",

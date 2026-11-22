@@ -5,7 +5,11 @@ import coil3.network.HttpException
 import coil3.request.ErrorResult
 import coil3.request.ImageResult
 import coil3.request.SuccessResult
+import coil3.size.Dimension
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
@@ -28,8 +32,11 @@ import kotlin.time.TimeSource
  * 那台图床上取一次，主图床挂了不至于整页灰。
  *
  * 更麻烦的一种失败是「不报错也不返回」：连接建起来了、图床那头一直不回，界面就永远停在
- * Loading。网络栈自己的超时是几十秒起步，等它等于让用户干瞪眼，所以先给 6 秒的判断窗口，
+ * Loading。网络栈自己的超时是几十秒起步，等它等于让用户干瞪眼，所以先给 9 秒的判断窗口，
  * 超了就当成这条路不通 —— 换图床地址（必要时连线路一起换）再拉一次。
+ *
+ * 阅读器另算一套：一页原图卡住时后面的页也跟着排队，等 9 秒太久，所以 5 秒没影就
+ * 三路并发拉同一张，谁先回来用谁（见 [racePage]）。
  */
 internal class ImageRetryInterceptor : Interceptor {
 
@@ -42,15 +49,61 @@ internal class ImageRetryInterceptor : Interceptor {
 
         // 网络图才谈得上「卡住」；离线包里取图是本机读 zip，慢了也不是线路的问题。
         if (url != null && url.startsWith("http")) {
-            val first = withTimeoutOrNull(STALL_WINDOW_MS) { chain.proceed() }
-            if (first != null) return settle(chain, first, start)
-            log("stall ${STALL_WINDOW_MS}ms $url")
-            StallSwitch.recover()
-            // 换完路不再限时：真慢的图该等它下完，一直掐断就永远看不到。
-            // 超时那一刻这条请求的 call 已经取消了，重拉会重新解析地址，新的顺序才真的生效。
-            attempt(chain) { chain.request }?.let { return settle(chain, it, start) }
+            if (isReaderPage(chain)) {
+                // 阅读器：一页一页往下翻，卡一页就卡住整个阅读节奏，等不起 9 秒。
+                val first = withTimeoutOrNull(READER_STALL_MS) { chain.proceed() }
+                if (first != null) return settle(chain, first, start)
+                log("reader stall ${READER_STALL_MS}ms $url")
+                racePage(chain, url)?.let { return settle(chain, it, start) }
+            } else {
+                val first = withTimeoutOrNull(STALL_WINDOW_MS) { chain.proceed() }
+                if (first != null) return settle(chain, first, start)
+                log("stall ${STALL_WINDOW_MS}ms $url")
+                StallSwitch.recover()
+                // 换完路不再限时：真慢的图该等它下完，一直掐断就永远看不到。
+                // 超时那一刻这条请求的 call 已经取消了，重拉会重新解析地址，新的顺序才真的生效。
+                attempt(chain) { chain.request }?.let { return settle(chain, it, start) }
+            }
         }
         return settle(chain, chain.proceed(), start)
+    }
+
+    /**
+     * 这一条是不是阅读器的整页原图。
+     *
+     * 阅读器请求的是 `Size.ORIGINAL`（宽高都没指定，是 [Dimension.Undefined]），
+     * 列表、封面那些都是明确的小尺寸，靠这个分得开；预抓也用同一套参数，所以预抓页同样走快的那条路。
+     */
+    private fun isReaderPage(chain: Interceptor.Chain): Boolean {
+        val width = chain.size.width
+        if (width is Dimension.Undefined) return true
+        return width is Dimension.Pixels && width.px >= 2_000
+    }
+
+    /**
+     * 三路并发拉同一张图，谁先到手用谁。
+     *
+     * 三路的地址：原图床两条（连接池各建一条，钉子 IP 池里通常落到不同机器上）、
+     * 备用图床一条。第一个完整回来的胜出，另外两条立刻取消 —— 只留最快那份的流量。
+     * 三路都超时就返回 null，交给外层原来的兜底。
+     */
+    private suspend fun racePage(chain: Interceptor.Chain, url: String): ImageResult? = coroutineScope {
+        val alternate = alternateImageUrls(url).firstOrNull()
+        val paths = if (alternate != null) listOf(url, url, alternate) else listOf(url, url, url)
+        val hits = Channel<ImageResult>(Channel.UNLIMITED)
+        val jobs = paths.map { path ->
+            launch {
+                val result = runCatching {
+                    val request = chain.request.newBuilder().data(path).build()
+                    chain.withRequest(request).proceed()
+                }.getOrNull()
+                if (result is SuccessResult) hits.send(result)
+            }
+        }
+        val winner = withTimeoutOrNull(RACE_TIMEOUT_MS) { hits.receive() }
+        jobs.forEach { it.cancel() }
+        winner?.let { log("race won by ${it.request.data}") }
+        winner
     }
 
     /** 请求有结果之后的处理：成功的记慢图日志，失败了再打一枪、再兜底另一台图床。 */
@@ -98,8 +151,14 @@ internal class ImageRetryInterceptor : Interceptor {
         /** 超过这个耗时就算慢图，只记日志不重试。 */
         const val SLOW_MS = 5_000L
 
-        /** 一个请求挂多久算「卡住」：超了就换路重拉。 */
-        const val STALL_WINDOW_MS = 6_000L
+        /** 列表那些图挂多久算「卡住」：超了就换路重拉。 */
+        const val STALL_WINDOW_MS = 9_000L
+
+        /** 阅读器的图等多久就开始三路竞速。 */
+        const val READER_STALL_MS = 5_000L
+
+        /** 竞速最多等这么久，三路都不行就交回外层兜底。 */
+        const val RACE_TIMEOUT_MS = 20_000L
     }
 }
 
