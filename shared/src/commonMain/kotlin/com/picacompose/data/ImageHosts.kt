@@ -10,6 +10,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * 图片服务器（`/init` 下发的那个）。
@@ -44,6 +45,19 @@ internal suspend fun refreshImageHost() {
     val server = data.imageServer?.takeIf { it.isNotBlank() } ?: return
     RouteStore().saveImageServer(server)
     ImageHosts.update(server)
+}
+
+/** 「立刻重测一轮」的信号；合并式通道，连着来好几次也只算一次。 */
+private val wakeUp = Channel<Unit>(Channel.CONFLATED)
+
+/**
+ * 请后台立刻重测一轮。
+ *
+ * 阅读器整整 11 秒拉不到一张图时，很可能不是单张图的问题，而是池子里的地址过期了 ——
+ * 此时重测一轮比一直重试旧地址有用。重测本来就跑在后台循环里，这里只是把它提前叫醒。
+ */
+internal fun requestImageIpsRefresh() {
+    wakeUp.trySend(Unit)
 }
 
 /**
@@ -118,7 +132,8 @@ internal suspend fun keepImageIpsFresh() {
             store.saveImageIps(best)
         }
         ImageIpsStatus.finish(best)
-        delay(if (best.isEmpty()) RETRY_MS else INTERVAL_MS)
+        // 等下一轮；期间收到「立刻重测」就提前开跑。
+        withTimeoutOrNull(if (best.isEmpty()) RETRY_MS else INTERVAL_MS) { wakeUp.receive() }
     }
 }
 

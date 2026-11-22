@@ -287,6 +287,18 @@ fun SearchContent(
             }
     }
 
+    // 一轮拉满 10 页还凑不够一屏时（筛得太狠），列表滚不动、也没地方触发续页。
+    // 这里接着补，不然底部就空在那里，既不转圈也不说「到底了」。
+    LaunchedEffect(pager) {
+        snapshotFlow { pager?.let { it.starved && !it.loading } == true }
+            .collect { ready ->
+                if (ready) {
+                    delay(250)
+                    pager?.loadNext()
+                }
+            }
+    }
+
     val submit: (String?) -> Unit = { text ->
         state.submit(text ?: state.query)
         keyboard?.hide()

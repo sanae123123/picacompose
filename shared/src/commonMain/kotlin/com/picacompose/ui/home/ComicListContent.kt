@@ -61,6 +61,7 @@ import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
 import com.picacompose.ui.components.PicaImage
 import com.picacompose.ui.components.url
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
@@ -135,6 +136,19 @@ fun ComicListContent(
             .distinctUntilChanged()
             .collect { (lastVisible, total) ->
                 if (total > 0 && lastVisible >= total - 5 && pager.hasMore && pager.error == null) {
+                    pager.loadNext()
+                }
+            }
+    }
+
+    // 内容过滤、多个标签叠起来时，一页 20 本筛完可能只剩一两本；一轮最多拉 10 页，
+    // 筛出来的还不够一屏就停了。此时列表短得滞不动，上面那条「滚到底续页」永远等不到，
+    // 底部既不转圈也不说「到底了」—— 看着就像卡死。这里自己接着补，补满一屏为止。
+    LaunchedEffect(pager) {
+        snapshotFlow { pager.starved && !pager.loading }
+            .collect { ready ->
+                if (ready) {
+                    delay(250)
                     pager.loadNext()
                 }
             }

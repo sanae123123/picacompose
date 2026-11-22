@@ -35,8 +35,8 @@ import kotlin.time.TimeSource
  * Loading。网络栈自己的超时是几十秒起步，等它等于让用户干瞪眼，所以先给 9 秒的判断窗口，
  * 超了就当成这条路不通 —— 换图床地址（必要时连线路一起换）再拉一次。
  *
- * 阅读器另算一套：一页原图卡住时后面的页也跟着排队，等 9 秒太久，所以 5 秒没影就
- * 三路并发拉同一张，谁先回来用谁（见 [racePage]）。
+ * 阅读器另算一套：一页原图卡住时后面的页也跟着排队，等 9 秒太久。所以 5 秒没影就
+ * 五路并发拉同一张，11 秒还没赢就换路，并让后台重测 IP 池（见 [raceReader]）。
  */
 internal class ImageRetryInterceptor : Interceptor {
 
@@ -54,7 +54,12 @@ internal class ImageRetryInterceptor : Interceptor {
                 val first = withTimeoutOrNull(READER_STALL_MS) { chain.proceed() }
                 if (first != null) return settle(chain, first, start)
                 log("reader stall ${READER_STALL_MS}ms $url")
-                racePage(chain, url)?.let { return settle(chain, it, start) }
+                raceReader(chain)?.let { return settle(chain, it, start) }
+                // 5 秒 + 6 秒还没影：多半不是单张图的事，而是池子里的地址过期了。
+                // 换路，同时叫后台重测一轮；最后这趟不再限时，慢图该等它下完。
+                log("reader stuck ${READER_STALL_MS + READER_RACE_WINDOW_MS}ms $url")
+                StallSwitch.recover(force = true)
+                requestImageIpsRefresh()
             } else {
                 val first = withTimeoutOrNull(STALL_WINDOW_MS) { chain.proceed() }
                 if (first != null) return settle(chain, first, start)
@@ -81,26 +86,23 @@ internal class ImageRetryInterceptor : Interceptor {
     }
 
     /**
-     * 三路并发拉同一张图，谁先到手用谁。
+     * 五路并发拉同一张图，谁先到手用谁。
      *
-     * 三路的地址：原图床两条（连接池各建一条，钉子 IP 池里通常落到不同机器上）、
-     * 备用图床一条。第一个完整回来的胜出，另外两条立刻取消 —— 只留最快那份的流量。
-     * 三路都超时就返回 null，交给外层原来的兜底。
+     * 五路都走原地址：图床的 DNS 每开一条新连接就把池子往后挪一台（见 `ImageDns` 的
+     * `turn`），所以五条连接自然铺到池子里最快的那几台机器上 —— 等于「从 IP 池里随机挑
+     * 五台一起下」，谁先回来用谁，剩下四条立刻取消。全都不行才返回 null。
      */
-    private suspend fun racePage(chain: Interceptor.Chain, url: String): ImageResult? = coroutineScope {
-        val alternate = alternateImageUrls(url).firstOrNull()
-        val paths = if (alternate != null) listOf(url, url, alternate) else listOf(url, url, url)
+    private suspend fun raceReader(chain: Interceptor.Chain): ImageResult? = coroutineScope {
         val hits = Channel<ImageResult>(Channel.UNLIMITED)
-        val jobs = paths.map { path ->
+        val jobs = List(READER_RACE_COPIES) {
             launch {
                 val result = runCatching {
-                    val request = chain.request.newBuilder().data(path).build()
-                    chain.withRequest(request).proceed()
+                    chain.withRequest(chain.request).proceed()
                 }.getOrNull()
                 if (result is SuccessResult) hits.send(result)
             }
         }
-        val winner = withTimeoutOrNull(RACE_TIMEOUT_MS) { hits.receive() }
+        val winner = withTimeoutOrNull(READER_RACE_WINDOW_MS) { hits.receive() }
         jobs.forEach { it.cancel() }
         winner?.let { log("race won by ${it.request.data}") }
         winner
@@ -154,11 +156,14 @@ internal class ImageRetryInterceptor : Interceptor {
         /** 列表那些图挂多久算「卡住」：超了就换路重拉。 */
         const val STALL_WINDOW_MS = 9_000L
 
-        /** 阅读器的图等多久就开始三路竞速。 */
+        /** 阅读器的图等多久就开始五路并发。 */
         const val READER_STALL_MS = 5_000L
 
-        /** 竞速最多等这么久，三路都不行就交回外层兜底。 */
-        const val RACE_TIMEOUT_MS = 20_000L
+        /** 五路并发再等这么久还没赢（加起来 11 秒），就当池子有问题，换路并让后台重测。 */
+        const val READER_RACE_WINDOW_MS = 30_000L
+
+        /** 并发几路：正好覆盖图片 DNS 轮换的那几台。 */
+        const val READER_RACE_COPIES = 5
     }
 }
 
@@ -174,15 +179,19 @@ private object StallSwitch {
     /** 两道卡顿之间至少隔这么久，才允许再换一次。 */
     private val COOLDOWN = 6.seconds
 
+    /** 阅读器 11 秒都没影时是另一回事：允许早一点换，但也不能让一屏图连着换。 */
+    private val FORCE_COOLDOWN = 3.seconds
+
     private val lock = Mutex()
 
     /** 上一次换成功的时间；第一次卡住时是 null。 */
     private var lastSwitch: TimeMark? = null
 
-    suspend fun recover() {
+    suspend fun recover(force: Boolean = false) {
         lock.withLock {
             val last = lastSwitch
-            if (last != null && last.elapsedNow() < COOLDOWN) return
+            val gate = if (force) FORCE_COOLDOWN else COOLDOWN
+            if (last != null && last.elapsedNow() < gate) return
             val switched = runCatching { LineRouter.recover() }.getOrDefault(false)
             if (switched) {
                 lastSwitch = TimeSource.Monotonic.markNow()

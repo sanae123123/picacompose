@@ -54,11 +54,22 @@ class Pager<T>(
     /** 还有下一页可拉（第一页没拉过算 true）。 */
     val hasMore: Boolean get() = loadedPage == 0 || loadedPage < lastPage
 
+    /**
+     * 上一轮是不是「拉满了轮数还没凑够一屏」。
+     *
+     * 开了内容过滤、标签叠得多时，一页 20 本筛完可能只剩一两本。筛到轮数上限就停下来了，
+     * 但后面明明还有页 —— 此时列表往往很短、根本滚不动，也就没机会触发续页，
+     * 底部会空着（有 `hasMore` 但没人拉）。UI 看到这个标记会自己接着补，补满一屏为止。
+     */
+    var starved by mutableStateOf(false)
+        private set
+
     suspend fun loadNext() {
         if (loading) return
         if (loadedPage > 0 && loadedPage >= lastPage) return
         loading = true
         error = null
+        starved = false
         try {
             var fresh = 0
             var rounds = 0
@@ -81,6 +92,10 @@ class Pager<T>(
                 // 没配过滤器、原始页见底、或者筛出来的够一屏了，就收手。
                 if (filter == null || loadedPage >= lastPage || fresh >= minFreshPerPage) break
             }
+            // 轮数用尽、筛出来的还不够一屏、后面还有页：交给 UI 接着补一轮，
+            // 不然底部就空在那里，既不转圈也不说「到底了」。
+            starved = filter != null && failure == null &&
+                loadedPage < lastPage && fresh < minFreshPerPage
             failure?.let { error = it.message ?: "列表没拉到" }
         } finally {
             // 页面被销毁导致取消时也得放掉，不然下次进来一直被挡住。

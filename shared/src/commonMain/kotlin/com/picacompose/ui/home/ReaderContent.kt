@@ -119,6 +119,12 @@ private const val MAX_ZOOM = 5f
  */
 private const val READER_WAIT_SECONDS = 5
 
+/** 第二段：几路并发抢，配合 `ImageRetryInterceptor.READER_RACE_WINDOW_MS`。 */
+private const val READER_RACE_SECONDS = 30
+
+/** 最后一段的上限，和 OkHttp 的请求超时对齐；到点还没图就是真失败了。 */
+private const val READER_TIMEOUT_SECONDS = 60
+
 /**
  * 阅读器：整屏黑底，图片一张挨一张竖着排，滚到底自动续页。
  *
@@ -269,6 +275,39 @@ fun ReaderContent(
                 if (total > 0 && lastVisible >= total - 3 && pager.hasMore && pager.error == null) {
                     pager.loadNext()
                 }
+            }
+    }
+
+    // 滑到顶或者滑到底就停住了，阅读器又没有滚动条 —— 到头了得有个明说，
+    // 顺手把工具条叫出来，不然看着像卡在最后一张。
+    var edgeToast by remember { mutableStateOf<String?>(null) }
+    var edgeToastTick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(edgeToastTick) {
+        if (edgeToastTick == 0) return@LaunchedEffect
+        delay(1_800)
+        edgeToast = null
+    }
+    LaunchedEffect(listState, pager) {
+        snapshotFlow {
+            Triple(
+                listState.isScrollInProgress,
+                listState.canScrollBackward,
+                listState.canScrollForward,
+            )
+        }
+            .distinctUntilChanged()
+            .collect { (scrolling, canBack, canForward) ->
+                // 只在手松停下来那一刻报，划到一半路过不算。
+                if (scrolling || pager.items.isEmpty()) return@collect
+                // 到底得是真没页了：还在续页时滑不动只是暂时的。
+                val message = when {
+                    !canBack -> "已经到顶了"
+                    !canForward && !pager.hasMore -> "已经到底了"
+                    else -> null
+                } ?: return@collect
+                chrome = true
+                edgeToast = message
+                edgeToastTick++
             }
     }
 
@@ -454,6 +493,23 @@ fun ReaderContent(
                         style = MiuixTheme.textStyles.footnote1,
                         color = Color.White.copy(alpha = 0.85f),
                         modifier = Modifier.padding(horizontal = 8.dp),
+                    )
+                }
+            }
+
+            // 到头提示：浮在底部工具条上面一点，不挡进度条和翻话按钮。
+            edgeToast?.let { message ->
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 150.dp)
+                        .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(999.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        text = message,
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = Color.White,
                     )
                 }
             }
@@ -650,8 +706,9 @@ private fun ReaderPage(
         mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty)
     }
     var retryTick by remember(model) { mutableIntStateOf(0) }
-    // 加载时数秒：干等一个转圈最熬人，给个「还剩几秒」心里有底。
-    var left by remember(model) { mutableIntStateOf(READER_WAIT_SECONDS) }
+    // 加载时分段数秒：干等一个转圈最熬人，每段都给个「还剩几秒」心里有底。
+    // 时间线和 ImageRetryInterceptor 对齐：正常拉 5 秒 → 并发抢 30 秒 → 换线路重拉，最多到请求超时。
+    var elapsed by remember(model) { mutableIntStateOf(0) }
     // 和预抓用同一套请求参数，缓存才对得上。
     val request = remember(model) {
         ImageRequest.Builder(platformContext)
@@ -661,13 +718,27 @@ private fun ReaderPage(
     }
     LaunchedEffect(model, state, retryTick) {
         if (state !is AsyncImagePainter.State.Loading && state !is AsyncImagePainter.State.Empty) return@LaunchedEffect
-        left = READER_WAIT_SECONDS
-        while (left > 0) {
+        elapsed = 0
+        while (true) {
             delay(1_000)
-            left--
+            elapsed++
         }
     }
     val failed = state is AsyncImagePainter.State.Error
+    val racing = elapsed >= READER_WAIT_SECONDS &&
+        elapsed < READER_WAIT_SECONDS + READER_RACE_SECONDS
+    val stalled = elapsed >= READER_WAIT_SECONDS + READER_RACE_SECONDS
+    // 当前这一段的剩余秒数，以及它有多长（进度条按段重新走）。
+    val left = when {
+        !racing && !stalled -> READER_WAIT_SECONDS - elapsed
+        racing -> READER_WAIT_SECONDS + READER_RACE_SECONDS - elapsed
+        else -> (READER_TIMEOUT_SECONDS - elapsed).coerceAtLeast(0)
+    }
+    val span = when {
+        !racing && !stalled -> READER_WAIT_SECONDS
+        racing -> READER_RACE_SECONDS
+        else -> READER_TIMEOUT_SECONDS - READER_WAIT_SECONDS - READER_RACE_SECONDS
+    }
 
     Box(Modifier.fillMaxWidth()) {
         if (state is AsyncImagePainter.State.Empty ||
@@ -708,12 +779,16 @@ private fun ReaderPage(
                 } else {
                     ReaderLoadingBar(
                         text = when {
-                            left > 0 && pageNumber > 0 -> "第 $pageNumber 页最多再等 $left 秒"
-                            left > 0 -> "最多再等 $left 秒"
-                            pageNumber > 0 -> "第 $pageNumber 页换条路再试，稍等一下"
-                            else -> "换条路再试，稍等一下"
+                            !racing && !stalled && pageNumber > 0 -> "第 $pageNumber 页最多再等 $left 秒"
+                            !racing && !stalled -> "最多再等 $left 秒"
+                            racing && pageNumber > 0 -> "第 $pageNumber 页换路再试，最多再等 $left 秒"
+                            racing -> "换路再试，最多再等 $left 秒"
+                            left > 0 && pageNumber > 0 -> "第 $pageNumber 页有点慢，最多再等 $left 秒"
+                            left > 0 -> "有点慢，最多再等 $left 秒"
+                            pageNumber > 0 -> "第 $pageNumber 页还在试，再等等"
+                            else -> "还在试，再等等"
                         },
-                        countdown = left.takeIf { it > 0 },
+                        progress = if (left > 0) left.toFloat() / span else null,
                     )
                 }
             }
@@ -771,15 +846,15 @@ private fun EpisodeButton(
 }
 
 /**
- * 拉图时的占位：一条来回跑的细进度条 + 一行小字。
+ * 拉图时的占位：一条细进度条 + 一行小字。
  *
- * 阅读器是黑底自绘的，这里不跟皮肤走，轨道和滑块都用白色系；
- * 单张图没有可读的百分比，所以用循环滑动表示「在拉」。
+ * 阅读器是黑底自绘的，这里不跟皮肤走，轨道和滑块都用白色系。
+ * 给了 [progress]（剩余比例）就把白条缩到对应长度，没给就循环滑动表示「在拉」。
  */
 @Composable
 private fun ReaderLoadingBar(
     text: String,
-    countdown: Int? = null,
+    progress: Float? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -806,9 +881,9 @@ private fun ReaderLoadingBar(
                 cornerRadius = CornerRadius(radius),
             )
             // 一小段白条从左跑到右，跑到头再从头出来
-            if (countdown != null) {
-                // 倒计时：白条按剩余秒数往回缩，看得见还剩多少。
-                val frac = (countdown.toFloat() / READER_WAIT_SECONDS).coerceIn(0f, 1f)
+            if (progress != null) {
+                // 倒计时：白条按剩余比例往回缩，看得见还剩多少。
+                val frac = progress.coerceIn(0f, 1f)
                 drawRoundRect(
                     color = Color.White.copy(alpha = 0.78f),
                     size = GeometrySize(size.width * frac, size.height),
