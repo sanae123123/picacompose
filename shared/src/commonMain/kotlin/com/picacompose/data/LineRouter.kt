@@ -192,9 +192,13 @@ object LineRouter {
     /**
      * 换成后台测出来最快、且不是当前这条的线路。
      *
+     * [forceSwitch] 是真的要换条线路了：阅读器整整卡了一轮（5 秒 + 30 秒）才走到这儿，
+     * 再在原地址池里挪一台没意义 —— 直接跳过池内轮换去测线换线。换成了会弹一句
+     * 「连不上，已切到线路 X」，等那么久总得让用户知道发生了什么。
+     *
      * 测速还没跑完就先等它（最多一个超时周期）；没有更好的选择时返回 false。
      */
-    suspend fun recover(): Boolean {
+    suspend fun recover(forceSwitch: Boolean = false): Boolean {
         // 「自动测速」关着：不测线路、也不换线路，最多在现有地址里挪一台。
         if (!preferences.autoProbe) {
             if (ImageIps.ordered().size <= 1) return false
@@ -202,7 +206,7 @@ object LineRouter {
             return true
         }
         // 有优选池就先在池子里换一台：不动线路、不重建客户端，下一批请求自然走新地址。
-        if (ImageIps.hasUsablePool && poolRotations < MAX_POOL_ROTATIONS) {
+        if (!forceSwitch && ImageIps.hasUsablePool && poolRotations < MAX_POOL_ROTATIONS) {
             poolRotations += 1
             ImageIps.rotate()
             appliedIps = ImageIps.ordered()

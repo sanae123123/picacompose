@@ -36,7 +36,7 @@ import kotlin.time.TimeSource
  * 超了就当成这条路不通 —— 换图床地址（必要时连线路一起换）再拉一次。
  *
  * 阅读器另算一套：一页原图卡住时后面的页也跟着排队，等 9 秒太久。所以 5 秒没影就
- * 五路并发拉同一张，11 秒还没赢就换路，并让后台重测 IP 池（见 [raceReader]）。
+ * 五路并发拉同一张，再 30 秒还没赢就换线路、并让后台重测 IP 池（见 [raceReader]）。
  */
 internal class ImageRetryInterceptor : Interceptor {
 
@@ -55,8 +55,9 @@ internal class ImageRetryInterceptor : Interceptor {
                 if (first != null) return settle(chain, first, start)
                 log("reader stall ${READER_STALL_MS}ms $url")
                 raceReader(chain)?.let { return settle(chain, it, start) }
-                // 5 秒 + 6 秒还没影：多半不是单张图的事，而是池子里的地址过期了。
-                // 换路，同时叫后台重测一轮；最后这趟不再限时，慢图该等它下完。
+                // 5 秒 + 30 秒还没影：多半不是单张图的事，而是这条线路 / 池子里的地址不行了。
+                // 换线路（会弹一句「连不上，已切到线路 X」），同时叫后台重测一轮；
+                // 最后这趟不再限时，慢图该等它下完。
                 log("reader stuck ${READER_STALL_MS + READER_RACE_WINDOW_MS}ms $url")
                 StallSwitch.recover(force = true)
                 requestImageIpsRefresh()
@@ -159,7 +160,7 @@ internal class ImageRetryInterceptor : Interceptor {
         /** 阅读器的图等多久就开始五路并发。 */
         const val READER_STALL_MS = 5_000L
 
-        /** 五路并发再等这么久还没赢（加起来 11 秒），就当池子有问题，换路并让后台重测。 */
+        /** 五路并发再等这么久还没赢（加起来 35 秒），就当这条线路有问题，换线并让后台重测。 */
         const val READER_RACE_WINDOW_MS = 30_000L
 
         /** 并发几路：正好覆盖图片 DNS 轮换的那几台。 */
@@ -179,7 +180,8 @@ private object StallSwitch {
     /** 两道卡顿之间至少隔这么久，才允许再换一次。 */
     private val COOLDOWN = 6.seconds
 
-    /** 阅读器 11 秒都没影时是另一回事：允许早一点换，但也不能让一屏图连着换。 */
+    /** 阅读器 35 秒都没影时是另一回事：允许早一点换，且直接换线路不再池内挪，
+     *  但也不能让一屏图连着换。 */
     private val FORCE_COOLDOWN = 3.seconds
 
     private val lock = Mutex()
@@ -192,7 +194,7 @@ private object StallSwitch {
             val last = lastSwitch
             val gate = if (force) FORCE_COOLDOWN else COOLDOWN
             if (last != null && last.elapsedNow() < gate) return
-            val switched = runCatching { LineRouter.recover() }.getOrDefault(false)
+            val switched = runCatching { LineRouter.recover(forceSwitch = force) }.getOrDefault(false)
             if (switched) {
                 lastSwitch = TimeSource.Monotonic.markNow()
                 log("routed away after stall")

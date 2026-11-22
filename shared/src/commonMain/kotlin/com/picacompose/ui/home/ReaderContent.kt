@@ -359,7 +359,9 @@ fun ReaderContent(
                     .onSizeChanged { viewport = it }
                     // 手势监听挂在缩放图层外面：坐标不跟着缩放变，手指和画面才一一对应，
                     // 挂在里面的话 Compose 拿缩放后的坐标算位移，会越拖越跟不上、松手还往回弹。
-                    .pointerInput(Unit) {
+                    // key 得跟着 listState 走：换上一话/下一话时列表是新的，手势检测器要是还
+                    // 停在第一话那次，放大后拖到边上滚的就是那个已经废弃的列表 —— 看着就是卡住不动。
+                    .pointerInput(listState) {
                         detectReaderGestures(
                             zoomed = { scale > 1f },
                             onStart = {
