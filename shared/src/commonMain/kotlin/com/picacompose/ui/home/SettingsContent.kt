@@ -112,6 +112,7 @@ fun SettingsContent(
     var clearing by remember { mutableStateOf(false) }
     var checkingUpdate by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
+    var showNetwork by remember { mutableStateOf(false) }
     val route = remember { RouteStore() }
     val preferences = remember { LinePreferences() }
     var qualityIndex by remember { mutableStateOf(preferences.imageQuality) }
@@ -443,6 +444,12 @@ fun SettingsContent(
                     onClick = onOpenHelp,
                 )
                 PickerRow(
+                    icon = PicaIcon.Speed,
+                    title = "网络链路",
+                    value = "调试",
+                    onClick = { showNetwork = true },
+                )
+                PickerRow(
                     icon = PicaIcon.Notice,
                     title = "关于",
                     value = "PicaCompose",
@@ -472,6 +479,10 @@ fun SettingsContent(
 
     if (showAbout) {
         AboutScreen(onDismiss = { showAbout = false })
+    }
+
+    if (showNetwork) {
+        NetworkDebugScreen(onDismiss = { showNetwork = false })
     }
 
     if (switchOpen) {

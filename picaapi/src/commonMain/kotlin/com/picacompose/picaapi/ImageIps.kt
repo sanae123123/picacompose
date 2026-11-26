@@ -119,6 +119,9 @@ object ImageIps {
         return if (offset == 0) base else base.drop(offset) + base.take(offset)
     }
 
+    /** 内置种子全量，给调试页看池子构成用（不参与优选排序）。 */
+    val seeds: List<String> get() = SEEDS_V4 + SEEDS_V6
+
     /** 后台测速的候选：几层全都要测，才能知道哪台最快（v6 没出口的自然测不过）。 */
     fun candidates(): List<String> = (preferred + official + SEEDS_V4 + SEEDS_V6).distinct()
 }
