@@ -1,5 +1,7 @@
 package com.picacompose.data
 
+import com.picacompose.picaapi.nowEpochSeconds
+
 /**
  * 记住上次选的线路和下发到的 IP 池。
  *
@@ -34,8 +36,13 @@ class RouteStore(private val kv: KeyValueStore = platformKeyValueStore()) {
             ?.filter { it.isNotEmpty() }
             .orEmpty()
 
-    fun saveImageIps(ips: List<String>) {
+    /** 上次优选是什么时候测完的（epoch 秒），冷启动后「上次完成」那行靠它显示。 */
+    val savedImageIpsAt: Long?
+        get() = kv.get(KEY_IMAGE_IPS_AT)?.toLongOrNull()
+
+    fun saveImageIps(ips: List<String>, atEpochSeconds: Long = nowEpochSeconds()) {
         kv.put(KEY_IMAGE_IPS, ips.takeIf { it.isNotEmpty() }?.joinToString(","))
+        kv.put(KEY_IMAGE_IPS_AT, atEpochSeconds.toString())
     }
 
     fun saveImageServer(value: String?) {
@@ -54,5 +61,6 @@ class RouteStore(private val kv: KeyValueStore = platformKeyValueStore()) {
         const val KEY_LATENCY = "route.latencyMs"
         const val KEY_IMAGE_SERVER = "route.imageServer"
         const val KEY_IMAGE_IPS = "route.imageIps"
+        const val KEY_IMAGE_IPS_AT = "route.imageIpsAt"
     }
 }

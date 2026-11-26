@@ -53,6 +53,7 @@ import com.picacompose.data.formatBytes
 import com.picacompose.data.imageCacheBytes
 import com.picacompose.data.pica
 import com.picacompose.picaapi.ImageIps
+import com.picacompose.picaapi.nowEpochSeconds
 import kotlinx.coroutines.launch
 import com.picacompose.ui.components.PicaGlyph
 import com.picacompose.ui.components.PicaIcon
@@ -138,10 +139,17 @@ fun SettingsContent(
     var useImageIps by remember { mutableStateOf(preferences.imageIps) }
     var noHOnly by remember { mutableStateOf(ContentFilter.enabled) }
     var hideAi by remember { mutableStateOf(ContentFilter.hideAi) }
-    // 「几分钟前」要自己走：没有系统时钟依赖，用单调时间算相对时长。
+    // 「几分钟前」要自己走：本次会话用单调时间，冷启动后拿存盘的绝对时间算。
     val imageIpsAgo by produceState(-1L) {
         while (true) {
-            value = ImageIpsStatus.finishedAt?.elapsedNow()?.inWholeSeconds ?: -1L
+            val mark = ImageIpsStatus.finishedAt
+            value = if (mark != null) {
+                mark.elapsedNow().inWholeSeconds
+            } else {
+                ImageIpsStatus.lastFinishedAtEpochSeconds
+                    ?.let { (nowEpochSeconds() - it).coerceAtLeast(0) }
+                    ?: -1L
+            }
             delay(10_000)
         }
     }
@@ -605,6 +613,8 @@ private fun imageIpsPoolText(): String = when {
     ImageIpsStatus.phase == ImageIpsStatus.Phase.Off -> "只用 /init 下发的地址"
     ImageIpsStatus.phase == ImageIpsStatus.Phase.Scanning && ImageIpsStatus.pool.isNotEmpty() ->
         "先用着 ${ImageIpsStatus.pool.size} 台 · ${ImageIpsStatus.fastestMs ?: 0}ms"
+    ImageIpsStatus.phase == ImageIpsStatus.Phase.Idle && ImageIpsStatus.pool.isNotEmpty() ->
+        "上次测的 ${ImageIpsStatus.pool.size} 台，等这轮重测"
     ImageIpsStatus.pool.isEmpty() -> "官方源 + 内置种子"
     else -> ImageIpsStatus.fastestMs
         ?.let { "${it}ms 最快 · ${ImageIpsStatus.pool.size} 台" }

@@ -75,6 +75,9 @@ internal suspend fun keepImageIpsFresh() {
     ImageIps.updateOfficial(store.savedIps)
     ImageIps.updateEnabled(preferences.imageIps)
     ImageIps.preferOfficialFirst()
+    // 设置页先摆上一轮的结果：不然一进设置就显示「官方源 + 内置种子」、
+    // 「还没有测过」，看着像把上次的记记丢了。
+    ImageIpsStatus.restore(store.savedImageIps, store.savedImageIpsAt)
     // 官方 HttpDNS 给的地址最贴当前网络，先问一次垫在最前面；问不到不影响后面。
     refreshHttpDns()
     // 首屏先用官方源出图，扫描往后让一让：几百台一起握手会跟首屏的图抢连接。

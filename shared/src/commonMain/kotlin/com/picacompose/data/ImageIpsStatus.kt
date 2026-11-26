@@ -3,6 +3,7 @@ package com.picacompose.data
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.picacompose.picaapi.nowEpochSeconds
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
@@ -53,6 +54,19 @@ internal object ImageIpsStatus {
     var finishedAt: TimeMark? by mutableStateOf(null)
         private set
 
+    /** 上次测完的绝对时间（epoch 秒）。进程重启后 [finishedAt] 没了，靠它接着算「几分钟前」。 */
+    var lastFinishedAtEpochSeconds: Long? by mutableStateOf(null)
+        private set
+
+    /**
+     * 冷启动时把上一轮的结果先摆出来：设置页的「地址池」和「上次完成」
+     * 不用等这一轮测完才有内容。
+     */
+    fun restore(pool: List<String>, finishedAtEpochSeconds: Long?) {
+        if (pool.isNotEmpty()) this.pool = pool
+        this.lastFinishedAtEpochSeconds = finishedAtEpochSeconds
+    }
+
     fun start(total: Int) {
         phase = Phase.Scanning
         this.total = total
@@ -73,6 +87,7 @@ internal object ImageIpsStatus {
         this.pool = pool
         phase = if (pool.isEmpty()) Phase.Failed else Phase.Done
         finishedAt = TimeSource.Monotonic.markNow()
+        lastFinishedAtEpochSeconds = nowEpochSeconds()
     }
 
     /** 开关关掉时调一次：卡片显示成「已关闭」，并清掉上一轮的结果。 */
