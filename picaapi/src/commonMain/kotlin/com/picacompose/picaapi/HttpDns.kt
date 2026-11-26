@@ -4,6 +4,9 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -18,8 +21,11 @@ import kotlinx.serialization.json.Json
  */
 private val MACAPI_HOSTS = listOf("macapi1.com", "macapi3.top")
 
-/** 拿到结果就返回，拿不到就算了 —— 这只是给池子加一层，不是必须成功的依赖。 */
-private const val HTTP_DNS_TIMEOUT_MS = 3_000L
+/**
+ * 单次最多等这么久。实测服务端首次要现查一遍，`macapi3.top` 回答要 6 秒多，
+ * 3 秒根本等不到 —— 这里放得比实测值宽一点。
+ */
+private const val HTTP_DNS_TIMEOUT_MS = 8_000L
 
 private val httpDnsJson = Json {
     ignoreUnknownKeys = true
@@ -58,15 +64,30 @@ private val httpDnsClient by lazy {
 /**
  * 查一次 [domain] 的地址。全失败返回空列表，调用方保留原来的池子。
  *
+ * 两个域名**并发**问：其中一个在国内实测要 6 秒多（服务端首次得现解析），串行等就太久了。
+ * 谁先给出非空结果用谁，另一个当场取消。
+ *
  * 不区分运营商：把所有线路的地址合并。设备自己报不出归属，而这几组地址指向的是同一批
  * Cloudflare anycast，混着轮换反而更容易撞上快的那条。
  */
-suspend fun resolveViaHttpDns(domain: String): List<String> {
-    for (host in MACAPI_HOSTS) {
-        val ips = runCatching { query(host, domain) }.getOrNull().orEmpty()
-        if (ips.isNotEmpty()) return ips
+suspend fun resolveViaHttpDns(domain: String): List<String> = coroutineScope {
+    val answers = Channel<List<String>>(Channel.UNLIMITED)
+    val jobs = MACAPI_HOSTS.map { host ->
+        launch {
+            answers.trySend(runCatching { query(host, domain) }.getOrDefault(emptyList()))
+        }
     }
-    return emptyList()
+    var found: List<String> = emptyList()
+    for (index in MACAPI_HOSTS.indices) {
+        val ips = answers.receive()
+        if (ips.isNotEmpty()) {
+            found = ips
+            break
+        }
+    }
+    // 已经有结果（或全部失败）就把剩下的请求停掉，不用再等。
+    jobs.forEach { it.cancel() }
+    found
 }
 
 private suspend fun query(host: String, domain: String): List<String> {
