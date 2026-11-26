@@ -17,9 +17,8 @@ class PicaImageTest {
             PicaImage.url(thumb("https://storage1.picacomic.com", "8cd.jpg")),
         )
         assertEquals(
-            // `tobs/` 会被去掉：服务端对 storage-b 上的 `tobs/<file>` 是 301 到去掉 `tobs/` 的地址，
-            // 这里直接拼最终地址省一次跳转。
-            "https://storage-b.picacomic.com/static/abc.jpg",
+            // `tobs/` 是真实路径的一部分，不能裁：官方 `qe3` 只做 `fileServer + "/static/" + path`。
+            "https://storage-b.picacomic.com/static/tobs/abc.jpg",
             PicaImage.url(thumb("https://storage-b.picacomic.com", "tobs/abc.jpg")),
         )
     }
@@ -57,6 +56,18 @@ class PicaImageTest {
         assertEquals(
             "https://img.example.com/static/old.jpg",
             PicaImage.url(thumb("https://storage1.picacomic.com", "old.jpg"), "https://img.example.com"),
+        )
+    }
+
+    @Test
+    fun `文件服务上的 tobs 路径也原样保留`() {
+        // fileServer 和 imageServer 两条路拼法完全一样，都保留 tobs。
+        assertEquals(
+            "https://s3.picacomic.com/static/tobs/8cd.jpg",
+            PicaImage.url(
+                thumb("https://storage-b.picacomic.com", "tobs/8cd.jpg"),
+                "https://s3.picacomic.com/static/",
+            ),
         )
     }
 
