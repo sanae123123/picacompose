@@ -107,7 +107,7 @@ class ModelTest {
     @Test
     fun imageServerOverridesFileServer() {
         val thumb = Thumbnail(fileServer = "https://s3.picacomic.com", path = "/img/001.jpg")
-        assertEquals("https://cdn.example.com/img/001.jpg", PicaImage.url(thumb, "https://cdn.example.com"))
+        assertEquals("https://cdn.example.com/static/img/001.jpg", PicaImage.url(thumb, "https://cdn.example.com"))
         assertNull(PicaImage.url(Thumbnail(), null))
     }
 }

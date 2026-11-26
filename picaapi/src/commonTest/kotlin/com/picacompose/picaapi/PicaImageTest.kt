@@ -17,7 +17,9 @@ class PicaImageTest {
             PicaImage.url(thumb("https://storage1.picacomic.com", "8cd.jpg")),
         )
         assertEquals(
-            "https://storage-b.picacomic.com/static/tobs/abc.jpg",
+            // `tobs/` 会被去掉：服务端对 storage-b 上的 `tobs/<file>` 是 301 到去掉 `tobs/` 的地址，
+            // 这里直接拼最终地址省一次跳转。
+            "https://storage-b.picacomic.com/static/abc.jpg",
             PicaImage.url(thumb("https://storage-b.picacomic.com", "tobs/abc.jpg")),
         )
     }
@@ -47,6 +49,32 @@ class PicaImageTest {
         assertEquals(
             "https://img.example.com/static/old.jpg",
             PicaImage.url(thumb("https://storage1.picacomic.com", "old.jpg"), "https://img.example.com/static"),
+        )
+    }
+
+    @Test
+    fun `imageServer 是裸域名时同样补 static`() {
+        assertEquals(
+            "https://img.example.com/static/old.jpg",
+            PicaImage.url(thumb("https://storage1.picacomic.com", "old.jpg"), "https://img.example.com"),
+        )
+    }
+
+    /**
+     * 服务端在 `thumb.path` 里直接下发缩略图签名路径（`tobeimg/<token>/rs:fill:…/<b64>.jpg`），
+     * 客户端只拼 `fileServer + "/static/" + path`，不参与签名。
+     */
+    @Test
+    fun `服务端下发的 tobeimg 缩略图路径原样拼接`() {
+        val path = "tobeimg/ojaW_ArrKzG8bf3gN7mPfVnRhHNiCcapjEYv17ZIDxk" +
+            "/rs:fill:300:400:0/g:sm/aHR0cHM6Ly9zdG9yYWdlLWIuanBn.jpg"
+        assertEquals(
+            "https://storage-b.picacomic.com/static/$path",
+            PicaImage.url(thumb("https://storage-b.picacomic.com", path)),
+        )
+        assertEquals(
+            "https://img.example.com/static/$path",
+            PicaImage.url(thumb("https://storage-b.picacomic.com", path), "https://img.example.com"),
         )
     }
 

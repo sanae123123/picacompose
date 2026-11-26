@@ -26,11 +26,19 @@ object PicaImage {
         if (fileServer != null && fileServer.equals("http://lorempixel.com", ignoreCase = true)) return path
         // 官方客户端的 `utils.g.b()`：有 /init 下发的图床就优先用它，没有才回 fileServer。
         // 官方图床域名在很多网络上被解析到错的 IP，镜像图床反而是能通的那条。
+        //
+        // 两种来源走同一套拼法：官方 `qe3` 是对根地址补 `/static` 再拼 path，而不是拿 path
+        // 直接接上去。少这一层的话，带 `tobeimg/…` 的缩略图会被拼成 `host/tobeimg/…`（缺 static）。
         if (!imageServer.isNullOrBlank()) {
-            return imageServer.trimEnd('/') + "/" + path.trimStart('/')
+            return join(imageServer, path)
         }
         if (fileServer == null) return null
-        val base = fileServer.trimEnd('/')
+        return join(fileServer, path)
+    }
+
+    /** 把图床根地址和接口给的 `path` 接起来，规则见 [hasDirectory]。 */
+    private fun join(baseUrl: String, path: String): String {
+        val base = baseUrl.trimEnd('/')
         // 游戏图标在 storage-b 上是 `tobs/<file>`，服务端 301 到去掉 `tobs/` 的地址，
         // 这里直接拼最终地址，省一次跳转。
         val relative = path.trimStart('/').removePrefix("tobs/")
