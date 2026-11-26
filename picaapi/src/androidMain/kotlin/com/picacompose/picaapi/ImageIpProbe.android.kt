@@ -19,7 +19,8 @@ import kotlin.time.TimeSource
 /** 探测目标：任意一个 picacomic 域名都行，只要它跟图床在同一个 zone。 */
 private const val PROBE_URL = "https://picaapi.picacomic.com/"
 
-private const val PROBE_TIMEOUT_MS = 2_500L
+/** 单台多久算不通。国内连 Cloudflare 有时要三四秒，2.5 秒会把能用的误刹掉。 */
+private const val PROBE_TIMEOUT_MS = 5_000L
 
 private val probeClient = OkHttpClient.Builder()
     .connectTimeout(PROBE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
