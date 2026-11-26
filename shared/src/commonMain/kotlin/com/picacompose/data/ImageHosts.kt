@@ -76,8 +76,23 @@ internal suspend fun keepImageIpsFresh() {
     ImageIps.updateEnabled(preferences.imageIps)
     ImageIps.preferOfficialFirst()
     // 设置页先摆上一轮的结果：不然一进设置就显示「官方源 + 内置种子」、
-    // 「还没有测过」，看着像把上次的记记丢了。
+    // 「还没有测过」，看着像把上次的记录丢了。
     ImageIpsStatus.restore(store.savedImageIps, store.savedImageIpsAt)
+
+    // 这一轮全量测完之前，先把上一轮的结果验一遡：能通的立刻顶上，不通的当场剔掉。
+    // 只测十来台、并发 12 路，两秒内出结果，首屏起来就有地址可用。
+    val lastRound = store.savedImageIps
+    if (preferences.imageIps && lastRound.isNotEmpty()) {
+        val verified = runCatching {
+            probeImageIps(candidates = lastRound, limit = POOL_SIZE, thresholdMs = FAST_MS)
+        }.getOrDefault(emptyList())
+        if (verified.isNotEmpty()) {
+            ImageIps.updatePreferred(verified)
+            ImageIps.activatePreferred()
+            ImageIpsStatus.restore(verified, store.savedImageIpsAt)
+        }
+    }
+
     // 官方 HttpDNS 给的地址最贴当前网络，先问一次垫在最前面；问不到不影响后面。
     refreshHttpDns()
     // 首屏先用官方源出图，扫描往后让一让：几百台一起握手会跟首屏的图抢连接。
@@ -94,9 +109,9 @@ internal suspend fun keepImageIpsFresh() {
             continue
         }
         ImageIps.updateEnabled(true)
-        // 上次测出来的最快五台排在最前面：这一轮一开跑就先测它们，很快就能先用上，
+        // 上一轮的结果全部并进来一起测（不只前几台）：验证过的那几台排最前面先开跑，
         // 剩下的官方段地址照旧在后面一起扫。
-        val lastFast = store.savedImageIps.ifEmpty { ImageIps.preferred }.take(TOP_PRIORITY)
+        val lastFast = store.savedImageIps.ifEmpty { ImageIps.preferred }
         val candidates = (lastFast + CloudflareIps.sample()).distinct()
         ImageIpsStatus.start(candidates.size)
         // 边测边用：先测出够快的几台就立刻顶上，不用等 200 多台全扫完。
@@ -163,9 +178,6 @@ private const val POOL_SIZE = 10
 
 /** 多快算「快」：500ms 以内的握手速度，一屏图基本不会等。 */
 private const val FAST_MS = 500L
-
-/** 上一次的结果里，最快的那几台下一轮排在最前面先测。 */
-private const val TOP_PRIORITY = 5
 
 /** 开关关着时每隔一会儿看一眼，拨开了就能接着测。 */
 private const val IDLE_MS = 10 * 1000L
