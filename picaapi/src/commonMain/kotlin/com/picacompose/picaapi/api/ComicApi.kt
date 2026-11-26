@@ -17,6 +17,9 @@ import com.picacompose.picaapi.model.Paged
 import com.picacompose.picaapi.model.UserBasic
 import io.ktor.http.HttpMethod
 
+/** 排序参数 `s` 是必填项，缺省时官方客户端发 `dd`（按更新时间倒序）。 */
+private const val DEFAULT_SORT = "dd"
+
 /** 漫画相关接口。 */
 class ComicApi internal constructor(private val client: PicaClient) {
 
@@ -34,7 +37,7 @@ class ComicApi internal constructor(private val client: PicaClient) {
         finished: Boolean? = null,
         sort: String? = null,
         categoryType: String? = null,
-        categoryArea: String? = null,
+        creatorId: String? = null,
     ): Paged<ComicSummary> = client.call(
         method = HttpMethod.Get,
         path = "comics",
@@ -44,9 +47,9 @@ class ComicApi internal constructor(private val client: PicaClient) {
             "t" to tag,
             "a" to author,
             "f" to finished?.toString(),
-            "s" to sort,
+            "s" to (sort ?: DEFAULT_SORT),
             "ct" to categoryType,
-            "ca" to categoryArea,
+            "ca" to creatorId,
         ),
         serializer = ComicListData.serializer(),
     ).comics
@@ -153,7 +156,7 @@ class ComicApi internal constructor(private val client: PicaClient) {
     suspend fun favourites(page: Int = 1, sort: String? = null): Paged<ComicSummary> = client.call(
         method = HttpMethod.Get,
         path = "users/favourite",
-        query = mapOf("page" to page.toString(), "s" to sort),
+        query = mapOf("page" to page.toString(), "s" to (sort ?: DEFAULT_SORT)),
         serializer = ComicListData.serializer(),
     ).comics
 }

@@ -236,7 +236,7 @@ data class PunchInData(
 @Serializable
 data class PunchInResult(
     val status: String? = null,
-    val punchInLastDay: String? = null,
+    @SerialName("lastDay") val punchInLastDay: String? = null,
 )
 
 @Serializable

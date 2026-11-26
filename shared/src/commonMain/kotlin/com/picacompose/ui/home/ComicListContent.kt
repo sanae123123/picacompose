@@ -7,6 +7,7 @@ import com.picacompose.ui.components.rememberDialogPop
 import com.picacompose.ui.components.PicaTextButton
 import com.picacompose.ui.components.PicaFilterChip
 import com.picacompose.ui.components.PicaSlidingChipRow
+import com.picacompose.ui.components.PicaSwitch
 import com.picacompose.ui.components.PicaAlertDialog
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.background
@@ -364,6 +365,30 @@ internal fun ComicFilterDialog(
                     .heightIn(max = 520.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
+                // 内容过滤是全局开关，和设置页读写同一份状态：这里一改，设置里立刻是新的，
+                // 反过来也一样。所以它不走草稿、也不等「应用」——筛的是列表，改完就该重筛。
+                val filterVersion = ContentFilter.version
+                var noHOnly by remember(filterVersion) { mutableStateOf(ContentFilter.enabled) }
+                var hideAi by remember(filterVersion) { mutableStateOf(ContentFilter.hideAi) }
+                FilterToggleRow(
+                    title = "只看无 H",
+                    summary = "只保留标签或简介里带「无 H / 無 H」的作品",
+                    checked = noHOnly,
+                    onCheckedChange = {
+                        noHOnly = it
+                        ContentFilter.enabled = it
+                    },
+                )
+                FilterToggleRow(
+                    title = "不看 AI",
+                    summary = "去掉标签带 AI、或标题里写着 AI 的作品",
+                    checked = hideAi,
+                    onCheckedChange = {
+                        hideAi = it
+                        ContentFilter.hideAi = it
+                    },
+                )
+                Spacer(Modifier.height(12.dp))
                 Text(
                     text = "排序方式",
                     style = MiuixTheme.textStyles.footnote1,
@@ -686,5 +711,44 @@ internal fun ComicListRow(
                 }
             }
         }
+    }
+}
+
+/**
+ * 筛选弹窗最上面那两行开关：标题 + 一句说明 + 右边一个开关。
+ *
+ * 和设置页里的开关是同一份状态（[ContentFilter]），所以文案只留一句，
+ * 详细解释放设置页那份，免得弹窗挤得看不清排序和标签。
+ */
+@Composable
+private fun FilterToggleRow(
+    title: String,
+    summary: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val colors = MiuixTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MiuixTheme.textStyles.body1,
+                color = colors.onSurface,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = summary,
+                style = MiuixTheme.textStyles.footnote2,
+                color = colors.onSurfaceSecondary,
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        PicaSwitch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
