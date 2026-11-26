@@ -23,9 +23,9 @@ private val MACAPI_HOSTS = listOf("macapi1.com", "macapi3.top")
 
 /**
  * 单次最多等这么久。实测服务端首次要现查一遍，`macapi3.top` 回答要 6 秒多，
- * 3 秒根本等不到 —— 这里放得比实测值宽一点。
+ * 网络差的时候更久，这里给得比实测值宽很多。反正跑在后台，慢一点不卡界面。
  */
-private const val HTTP_DNS_TIMEOUT_MS = 8_000L
+private const val HTTP_DNS_TIMEOUT_MS = 15_000L
 
 private val httpDnsJson = Json {
     ignoreUnknownKeys = true
