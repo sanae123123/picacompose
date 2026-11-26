@@ -17,9 +17,9 @@ import kotlinx.serialization.json.Json
  * 只是「能握手」，这边给的是服务端认为当前网络该用的那几台。所以它的结果垫在池子最前面，
  * 自己测的那些排在后面兜底。
  *
- * 不需要签名。两个域名轮着试，谁先给出非空结果用谁。
+ * 不需要签名。几个域名轮着试，谁先给出非空结果用谁。
  */
-private val MACAPI_HOSTS = listOf("macapi1.com", "macapi3.top")
+private val MACAPI_HOSTS = listOf("macapi1.com", "macapi2.com", "macapi3.top")
 
 /**
  * 单次最多等这么久。实测服务端首次要现查一遍，`macapi3.top` 回答要 6 秒多，
