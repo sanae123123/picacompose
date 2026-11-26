@@ -26,6 +26,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.URLBuilder
 import io.ktor.http.takeFrom
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -305,7 +306,9 @@ class PicaClient(
         }
         response
     }.getOrElse {
-        // 走到这里说明请求没发出去或没收到响应，和线路强相关。
+        // 协程被取消（退出页面、换了线路）不算网络故障，别把地址误标成坏的。
+        if (it is CancellationException) throw it
+        // 走到这里说明请求没发出去或没收到响应（含超时），和线路强相关。
         onTransportFailure?.invoke()
         throw PicaException(message = it.message, cause = it)
     }

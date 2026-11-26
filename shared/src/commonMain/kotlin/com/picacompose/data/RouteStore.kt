@@ -40,6 +40,22 @@ class RouteStore(private val kv: KeyValueStore = platformKeyValueStore()) {
     val savedImageIpsAt: Long?
         get() = kv.get(KEY_IMAGE_IPS_AT)?.toLongOrNull()
 
+    /** 已经证实超时/连不上的接口地址：重建客户端时剔掉，不再拿它们试。 */
+    val savedBadIps: List<String>
+        get() = kv.get(KEY_BAD_IPS)
+            ?.split(',')
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            .orEmpty()
+
+    /** 坏地址只留最近几条：IP 池本来就会变，留太多了只会越攒越胖。 */
+    fun saveBadIps(ips: Collection<String>) {
+        kv.put(
+            KEY_BAD_IPS,
+            ips.toList().takeLast(BAD_IPS_LIMIT).takeIf { it.isNotEmpty() }?.joinToString(","),
+        )
+    }
+
     fun saveImageIps(ips: List<String>, atEpochSeconds: Long = nowEpochSeconds()) {
         kv.put(KEY_IMAGE_IPS, ips.takeIf { it.isNotEmpty() }?.joinToString(","))
         kv.put(KEY_IMAGE_IPS_AT, atEpochSeconds.toString())
@@ -62,5 +78,9 @@ class RouteStore(private val kv: KeyValueStore = platformKeyValueStore()) {
         const val KEY_IMAGE_SERVER = "route.imageServer"
         const val KEY_IMAGE_IPS = "route.imageIps"
         const val KEY_IMAGE_IPS_AT = "route.imageIpsAt"
+        const val KEY_BAD_IPS = "route.badIps"
+
+        /** 坏地址最多记这么多条。 */
+        const val BAD_IPS_LIMIT = 32
     }
 }

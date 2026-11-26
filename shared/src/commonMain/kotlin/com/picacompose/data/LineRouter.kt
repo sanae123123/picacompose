@@ -94,6 +94,42 @@ object LineRouter {
     /** 这次故障里已经在池子里轮过几台了（换到线路那一步会清零）。 */
     private var poolRotations = 0
 
+    /** 证实过超时/连不上的接口地址：建客户端时剔掉，不再拿去试。 */
+    private val badIps = LinkedHashSet(store.savedBadIps)
+
+    /** 上次拉黑的时刻：几个请求同时超时时，别一口气把整池子都标成坏的。 */
+    private var lastBadMark: TimeMark? = null
+
+    /**
+     * 去掉拉黑过的地址，找建客户端的地方拿它。
+     *
+     * 全被拉黑说明是网络整体断了，不是某一台的问题，那就原样返回 —— 池子不能因为
+     * 「全都超时过」就彻底空了。
+     */
+    fun usable(ips: List<String>): List<String> {
+        val live = ips.filterNot { it in badIps }
+        return if (live.isEmpty()) ips else live
+    }
+
+    /**
+     * 把刚才失败的那台标成坏的。
+     *
+     * 接口钉住的地址是按顺序试的，第一个基本就是这次失败的那台；六秒内只标一次，
+     * 免得几个并发请求同时超时把整池子一口气清空。
+     */
+    private fun markBadIp() {
+        if (lastBadMark?.let { it.elapsedNow() < 6.seconds } == true) return
+        val candidate = knownIps.filterNot { it in badIps }.firstOrNull() ?: return
+        // 只剩最后一台没标记就是它了：全标完池子会空，说明该清掉重来。
+        if (badIps.size + 1 >= knownIps.size) {
+            badIps.clear()
+        } else {
+            badIps.add(candidate)
+        }
+        lastBadMark = TimeSource.Monotonic.markNow()
+        store.saveBadIps(badIps)
+    }
+
     /** 当前客户端是按哪条线路、哪批 IP 建的，用来避免拿一模一样的组合反复重建。 */
     private var appliedLine: PicaLine? = null
     private var appliedIps: List<String> = emptyList()
@@ -116,7 +152,7 @@ object LineRouter {
         this.scope = scope
         knownIps = ips
         appliedLine = line
-        appliedIps = ips
+        appliedIps = usable(ips)
         if (!probe) {
             // 自动测速关着也得把 DoH 查一次：不然开关坏了会一直坏着，每次启动都白等一遍。
             scope.launch { dohAddressesIfEnabled(preferences, ips) }
@@ -163,7 +199,7 @@ object LineRouter {
         }
         knownIps = ips
         appliedLine = line
-        appliedIps = ips
+        appliedIps = usable(ips)
         store.save(line, ips, candidates.toMap()[line])
     }
 
@@ -180,6 +216,8 @@ object LineRouter {
     /** 传输层失败时调（由 [picaNetworkFailureHandler] 转进来）。 */
     fun onNetworkFailure() {
         val scope = scope ?: return
+        // 先把这台记成坏的：下面的 recover 才会用剩下的地址重建。
+        markBadIp()
         scope.launch {
             val before = switchCount
             val recovered = recover()
@@ -204,6 +242,14 @@ object LineRouter {
             if (ImageIps.ordered().size <= 1) return false
             ImageIps.rotate()
             return true
+        }
+        // 接口地址里有被拉黑的：先用剩下的原地重建客户端，线路不动。
+        if (!forceSwitch) {
+            val line = appliedLine ?: store.savedLine
+            if (line != null && rebuildOn(line)) {
+                poolRotations += 1
+                return true
+            }
         }
         // 有优选池就先在池子里换一台：不动线路、不重建客户端，下一批请求自然走新地址。
         if (!forceSwitch && ImageIps.hasUsablePool && poolRotations < MAX_POOL_ROTATIONS) {
@@ -236,17 +282,29 @@ object LineRouter {
         }
     }
 
+    /** 只用剩下的地址把客户端重建一次：线路不动，只换接口地址。 */
+    private suspend fun rebuildOn(line: PicaLine): Boolean = switchLock.withLock {
+        val live = usable(knownIps)
+        if (live == appliedIps) return@withLock false
+        if (runCatching { applyPicaRoute(line, live) }.isFailure) return@withLock false
+        appliedLine = line
+        appliedIps = live
+        lastSwitch = TimeSource.Monotonic.markNow()
+        true
+    }
+
     /** 换线路 + 弹提示；拿锁的版本给协程用，`*Locked` 给已经持锁的调用方用。 */
     private suspend fun switchTo(line: PicaLine, latencyMs: Long?, note: String): Boolean =
         switchLock.withLock { switchToLocked(line, latencyMs, note) }
 
     private suspend fun switchToLocked(line: PicaLine, latencyMs: Long?, note: String): Boolean {
-        if (line == appliedLine && knownIps == appliedIps) return false
-        if (runCatching { applyPicaRoute(line, knownIps) }.isFailure) return false
+        val live = usable(knownIps)
+        if (line == appliedLine && live == appliedIps) return false
+        if (runCatching { applyPicaRoute(line, live) }.isFailure) return false
 
         store.save(line, knownIps, latencyMs ?: store.savedLatencyMs)
         appliedLine = line
-        appliedIps = knownIps
+        appliedIps = live
         lastSwitch = TimeSource.Monotonic.markNow()
         switchCount += 1
         onNotice?.invoke(note)

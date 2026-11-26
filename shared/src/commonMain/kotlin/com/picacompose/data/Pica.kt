@@ -34,16 +34,18 @@ private val retireScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
  */
 suspend fun applyPicaRoute(line: PicaLine, ips: List<String>) {
     val old = pica
+    // 已证实超时的地址不再钉进引擎：池子本身留着，换网络后重建还能用。
+    val live = LineRouter.usable(ips)
     // 换线路等于换了官方下发的那几台：接口和图片都用 ImageIps 这一份顺序，
     // 所以这里同步一下，并回到「官方源优先，等后台优选覆盖」。
-    ImageIps.updateOfficial(ips)
+    ImageIps.updateOfficial(live)
     ImageIps.updatePreferred(RouteStore().savedImageIps)
     ImageIps.updateEnabled(LinePreferences().imageIps)
     ImageIps.preferOfficialFirst()
     // 画质也一样：接口头跟着新客户端走，图片拦截器读的是同一份全局值。
     val quality = ImageQuality.fromIndex(LinePreferences().imageQuality)
     ImageQualitySetting.current = quality
-    val engine = routeEngine(line, ips)
+    val engine = routeEngine(line, live)
     pica = PicaClient(
         config = old.config.copy(
             appChannel = line.channel,
