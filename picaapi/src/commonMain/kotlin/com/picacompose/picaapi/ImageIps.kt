@@ -7,9 +7,10 @@ package com.picacompose.picaapi
  * 而不少网络会把它们的系统解析污染成别的公司的地址，连过去只剩超时。官方客户端靠 `/init`
  * 下发的 IP 池绕过去（它的自定义 DNS 连 hostname 都不看，图片也吃这套），这里照着分成几层：
  *
- * 1. [preferred] —— 后台优选测出来的，按握手耗时排；
- * 2. [official] —— `/init` 下发的池子，也就是官方用的那份；
- * 3. 内置种子（IPv4 + IPv6）—— 前两层都用不上时至少不至于一张图都没有。
+ * 1. [httpDns] —— 官方 HttpDNS 接口给的，按运营商分好，排最前；
+ * 2. [preferred] —— 后台优选测出来的，按握手耗时排；
+ * 3. [official] —— `/init` 下发的池子，也就是官方用的那份；
+ * 4. 内置种子（IPv4 + IPv6）—— 前几层都用不上时至少不至于一张图都没有。
  *
  * 冷启动顺序是「官方源先上，后台同时测速，测完把优选结果顶到最前面」（见 [activatePreferred]）：
  * 这样首屏不用等测速，测速结果也不会被上次那份可能已经过期的结果挡住。
@@ -41,6 +42,15 @@ object ImageIps {
     var official: List<String> = emptyList()
         private set
 
+    /**
+     * 官方 HttpDNS 接口给的地址（见 [resolveViaHttpDns]），永远排在最前面。
+     *
+     * 它是服务端按当前网络的运营商挑的，比本地测速更贴实际；测速结果只当第二梯队。
+     */
+    @Volatile
+    var httpDns: List<String> = emptyList()
+        private set
+
     /** 设置里的「图片 IP 优选」开关：关掉就只用官方源 + 内置种子，不测也不用优选结果。 */
     @Volatile
     var enabled: Boolean = true
@@ -57,6 +67,10 @@ object ImageIps {
 
     fun updateOfficial(ips: List<String>) {
         official = ips.mapNotNull { it.trim().takeIf(String::isNotEmpty) }.distinct()
+    }
+
+    fun updateHttpDns(ips: List<String>) {
+        httpDns = ips.mapNotNull { it.trim().takeIf(String::isNotEmpty) }.distinct()
     }
 
     /** 从哪一位开始用（[rotate] 挪过的位数）；不是原子量，偶发丢一次也无所谓。 */
@@ -96,9 +110,9 @@ object ImageIps {
      */
     fun ordered(): List<String> {
         val base = when {
-            !enabled -> (official + SEEDS_V4 + SEEDS_V6).distinct()
-            preferredActive -> (preferred + official + SEEDS_V4 + SEEDS_V6).distinct()
-            else -> (official + preferred + SEEDS_V4 + SEEDS_V6).distinct()
+            !enabled -> (httpDns + official + SEEDS_V4 + SEEDS_V6).distinct()
+            preferredActive -> (httpDns + preferred + official + SEEDS_V4 + SEEDS_V6).distinct()
+            else -> (httpDns + official + preferred + SEEDS_V4 + SEEDS_V6).distinct()
         }
         if (base.size <= 1) return base
         val offset = ((turn % base.size) + base.size) % base.size

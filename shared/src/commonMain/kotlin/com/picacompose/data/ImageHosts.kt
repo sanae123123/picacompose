@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import com.picacompose.picaapi.CloudflareIps
 import com.picacompose.picaapi.ImageIps
 import com.picacompose.picaapi.probeImageIps
+import com.picacompose.picaapi.resolveViaHttpDns
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -74,9 +75,13 @@ internal suspend fun keepImageIpsFresh() {
     ImageIps.updateOfficial(store.savedIps)
     ImageIps.updateEnabled(preferences.imageIps)
     ImageIps.preferOfficialFirst()
+    // 官方 HttpDNS 给的地址最贴当前网络，先问一次垫在最前面；问不到不影响后面。
+    refreshHttpDns()
     // 首屏先用官方源出图，扫描往后让一让：几百台一起握手会跟首屏的图抢连接。
     delay(START_DELAY_MS)
     while (true) {
+        // 每轮重问一次：运营商线路会变，它比本地测速跟得紧。
+        refreshHttpDns()
         if (!preferences.imageIps) {
             // 开关关着：不测、也不用优选结果，只用官方下发地址（设置页随时能开回来）。
             ImageIps.updateEnabled(false)
@@ -135,6 +140,19 @@ internal suspend fun keepImageIpsFresh() {
         // 等下一轮；期间收到「立刻重测」就提前开跑。
         withTimeoutOrNull(if (best.isEmpty()) RETRY_MS else INTERVAL_MS) { wakeUp.receive() }
     }
+}
+
+/** 真正出图的域：问它最有代表性，接口域和它不一定同一批地址。 */
+private const val HTTP_DNS_DOMAIN = "img.picacomic.com"
+
+/**
+ * 问一次官方 HttpDNS，把结果垫到池子最前面。
+ *
+ * 失败就什么都不做 —— 池子里还有测速结果和 `/init` 下发的地址，不会因为这一层挂了就没图。
+ */
+private suspend fun refreshHttpDns() {
+    val ips = resolveViaHttpDns(HTTP_DNS_DOMAIN)
+    if (ips.isNotEmpty()) ImageIps.updateHttpDns(ips)
 }
 
 /** 池子里留几台：够并发用，又不至于每张图都换一条新连接。 */
