@@ -163,7 +163,7 @@ internal class ImageRetryInterceptor : Interceptor {
         /** 五路并发再等这么久还没赢（加起来 35 秒），就当这条线路有问题，换线并让后台重测。 */
         const val READER_RACE_WINDOW_MS = 30_000L
 
-        /** 并发几路：正好覆盖图片 DNS 轮换的那几台。 */
+        /** 并发几路：铺到地址池轮换的前几台机器上。 */
         const val READER_RACE_COPIES = 5
     }
 }
