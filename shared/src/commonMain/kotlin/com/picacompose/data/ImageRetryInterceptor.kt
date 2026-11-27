@@ -54,6 +54,9 @@ internal class ImageRetryInterceptor : Interceptor {
                 val first = withTimeoutOrNull(READER_STALL_MS) { chain.proceed() }
                 if (first != null) return settle(chain, first, start)
                 log("reader stall ${READER_STALL_MS}ms $url")
+                // 5 秒没影先给这条线路记一笔降级：不立刻切（会重建客户端、打断这一屏），
+                // 但真到了要换线路那一步会优先挑别的线路。
+                LineRouter.demote()
                 raceReader(chain)?.let { return settle(chain, it, start) }
                 // 5 秒 + 30 秒还没影：多半不是单张图的事，而是这条线路 / 池子里的地址不行了。
                 // 换线路（会弹一句「连不上，已切到线路 X」），同时叫后台重测一轮；

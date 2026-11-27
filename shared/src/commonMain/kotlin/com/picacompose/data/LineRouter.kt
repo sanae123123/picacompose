@@ -45,6 +45,9 @@ private data class ProbeResult(
  */
 object LineRouter {
 
+    /** 降级线路在排名里加的惩罚：够把它压到任何正常线路后面。 */
+    private const val DEMOTE_PENALTY_MS = 60_000L
+
     /** 后台测过的每一条，没测过的线路不在里面。 */
     @Volatile
     private var statusList: List<LineStatus> = emptyList()
@@ -52,10 +55,23 @@ object LineRouter {
     /** 后台列表的快照，设置页拿它显示每条线路测出来多少。 */
     val statuses: List<LineStatus> get() = statusList
 
-    /** 后台列表里写得通的那几条，按快到慢。不通的（延迟为 null）在这里面永远不出现。 */
+    /** 后台列表里写得通的那几条，按快到慢。降级过的线路排到最后。 */
     private val ranked: List<Pair<PicaLine, Long>>
+        get() = rawRanked.sortedBy { (line, ms) -> if (line == demotedLine) ms + DEMOTE_PENALTY_MS else ms }
+
+    /** 不看待降级的原始排名：测速证明降级线路其实最快时，靠它解除降级。 */
+    private val rawRanked: List<Pair<PicaLine, Long>>
         get() = statusList.mapNotNull { status -> status.latencyMs?.let { status.line to it } }
             .sortedBy { it.second }
+
+    /**
+     * 阅读器卡过一发的线路：选线时排到最后，下一轮测速证明它其实最快就自动恢复。
+     *
+     * 只降不换 —— 5 秒的卡顿可能只是一张图的问题，当场切线路会重建客户端、把这一屏
+     * 正在下的连接全打断。先记一笔，等真要换线的时候自然避开它。
+     */
+    @Volatile
+    private var demotedLine: PicaLine? = null
 
     @Volatile
     private var knownIps: List<String> = emptyList()
@@ -181,12 +197,27 @@ object LineRouter {
     private fun storeResult(result: ProbeResult) {
         statusList = result.statuses
         knownIps = result.ips
+        // 新一轮测速说它又是最快的：那上次卡顿大概不是线路的错，降级解除。
+        demotedLine?.let { demoted ->
+            if (rawRanked.firstOrNull()?.first == demoted) demotedLine = null
+        }
         val current = store.savedLine ?: appliedLine
         store.save(
             line = current,
             ips = result.ips,
             latencyMs = ranked.firstOrNull { it.first == current }?.second ?: store.savedLatencyMs,
         )
+    }
+
+    /**
+     * 阅读器第一次 5 秒没拉到图时叫一声：把当前线路降级。
+     *
+     * 只改排名、不动客户端 —— 这一屏继续用地址池磨，真到了要换线路那一步（或者下一次
+     * 故障兜底）会优先挑别的线路。幂等，一屏图同时卡住好几张也只会记一笔。
+     */
+    fun demote() {
+        val line = appliedLine ?: store.savedLine ?: return
+        demotedLine = line
     }
 
     /** 线路选择页已经测过一遍，直接接管结果，免得再测一次。 */
@@ -306,6 +337,8 @@ object LineRouter {
         appliedLine = line
         appliedIps = live
         lastSwitch = TimeSource.Monotonic.markNow()
+        // 已经换走了，降级标记没用了。
+        demotedLine = null
         switchCount += 1
         onNotice?.invoke(note)
         // 换完重测：后台列表要反映换线之后各条线路的真实状况，下次故障才不会再往一条已经
