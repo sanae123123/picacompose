@@ -5,6 +5,18 @@ import io.ktor.client.engine.okhttp.OkHttp
 import okhttp3.Dns
 import java.net.InetAddress
 
+actual fun systemEngine(): HttpClientEngine? = OkHttp.create {
+    config {
+        dns(object : Dns {
+            override fun lookup(hostname: String): List<InetAddress> {
+                val resolved = Dns.SYSTEM.lookup(hostname)
+                NetworkLog.record("接口", resolved.firstOrNull()?.hostAddress)
+                return resolved
+            }
+        })
+    }
+}
+
 actual suspend fun pinnedEngine(ips: List<String>): HttpClientEngine? {
     if (ips.isEmpty()) return null
     return OkHttp.create {

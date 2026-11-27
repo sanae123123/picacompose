@@ -4,6 +4,7 @@ import com.picacompose.picaapi.ImageIps
 import com.picacompose.picaapi.dohEngine
 import com.picacompose.picaapi.fetchBootstrap
 import com.picacompose.picaapi.pinnedEngine
+import com.picacompose.picaapi.NetworkLog
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.HttpTimeout
@@ -218,6 +219,7 @@ object LineRouter {
     fun demote() {
         val line = appliedLine ?: store.savedLine ?: return
         demotedLine = line
+        NetworkLog.event("线路", "降级 ${line.title}")
     }
 
     /** 线路选择页已经测过一遍，直接接管结果，免得再测一次。 */
@@ -247,6 +249,7 @@ object LineRouter {
     /** 传输层失败时调（由 [picaNetworkFailureHandler] 转进来）。 */
     fun onNetworkFailure() {
         val scope = scope ?: return
+        NetworkLog.event("接口", "传输失败，进兜底")
         // 先把这台记成坏的：下面的 recover 才会用剩下的地址重建。
         markBadIp()
         scope.launch {
@@ -340,6 +343,7 @@ object LineRouter {
         // 已经换走了，降级标记没用了。
         demotedLine = null
         switchCount += 1
+        NetworkLog.event("线路", note)
         onNotice?.invoke(note)
         // 换完重测：后台列表要反映换线之后各条线路的真实状况，下次故障才不会再往一条已经
         // 不通的线上换。这次测出来的结果只记账，不再触发换线，免得来回跳。

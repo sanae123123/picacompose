@@ -85,6 +85,14 @@ expect suspend fun pinnedEngine(ips: List<String>): HttpClientEngine?
  */
 expect fun imageEngine(): HttpClientEngine?
 
+/**
+ * 系统解析的接口引擎：只比默认引擎多一层 DNS 钩子，把每次新连接的目标地址记进 [NetworkLog]。
+ *
+ * 线路 1 本来就不钉 IP、走系统解析，以前直接用的默认引擎——接口的连接在调试页上就是一片
+ * 空白，出问题时看不出到底连到了哪台。解析方式一点没变，只是顺手记下来。
+ */
+expect fun systemEngine(): HttpClientEngine?
+
 /** DoH 端点：按「结果更可信」的顺序排，国内的放后面当兜底。 */
 internal val DOH_ENDPOINTS = listOf(
     "https://1.1.1.1/dns-query",

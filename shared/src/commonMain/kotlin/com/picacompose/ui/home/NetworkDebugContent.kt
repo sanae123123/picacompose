@@ -245,7 +245,7 @@ fun NetworkDebugScreen(onDismiss: () -> Unit) {
                     PicaCard {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "最近连接",
+                                text = "最近连接 / 事件",
                                 style = MiuixTheme.textStyles.body1,
                                 color = colors.onSurface,
                             )

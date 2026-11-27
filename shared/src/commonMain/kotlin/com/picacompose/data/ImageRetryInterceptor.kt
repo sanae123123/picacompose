@@ -2,6 +2,7 @@ package com.picacompose.data
 
 import coil3.intercept.Interceptor
 import coil3.network.HttpException
+import com.picacompose.picaapi.NetworkLog
 import coil3.request.ErrorResult
 import coil3.request.ImageResult
 import coil3.request.SuccessResult
@@ -54,6 +55,7 @@ internal class ImageRetryInterceptor : Interceptor {
                 val first = withTimeoutOrNull(READER_STALL_MS) { chain.proceed() }
                 if (first != null) return settle(chain, first, start)
                 log("reader stall ${READER_STALL_MS}ms $url")
+                NetworkLog.event("图片", "等 ${READER_STALL_MS / 1000} 秒没出图，开五路并拉")
                 // 5 秒没影先给这条线路记一笔降级：不立刻切（会重建客户端、打断这一屏），
                 // 但真到了要换线路那一步会优先挑别的线路。
                 LineRouter.demote()
@@ -62,12 +64,17 @@ internal class ImageRetryInterceptor : Interceptor {
                 // 换线路（会弹一句「连不上，已切到线路 X」），同时叫后台重测一轮；
                 // 最后这趟不再限时，慢图该等它下完。
                 log("reader stuck ${READER_STALL_MS + READER_RACE_WINDOW_MS}ms $url")
+                NetworkLog.event(
+                    "图片",
+                    "卡满 ${(READER_STALL_MS + READER_RACE_WINDOW_MS) / 1000} 秒，换线路并重测",
+                )
                 StallSwitch.recover(force = true)
                 requestImageIpsRefresh()
             } else {
                 val first = withTimeoutOrNull(STALL_WINDOW_MS) { chain.proceed() }
                 if (first != null) return settle(chain, first, start)
                 log("stall ${STALL_WINDOW_MS}ms $url")
+                NetworkLog.event("图片", "卡住 ${STALL_WINDOW_MS / 1000} 秒，换路重拉")
                 StallSwitch.recover()
                 // 换完路不再限时：真慢的图该等它下完，一直掐断就永远看不到。
                 // 超时那一刻这条请求的 call 已经取消了，重拉会重新解析地址，新的顺序才真的生效。
@@ -141,6 +148,7 @@ internal class ImageRetryInterceptor : Interceptor {
             if (alt is SuccessResult) return alt
         }
         log("failed ${elapsed}ms $url -> ${error.throwable}")
+        NetworkLog.event("图片", "加载失败 ${elapsed} ms（${code ?: "网络"}）")
         return error
     }
 

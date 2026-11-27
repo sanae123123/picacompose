@@ -6,6 +6,7 @@ import com.picacompose.picaapi.PicaClient
 import com.picacompose.picaapi.ImageIps
 import com.picacompose.picaapi.dohEngine
 import com.picacompose.picaapi.pinnedEngine
+import com.picacompose.picaapi.systemEngine
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -72,5 +73,9 @@ private suspend fun routeEngine(line: PicaLine, ips: List<String>): HttpClientEn
         val doh = dohEngine(if (line.pinnedDns) ips else emptyList())
         if (doh != null) return doh
     }
-    return if (line.pinnedDns) pinnedEngine(ips) else null
+    return when {
+        line.pinnedDns -> pinnedEngine(ips)
+        // 不钉 IP 的线路也走 OkHttp：只为了把连接目标记进网络日志，解析本身仍是系统的。
+        else -> systemEngine()
+    }
 }
