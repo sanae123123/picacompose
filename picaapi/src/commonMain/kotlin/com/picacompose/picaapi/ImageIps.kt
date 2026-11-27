@@ -7,9 +7,9 @@ package com.picacompose.picaapi
  * 而不少网络会把它们的系统解析污染成别的公司的地址，连过去只剩超时。官方客户端靠 `/init`
  * 下发的 IP 池绕过去（它的自定义 DNS 连 hostname 都不看，图片也吃这套），这里照着分成几层：
  *
- * 1. [httpDns] —— 官方 HttpDNS 接口给的，按运营商分好，排最前；
- * 2. [preferred] —— 后台优选测出来的，按握手耗时排；
- * 3. [official] —— `/init` 下发的池子，也就是官方用的那份；
+ * 1. [preferred] —— 后台测速结果，按「TLS 握手 + 首个响应」耗时从低到高，测完之后它就是唯一的顺序；
+ * 2. [httpDns] —— 官方 HttpDNS 接口给的，只是数据来源之一，快不快得实测说了算；
+ * 3. [official] —— `/init` 下发的池子，也是数据来源之一；
  * 4. 内置种子（IPv4 + IPv6）—— 前几层都用不上时至少不至于一张图都没有。
  *
  * 冷启动顺序是「官方源先上，后台同时测速，测完把优选结果顶到最前面」（见 [activatePreferred]）：
@@ -43,9 +43,10 @@ object ImageIps {
         private set
 
     /**
-     * 官方 HttpDNS 接口给的地址（见 [resolveViaHttpDns]），永远排在最前面。
+     * 官方 HttpDNS 接口给的地址（见 [resolveViaHttpDns]）。
      *
-     * 它是服务端按当前网络的运营商挑的，比本地测速更贴实际；测速结果只当第二梯队。
+     * 它只是个数据来源：地址会进测速候选，测出来快就留在优选池前面，慢就往后排。
+     * 不能因为它「是官方按运营商挑的」就直接插到最前面 —— 插队只会把慢地址顶上去。
      */
     @Volatile
     var httpDns: List<String> = emptyList()
@@ -103,7 +104,11 @@ object ImageIps {
     }
 
     /**
-     * 当前该用的顺序：关掉优选只剩官方源 + 种子；开着则冷启动官方源优先、测完优选优先。
+     * 当前该用的顺序：测速结果优先且按速度排，其余来源只当兜底。
+     *
+     * 关了优选就只剩官方源 + 种子；开着但还没测完（冷启动）先用官方源撑着，
+     * 测完 [activatePreferred] 把测速结果整个提到了最前面 —— 此时顺序完全由实测速度决定，
+     * HttpDNS / 下发 IP 里没进前几名的自然就落到后面了。
      *
      * [turn] 是连接出问题后挪的位数 —— 只在 [rotate] 时变，正常请求每次都是同一个顺序，
      * 免得连接随机跳来跳去把缓存打散。
@@ -111,7 +116,7 @@ object ImageIps {
     fun ordered(): List<String> {
         val base = when {
             !enabled -> (httpDns + official + SEEDS_V4 + SEEDS_V6).distinct()
-            preferredActive -> (httpDns + preferred + official + SEEDS_V4 + SEEDS_V6).distinct()
+            preferredActive -> (preferred + httpDns + official + SEEDS_V4 + SEEDS_V6).distinct()
             else -> (httpDns + official + preferred + SEEDS_V4 + SEEDS_V6).distinct()
         }
         if (base.size <= 1) return base

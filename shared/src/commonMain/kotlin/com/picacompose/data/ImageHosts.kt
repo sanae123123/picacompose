@@ -109,10 +109,11 @@ internal suspend fun keepImageIpsFresh() {
             continue
         }
         ImageIps.updateEnabled(true)
-        // 上一轮的结果全部并进来一起测（不只前几台）：验证过的那几台排最前面先开跑，
-        // 剩下的官方段地址照旧在后面一起扫。
+        // HttpDNS 给的地址排最前面先测：它是服务端按当前运营商挑的，很可能就是最好用的那几台，
+        // 早点测出结果就能早点顶上，不用等 200 多台随机地址扫完。
+        // 上一轮的结果跟着一起测（验证过，多半还能用），剩下的 Cloudflare 地址照旧在后面扫。
         val lastFast = store.savedImageIps.ifEmpty { ImageIps.preferred }
-        val candidates = (lastFast + CloudflareIps.sample()).distinct()
+        val candidates = (ImageIps.httpDns + lastFast + CloudflareIps.sample()).distinct()
         ImageIpsStatus.start(candidates.size)
         // 边测边用：先测出够快的几台就立刻顶上，不用等 200 多台全扫完。
         val best = coroutineScope {
