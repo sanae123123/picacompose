@@ -19,8 +19,8 @@ android {
         applicationId = "com.picacompose"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 19
-        versionName = "0.1.9"
+        versionCode = 20
+        versionName = "0.1.10"
     }
 
     buildTypes {
