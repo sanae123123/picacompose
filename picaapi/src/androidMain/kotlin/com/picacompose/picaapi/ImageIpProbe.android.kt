@@ -16,8 +16,14 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.TimeSource
 
-/** 探测目标：任意一个 picacomic 域名都行，只要它跟图床在同一个 zone。 */
-private const val PROBE_URL = "https://picaapi.picacomic.com/"
+/**
+ * 探测目标：Cloudflare 边缘的 trace 端点。
+ *
+ * 挑它的理由：不要鉴权（不会因为没带签名返回 401，也不会蹭到业务限流），返回两百多字节，
+ * 但走的是完整的「解析 → TCP → TLS → HTTP → 收完响应体」。比 HEAD 根路径那种只看首字节、
+ * 还可能被边缘直接挡回去的探法真实得多。
+ */
+private const val PROBE_URL = "https://picaapi.picacomic.com/cdn-cgi/trace"
 
 /** 单台多久算不通。国内连 Cloudflare 有时要三四秒，2.5 秒会把能用的误刹掉。 */
 private const val PROBE_TIMEOUT_MS = 5_000L
@@ -41,10 +47,12 @@ private fun probeOne(ip: String): Long? = runCatching {
     val address = InetAddress.getByName(ip)
     // DNS 直接钉死成这一台：TLS 的 SNI / 证书仍按域名算，换的只是 TCP 目标。
     val client = probeClient.newBuilder().dns(Dns { listOf(address) }).build()
-    val request = Request.Builder().url(PROBE_URL).head().build()
+    val request = Request.Builder().url(PROBE_URL).get().build()
     val start = TimeSource.Monotonic.markNow()
     client.newCall(request).execute().use { response ->
-        if (response.code == 403 || response.code >= 500) return null
+        if (!response.isSuccessful) return null
+        // 真把响应体收下来：只发不收的话测到的只是首字节，不是这条地址能不能把东西拉完。
+        response.body.byteStream().readBytes()
         start.elapsedNow().inWholeMilliseconds
     }
 }.getOrNull()
