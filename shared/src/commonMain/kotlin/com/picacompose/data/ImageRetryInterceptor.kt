@@ -101,22 +101,47 @@ internal class ImageRetryInterceptor : Interceptor {
      *
      * 五路都走原地址：图床的 DNS 每开一条新连接就把池子往后挪一台（见 `ImageDns` 的
      * `turn`），所以五条连接自然铺到池子里最快的那几台机器上 —— 等于「从 IP 池里随机挑
-     * 五台一起下」，谁先回来用谁，剩下四条立刻取消。全都不行才返回 null。
+     * 五台一起下」，谁先回来用谁，剩下四条立刻取消。
+     *
+     * 五路全挂的要比「五路都慢」早很多处理：全挂说明这几台地址已经不行了，干等满
+     * [READER_RACE_WINDOW_MS] 只是让用户多盯 30 秒空屏，直接返回 null 让上层换线路，
+     * 换过去重置池子往往一秒就出图。
      */
     private suspend fun raceReader(chain: Interceptor.Chain): ImageResult? = coroutineScope {
-        val hits = Channel<ImageResult>(Channel.UNLIMITED)
+        val outcomes = Channel<ImageResult?>(Channel.UNLIMITED)
         val jobs = List(READER_RACE_COPIES) {
             launch {
                 val result = runCatching {
                     chain.withRequest(chain.request).proceed()
                 }.getOrNull()
-                if (result is SuccessResult) hits.send(result)
+                // null = 这一路没拿到图（连不上、超时、被取消都算），交给下面统一数。
+                outcomes.trySend(result as? SuccessResult)
             }
         }
-        val winner = withTimeoutOrNull(READER_RACE_WINDOW_MS) { hits.receive() }
+        var tried = 0
+        var winner: ImageResult? = null
+        val raced = withTimeoutOrNull(READER_RACE_WINDOW_MS) {
+            while (winner == null) {
+                val outcome = outcomes.receive()
+                tried += 1
+                if (outcome != null) {
+                    winner = outcome
+                } else if (tried >= READER_RACE_COPIES) {
+                    // 五路全没影，别把 30 秒窗口等满。
+                    return@withTimeoutOrNull null
+                }
+            }
+            winner
+        }
         jobs.forEach { it.cancel() }
-        winner?.let { log("race won by ${it.request.data}") }
-        winner
+        when {
+            raced != null -> log("race won by ${raced.request.data}")
+            tried >= READER_RACE_COPIES -> {
+                log("race lost after $tried tries")
+                NetworkLog.event("图片", "五路竞速都没出图，换线路")
+            }
+        }
+        raced
     }
 
     /** 请求有结果之后的处理：成功的记慢图日志，失败了再打一枪、再兜底另一台图床。 */
