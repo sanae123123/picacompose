@@ -109,35 +109,36 @@ internal suspend fun keepImageIpsFresh() {
             continue
         }
         ImageIps.updateEnabled(true)
-        // HttpDNS 给的地址排最前面先测：它是服务端按当前运营商挑的，很可能就是最好用的那几台，
-        // 早点测出结果就能早点顶上，不用等 200 多台随机地址扫完。
-        // 上一轮的结果跟着一起测（验证过，多半还能用），剩下的 Cloudflare 地址照旧在后面扫。
+        // HttpDNS 和 /init 下发的地址都排在前面先测：前者是服务端按运营商挑的，后者是官方池子，
+        // 都很可能是最好用的那几台，早点测出结果就能早点顶上，不用等几百台随机地址扫完。
+        // 上一轮的结果跟着一起测（验证过，多半还能用）。
         val lastFast = store.savedImageIps.ifEmpty { ImageIps.preferred }
-        val candidates = (ImageIps.httpDns + lastFast + CloudflareIps.sample()).distinct()
+        val candidates = (ImageIps.httpDns + ImageIps.official + lastFast + CloudflareIps.sample())
+            .distinct()
         ImageIpsStatus.start(candidates.size)
-        // 边测边用：先测出够快的几台就立刻顶上，不用等 200 多台全扫完。
+        // 边测边用：每测出一台就按速度插到池子里的正确位置，不用等这一轮扫完。
         val best = coroutineScope {
             val hits = Channel<Pair<String, Long>>(Channel.UNLIMITED)
             val applier = launch {
                 val usable = ArrayList<Pair<String, Long>>()
                 for (hit in hits) {
                     usable.add(hit)
-                    val top = usable.sortedBy { it.second }
-                        .take(POOL_SIZE)
-                        .map { it.first }
-                    ImageIps.updatePreferred(top)
+                    // 全量保留：测得慢的也在池子里排到后面，不当场丢掉。
+                    val sorted = usable.sortedBy { it.second }.map { it.first }
+                    ImageIps.updatePreferred(sorted)
                     ImageIps.activatePreferred()
                     ImageIpsStatus.progress(
                         tested = ImageIpsStatus.tested,
                         fastestMs = usable.minOf { it.second },
-                        live = top,
+                        live = sorted.take(POOL_SIZE),
                     )
                 }
             }
             val result = runCatching {
                 probeImageIps(
                     candidates = candidates,
-                    limit = POOL_SIZE,
+                    // 不截断：测出多少台可用就收多少台。
+                    limit = candidates.size,
                     thresholdMs = FAST_MS,
                     onProgress = { tested, _, fastest ->
                         ImageIpsStatus.progress(tested = tested, fastestMs = fastest)
@@ -174,7 +175,7 @@ private suspend fun refreshHttpDns() {
     if (ips.isNotEmpty()) ImageIps.updateHttpDns(ips)
 }
 
-/** 池子里留几台：够并发用，又不至于每张图都换一条新连接。 */
+/** 界面上列几台：够看清楚速度了，后面那一长串不往界面上倒。 */
 private const val POOL_SIZE = 10
 
 /** 多快算「快」：500ms 以内的握手速度，一屏图基本不会等。 */
