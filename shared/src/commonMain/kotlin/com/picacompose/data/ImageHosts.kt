@@ -181,8 +181,13 @@ private const val CARRY_OVER = 10
 /** 界面上列几台：够看清楚速度了，后面那一长串不往界面上倒。 */
 private const val POOL_SIZE = 10
 
-/** 多快算「快」：500ms 以内的握手速度，一屏图基本不会等。 */
-private const val FAST_MS = 500L
+/**
+ * 多快算「快」：3 秒以内就算能用，一测到就先交给上面用着，不用等整轮扫完。
+ *
+ * 不再卡 500ms：国内直连 Cloudflare 边缘，完整跑一遍 trace 要 1~2 秒，
+ * 500ms 这个门槛根本没人能过，「边测边用」等于形同虚设。
+ */
+private const val FAST_MS = 3_000L
 
 /** 开关关着时每隔一会儿看一眼，拨开了就能接着测。 */
 private const val IDLE_MS = 10 * 1000L
