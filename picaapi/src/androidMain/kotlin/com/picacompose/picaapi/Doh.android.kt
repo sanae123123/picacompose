@@ -52,7 +52,10 @@ private class DohDns(pinnedIps: List<String>) : Dns {
             val start = if (spread == 0) 0 else (turn.getAndIncrement() % spread + spread) % spread
             val rotated = pooled.drop(start) + pooled.take(start)
             val merged = (rotated + pinned).distinctBy { it.hostAddress }
-            if (merged.isNotEmpty()) return merged
+            if (merged.isNotEmpty()) {
+                NetworkLog.record("接口", merged.firstOrNull()?.hostAddress)
+                return merged
+            }
             return pinned
         }
 
@@ -64,6 +67,7 @@ private class DohDns(pinnedIps: List<String>) : Dns {
         val resolved = runCatching {
             lookupDoh(hostname).map { InetAddress.getByName(it) }
         }.getOrDefault(emptyList())
+        NetworkLog.record("DoH", resolved.firstOrNull()?.hostAddress)
 
         return if (resolved.isEmpty()) {
             Dns.SYSTEM.lookup(hostname)

@@ -20,6 +20,7 @@ actual suspend fun pinnedEngine(ips: List<String>): HttpClientEngine? {
                     val resolved = (pool + ips).distinct()
                         .mapNotNull(::address)
                         .distinctBy { it.hostAddress }
+                    NetworkLog.record("接口", resolved.firstOrNull()?.hostAddress)
                     // 官方 b.b#lookup 在下发为空时返回空列表，会直接连不上；
                     // 这里多一层兜底，池子解析全失败就退回系统 DNS。
                     return resolved.ifEmpty { Dns.SYSTEM.lookup(hostname) }

@@ -127,6 +127,19 @@ object ImageIps {
     /** 内置种子全量，给调试页看池子构成用（不参与优选排序）。 */
     val seeds: List<String> get() = SEEDS_V4 + SEEDS_V6
 
+    /**
+     * 这台地址是从哪一层来的：连接日志标来源用。
+     *
+     * 原始层优先 —— 一台同时出现在 HttpDNS 和优选池里时，标它的出处，而不是「测过」。
+     */
+    fun sourceOf(ip: String): String = when {
+        ip in httpDns -> "HttpDNS"
+        ip in official -> "下发"
+        ip in SEEDS_V4 || ip in SEEDS_V6 -> "种子"
+        ip in preferred -> "优选"
+        else -> "系统"
+    }
+
 }
 
 /**

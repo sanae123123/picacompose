@@ -32,6 +32,7 @@ import com.picacompose.data.PicaLine
 import com.picacompose.data.RouteStore
 import com.picacompose.picaapi.ImageIps
 import com.picacompose.picaapi.ImageQuality
+import com.picacompose.picaapi.NetworkLog
 import com.picacompose.picaapi.resolveViaHttpDns
 import com.picacompose.ui.components.PicaBackdrop
 import com.picacompose.ui.components.PicaGlyph
@@ -62,6 +63,7 @@ fun NetworkDebugScreen(onDismiss: () -> Unit) {
     val preferences = remember { LinePreferences() }
 
     var pool by remember { mutableStateOf(readPoolSnapshot()) }
+    var logs by remember { mutableStateOf(NetworkLog.snapshot()) }
     var probing by remember { mutableStateOf(false) }
     var probeReport by remember { mutableStateOf("") }
 
@@ -69,6 +71,7 @@ fun NetworkDebugScreen(onDismiss: () -> Unit) {
     LaunchedEffect(Unit) {
         while (true) {
             pool = readPoolSnapshot()
+            logs = NetworkLog.snapshot()
             delay(1_000)
         }
     }
@@ -239,9 +242,43 @@ fun NetworkDebugScreen(onDismiss: () -> Unit) {
                     Spacer(Modifier.height(14.dp))
                 }
                 item {
+                    PicaCard {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "最近连接",
+                                style = MiuixTheme.textStyles.body1,
+                                color = colors.onSurface,
+                            )
+                            Spacer(Modifier.weight(1f))
+                            Text(
+                                text = "${logs.size} 条",
+                                style = MiuixTheme.textStyles.footnote1,
+                                color = colors.onSurfaceSecondary,
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = logs.take(20).joinToString("\n").ifEmpty { "还没有记录" },
+                            style = MiuixTheme.textStyles.footnote1,
+                            color = colors.onSurfaceSecondary,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        PicaOutlinedButton(
+                            onClick = {
+                                NetworkLog.clear()
+                                logs = NetworkLog.snapshot()
+                            },
+                            modifier = Modifier.fillMaxWidth().height(42.dp),
+                        ) {
+                            Text("清空日志", style = MiuixTheme.textStyles.button)
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
+                }
+                item {
                     PicaOutlinedButton(
                         onClick = {
-                            clipboard.setText(AnnotatedString(pool.report(line, latency, pinned)))
+                            clipboard.setText(AnnotatedString(pool.report(line, latency, pinned, logs)))
                             PicaToast.show("已复制到剪贴板")
                         },
                         modifier = Modifier.fillMaxWidth().height(46.dp),
@@ -268,6 +305,7 @@ private data class PoolSnapshot(
         line: PicaLine?,
         latency: Long?,
         pinned: List<String>,
+        logs: List<NetworkLog.Entry>,
     ): String = buildString {
         appendLine("网络链路")
         appendLine("线路：${line?.let { "${it.title} · 通道 ${it.channel}" } ?: "还没选"}")
@@ -279,6 +317,10 @@ private data class PoolSnapshot(
         appendLine("/init 下发（${official.size}）：${official.joinToString(",")}")
         appendLine("内置种子（${seeds.size}）：${seeds.joinToString(",")}")
         append("生效顺序：${ordered.take(10).joinToString(",")}")
+        appendLine()
+        appendLine()
+        appendLine("最近连接（新→旧）：")
+        logs.take(20).forEach { appendLine(it.toString()) }
     }
 }
 

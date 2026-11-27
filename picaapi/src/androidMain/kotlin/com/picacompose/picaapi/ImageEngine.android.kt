@@ -38,6 +38,8 @@ private class ImageDns : Dns {
         val spread = minOf(pooled.size, SPREAD_IPS)
         val start = (turn.getAndIncrement() % spread + spread) % spread
         val rotated = pooled.drop(start) + pooled.take(start)
+        // OkHttp 按顺序试，第一台就是这次新连接的实际目标；连接复用时不会再走到这儿。
+        NetworkLog.record("图片", rotated.firstOrNull()?.hostAddress)
         // 系统解析出来的地址排在最后兜底：被污染时连过去只会超时，不能放前面。
         val system = runCatching { Dns.SYSTEM.lookup(hostname) }.getOrDefault(emptyList())
         return (rotated + system).distinctBy { it.hostAddress }
