@@ -106,12 +106,7 @@ private fun getDohAnswers(url: String): List<String> {
 
 actual fun dohEngine(pinnedIps: List<String>): HttpClientEngine? = OkHttp.create {
     config {
-        dispatcher(
-            okhttp3.Dispatcher().apply {
-                maxRequests = 64
-                maxRequestsPerHost = 16
-            },
-        )
+        dispatcher(unlimitedDispatcher())
         dns(DohDns(pinnedIps))
     }
 }

@@ -52,14 +52,7 @@ private const val SPREAD_IPS = 10
 actual fun imageEngine(): HttpClientEngine? = OkHttp.create {
     config {
         dns(ImageDns())
-        // OkHttp 默认同一个 host 只给 5 个并发请求，一屏十几张图会排队。
-        // 图床是同一个域名，这里把并发放开一点，一屏图能一起下。
-        dispatcher(
-            okhttp3.Dispatcher().apply {
-                maxRequests = 64
-                maxRequestsPerHost = 16
-            },
-        )
+        dispatcher(unlimitedDispatcher())
         // 图床按 image-quality 头决定返回的尺寸（官方就是这么做的）。
         // 图床域名和接口不同，这个头得由图片这条链路自己带上。
         addInterceptor { chain ->

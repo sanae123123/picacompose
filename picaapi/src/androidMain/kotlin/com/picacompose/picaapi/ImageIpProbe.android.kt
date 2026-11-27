@@ -23,6 +23,8 @@ private const val PROBE_URL = "https://picaapi.picacomic.com/"
 private const val PROBE_TIMEOUT_MS = 5_000L
 
 private val probeClient = OkHttpClient.Builder()
+    // 并发由这里的 Semaphore 把着（同时 12 台），客户端自己再卡一道就是多此一举。
+    .dispatcher(unlimitedDispatcher())
     .connectTimeout(PROBE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
     .readTimeout(PROBE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
     .callTimeout(PROBE_TIMEOUT_MS * 2, TimeUnit.MILLISECONDS)
