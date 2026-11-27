@@ -258,7 +258,7 @@ fun NetworkDebugScreen(onDismiss: () -> Unit) {
                         }
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = logs.take(20).joinToString("\n").ifEmpty { "还没有记录" },
+                            text = logs.take(DISPLAY_LIMIT).joinToString("\n").ifEmpty { "还没有记录" },
                             style = MiuixTheme.textStyles.footnote1,
                             color = colors.onSurfaceSecondary,
                         )
@@ -320,7 +320,7 @@ private data class PoolSnapshot(
         appendLine()
         appendLine()
         appendLine("最近连接（新→旧）：")
-        logs.take(20).forEach { appendLine(it.toString()) }
+        logs.take(DISPLAY_LIMIT).forEach { appendLine(it.toString()) }
     }
 }
 
@@ -358,3 +358,6 @@ private fun PoolBlock(title: String, ips: List<String>) {
         )
     }
 }
+
+/** 界面上一次摆多少条：留 40 条，翻两页图还能回看到接口那几条。 */
+private const val DISPLAY_LIMIT = 40

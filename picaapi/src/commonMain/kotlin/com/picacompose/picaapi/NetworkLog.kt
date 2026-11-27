@@ -14,8 +14,11 @@ object NetworkLog {
         override fun toString(): String = "[$purpose] $text"
     }
 
-    /** 留最近多少条：够看出这几分钟在连哪儿，又不至于把界面撑爆。 */
-    private const val LIMIT = 60
+    /**
+     * 留最近多少条：一屏图就是十几条，只留 60 条的话接口那几条一翻页就被挤出去了，
+     * 留 200 条够回看一阵子，又不是无界增长。
+     */
+    private const val LIMIT = 200
 
     /** 新→旧。多个线程同时记会丢一条，日志而已，不值得为它加锁。 */
     private var entries: List<Entry> = emptyList()
