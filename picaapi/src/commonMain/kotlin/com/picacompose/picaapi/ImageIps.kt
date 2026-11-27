@@ -127,14 +127,6 @@ object ImageIps {
     /** 内置种子全量，给调试页看池子构成用（不参与优选排序）。 */
     val seeds: List<String> get() = SEEDS_V4 + SEEDS_V6
 
-    /**
-     * 后台测速的候选：几层全都要测，才能知道哪台最快（v6 没出口的自然测不过）。
-     *
-     * 官方 HttpDNS 给的地址也在里面 —— 它们只是数据来源靠前，到底快不快还得实测一遡，
-     * 测出来的结果照样进 [preferred] 排序。
-     */
-    fun candidates(): List<String> =
-        (httpDns + preferred + official + SEEDS_V4 + SEEDS_V6).distinct()
 }
 
 /**
