@@ -7,6 +7,14 @@ import java.net.InetAddress
 
 actual fun systemEngine(): HttpClientEngine? = OkHttp.create {
     config {
+        // OkHttp 默认同一个域名只给 5 路并发，图片那条链路已经放到 16 了；接口进页面时
+        // 列表、用户信息、收藏数这些一并发，5 路会排队，看起来就像卡了一下。
+        dispatcher(
+            okhttp3.Dispatcher().apply {
+                maxRequests = 64
+                maxRequestsPerHost = 16
+            },
+        )
         dns(object : Dns {
             override fun lookup(hostname: String): List<InetAddress> {
                 val resolved = Dns.SYSTEM.lookup(hostname)
@@ -21,6 +29,12 @@ actual suspend fun pinnedEngine(ips: List<String>): HttpClientEngine? {
     if (ips.isEmpty()) return null
     return OkHttp.create {
         config {
+            dispatcher(
+                okhttp3.Dispatcher().apply {
+                    maxRequests = 64
+                    maxRequestsPerHost = 16
+                },
+            )
             dns(object : Dns {
                 private fun address(ip: String): InetAddress? =
                     runCatching { InetAddress.getByName(ip) }.getOrNull()
