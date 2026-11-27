@@ -80,8 +80,8 @@ internal suspend fun keepImageIpsFresh() {
     ImageIpsStatus.restore(store.savedImageIps, store.savedImageIpsAt)
 
     // 这一轮全量测完之前，先把上一轮的结果验一遡：能通的立刻顶上，不通的当场剔掉。
-    // 只测十来台、并发 12 路，两秒内出结果，首屏起来就有地址可用。
-    val lastRound = store.savedImageIps
+    // 只验上轮最快的那几台，不拖全量：全量验一遍跟整轮扫描没区别了。
+    val lastRound = store.savedImageIps.take(CARRY_OVER)
     if (preferences.imageIps && lastRound.isNotEmpty()) {
         val verified = runCatching {
             probeImageIps(candidates = lastRound, limit = POOL_SIZE, thresholdMs = FAST_MS)
@@ -112,7 +112,7 @@ internal suspend fun keepImageIpsFresh() {
         // HttpDNS 和 /init 下发的地址都排在前面先测：前者是服务端按运营商挑的，后者是官方池子，
         // 都很可能是最好用的那几台，早点测出结果就能早点顶上，不用等几百台随机地址扫完。
         // 上一轮的结果跟着一起测（验证过，多半还能用）。
-        val lastFast = store.savedImageIps.ifEmpty { ImageIps.preferred }
+        val lastFast = store.savedImageIps.ifEmpty { ImageIps.preferred }.take(CARRY_OVER)
         val candidates = (ImageIps.httpDns + ImageIps.official + lastFast + CloudflareIps.sample())
             .distinct()
         ImageIpsStatus.start(candidates.size)
@@ -174,6 +174,9 @@ private suspend fun refreshHttpDns() {
     val ips = resolveViaHttpDns(HTTP_DNS_DOMAIN)
     if (ips.isNotEmpty()) ImageIps.updateHttpDns(ips)
 }
+
+/** 上一轮只带前几台进下一轮：全量带进来候选池会越滚越大，重测一轮越拖越久。 */
+private const val CARRY_OVER = 10
 
 /** 界面上列几台：够看清楚速度了，后面那一长串不往界面上倒。 */
 private const val POOL_SIZE = 10
